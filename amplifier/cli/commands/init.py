@@ -36,10 +36,11 @@ from amplifier.cli.models import Settings
 @click.command()
 @click.option("--force", is_flag=True, help="Force initialization even if directories exist")
 @click.option("--repair", is_flag=True, help="Attempt to repair corrupted configuration")
+@click.option("--merge", is_flag=True, help="Merge Amplifier content into existing files")
 @handle_errors()
 @log_command("init")
 @click.pass_context
-def cmd(ctx: click.Context, force: bool, repair: bool) -> None:
+def cmd(ctx: click.Context, force: bool, repair: bool, merge: bool) -> None:
     """Initialize Amplifier project structure.
 
     Creates .claude/ and .amplifier/ directories with required structure.
@@ -53,10 +54,10 @@ def cmd(ctx: click.Context, force: bool, repair: bool) -> None:
     claude_dir = get_claude_dir()
     manifest_path = get_manifest_path()
 
-    if claude_dir.exists() and not (force or repair):
+    if manifest_path.exists() and not (force or repair or merge):
         output.warning(
             "Project already initialized",
-            detail="Use --force to reinitialize or --repair to fix issues",
+            detail="Use --force to reinitialize, --repair to fix issues, or --merge to update existing files",
         )
         return
 
@@ -87,13 +88,24 @@ def cmd(ctx: click.Context, force: bool, repair: bool) -> None:
     # Create AI context files
     output.section_header("Creating AI Context Files")
     with output.spinner("Creating project documentation..."):
-        created_files = _create_project_files(force=force)
+        created_files, skipped_files = _create_project_files(force=force, merge=merge)
 
-    for file_path, was_created in created_files:
-        if was_created:
+    for file_path, action in created_files:
+        if action == "created":
             output.success(f"Created {file_path}")
-        else:
+        elif action == "merged":
+            output.success(f"Merged content into {file_path}")
+        elif action == "preserved":
             output.info(f"Preserved existing {file_path}")
+
+    # Report skipped files if any
+    if skipped_files and not merge:
+        output.warning(
+            f"Skipped {len(skipped_files)} existing file(s)",
+            detail="Use --merge to update these files with Amplifier content",
+        )
+        for file_path in skipped_files:
+            output.info(f"  • {file_path} (exists, not updated)")
 
     # Create and save manifest
     with output.spinner("Creating manifest..."):
@@ -145,22 +157,48 @@ def cmd(ctx: click.Context, force: bool, repair: bool) -> None:
         output.debug(f"Settings: {settings_path}")
 
 
-def _create_project_files(force: bool = False) -> list[tuple[str, bool]]:
+def _create_project_files(force: bool = False, merge: bool = False) -> tuple[list[tuple[str, str]], list[str]]:
     """Create essential project files for AI assistants.
 
     Args:
         force: Whether to overwrite existing files
+        merge: Whether to merge content into existing files
 
     Returns:
-        List of tuples (file_path, was_created) indicating what was created
+        Tuple of (created_files, skipped_files) where:
+        - created_files is list of (file_path, action) where action is "created", "merged", or "preserved"
+        - skipped_files is list of file paths that exist but weren't updated
     """
     created_files = []
+    skipped_files = []
     project_root = Path(".")
 
     # Create CLAUDE.md
     claude_md_path = project_root / "CLAUDE.md"
-    if not claude_md_path.exists() or force:
-        claude_md_content = """# CLAUDE.md
+    amplifier_claude_section = """\n\n## Amplifier Resources
+
+This project uses Amplifier CLI to manage Claude Code resources.
+
+### Available Commands
+
+- `amplifier list` - List available and installed resources
+- `amplifier install agents <name>` - Install specific agents
+- `amplifier update` - Update installed resources
+- `amplifier remove <type> <name>` - Remove installed resources
+
+### Project Structure
+
+- `.claude/` - Claude Code resources (agents, tools, commands, mcp-servers)
+- `.amplifier/` - Amplifier metadata and configuration
+- `AGENTS.md` - Guidance for AI assistants
+- `DISCOVERIES.md` - Documentation of solved problems and patterns
+"""
+
+    if not claude_md_path.exists():
+        if force:
+            # Create new file with full template
+            claude_md_content = (
+                """# CLAUDE.md
 
 This file provides guidance to Claude Code when working with code in this repository.
 
@@ -177,20 +215,98 @@ This file provides guidance to Claude Code when working with code in this reposi
 ## Code Style Guidelines
 
 <!-- Add your project's code style guidelines -->
-
-## Important Context
-
-<!-- Add any important context about the project architecture, conventions, or patterns -->
 """
+                + amplifier_claude_section
+            )
+            claude_md_path.write_text(claude_md_content)
+            created_files.append(("CLAUDE.md", "created"))
+        else:
+            # File doesn't exist, create it
+            claude_md_content = (
+                """# CLAUDE.md
+
+This file provides guidance to Claude Code when working with code in this repository.
+
+## Project-Specific Instructions
+
+<!-- Add your project-specific instructions here -->
+
+## Build Commands
+
+- Install dependencies: `# Add your install command`
+- Run tests: `# Add your test command`
+- Build project: `# Add your build command`
+
+## Code Style Guidelines
+
+<!-- Add your project's code style guidelines -->
+"""
+                + amplifier_claude_section
+            )
+            claude_md_path.write_text(claude_md_content)
+            created_files.append(("CLAUDE.md", "created"))
+    elif force:
+        # Force overwrite existing file
+        claude_md_content = (
+            """# CLAUDE.md
+
+This file provides guidance to Claude Code when working with code in this repository.
+
+## Project-Specific Instructions
+
+<!-- Add your project-specific instructions here -->
+
+## Build Commands
+
+- Install dependencies: `# Add your install command`
+- Run tests: `# Add your test command`
+- Build project: `# Add your build command`
+
+## Code Style Guidelines
+
+<!-- Add your project's code style guidelines -->
+"""
+            + amplifier_claude_section
+        )
         claude_md_path.write_text(claude_md_content)
-        created_files.append(("CLAUDE.md", True))
+        created_files.append(("CLAUDE.md", "created"))
+    elif merge:
+        # Merge: append Amplifier section if not already present
+        existing_content = claude_md_path.read_text()
+        if "## Amplifier Resources" not in existing_content:
+            merged_content = existing_content.rstrip() + amplifier_claude_section
+            claude_md_path.write_text(merged_content)
+            created_files.append(("CLAUDE.md", "merged"))
+        else:
+            created_files.append(("CLAUDE.md", "preserved"))
     else:
-        created_files.append(("CLAUDE.md", False))
+        # File exists and no force or merge
+        skipped_files.append("CLAUDE.md")
+        created_files.append(("CLAUDE.md", "preserved"))
 
     # Create AGENTS.md
     agents_md_path = project_root / "AGENTS.md"
-    if not agents_md_path.exists() or force:
-        agents_md_content = """# AI Assistant Guidance
+    amplifier_agents_section = """\n\n## Amplifier Agent Management
+
+### Installing Agents
+
+- `amplifier install agents` - Install all available agents
+- `amplifier install agents zen-architect bug-hunter` - Install specific agents
+- `amplifier list agents --installed` - Show installed agents
+- `amplifier remove agents <name>` - Remove specific agents
+
+### Using Agents in Claude Code
+
+After installing agents, they are available in Claude Code:
+- Type `@` to see available agents
+- Agents provide specialized expertise for different tasks
+- See `.claude/agents/` for installed agent definitions
+"""
+
+    if not agents_md_path.exists():
+        # Create new file
+        agents_md_content = (
+            """# AI Assistant Guidance
 
 This file provides guidance to AI assistants when working with code in this repository.
 
@@ -228,15 +344,71 @@ See `.claude/AGENTS_CATALOG.md` for the full list of available specialized agent
 - Run type checks and linters
 - Verify basic functionality
 """
+            + amplifier_agents_section
+        )
         agents_md_path.write_text(agents_md_content)
-        created_files.append(("AGENTS.md", True))
+        created_files.append(("AGENTS.md", "created"))
+    elif force:
+        # Force overwrite
+        agents_md_content = (
+            """# AI Assistant Guidance
+
+This file provides guidance to AI assistants when working with code in this repository.
+
+## Important: Consult DISCOVERIES.md
+
+Before implementing solutions to complex problems:
+1. **Check DISCOVERIES.md** for similar issues that have already been solved
+2. **Update DISCOVERIES.md** when you encounter non-obvious problems
+
+## Available Specialized Agents
+
+See `.claude/AGENTS_CATALOG.md` for the full list of available specialized agents.
+
+## Response Guidelines
+
+### Professional Communication
+- Focus on technical merit and trade-offs
+- Provide honest technical assessment
+- Avoid unnecessary agreement or praise
+
+### Zero-BS Principle
+- Build working code, not placeholders
+- No unnecessary stubs or TODOs
+- Implement or don't include
+
+## Development Approach
+
+### Vertical Slices
+- Implement complete end-to-end functionality
+- Start with core user journeys
+- Add features horizontally after core flows work
+
+### Testing Strategy
+- Test after code changes
+- Run type checks and linters
+- Verify basic functionality
+"""
+            + amplifier_agents_section
+        )
+        agents_md_path.write_text(agents_md_content)
+        created_files.append(("AGENTS.md", "created"))
+    elif merge:
+        # Merge content
+        existing_content = agents_md_path.read_text()
+        if "## Amplifier Agent Management" not in existing_content:
+            merged_content = existing_content.rstrip() + amplifier_agents_section
+            agents_md_path.write_text(merged_content)
+            created_files.append(("AGENTS.md", "merged"))
+        else:
+            created_files.append(("AGENTS.md", "preserved"))
     else:
-        created_files.append(("AGENTS.md", False))
+        skipped_files.append("AGENTS.md")
+        created_files.append(("AGENTS.md", "preserved"))
 
     # Create DISCOVERIES.md
     discoveries_md_path = project_root / "DISCOVERIES.md"
-    if not discoveries_md_path.exists() or force:
-        discoveries_md_content = """# DISCOVERIES.md
+    discoveries_md_content = """# DISCOVERIES.md
 
 This file documents non-obvious problems, solutions, and patterns discovered during development.
 
@@ -267,10 +439,16 @@ When adding a new discovery, use this format:
 
 <!-- Add new discoveries below this line -->
 """
+
+    if not discoveries_md_path.exists() or force:
         discoveries_md_path.write_text(discoveries_md_content)
-        created_files.append(("DISCOVERIES.md", True))
+        created_files.append(("DISCOVERIES.md", "created"))
+    elif merge:
+        # DISCOVERIES.md doesn't need merging as it's append-only
+        created_files.append(("DISCOVERIES.md", "preserved"))
     else:
-        created_files.append(("DISCOVERIES.md", False))
+        skipped_files.append("DISCOVERIES.md")
+        created_files.append(("DISCOVERIES.md", "preserved"))
 
     # Create ai_context directory and philosophy files
     ai_context_dir = project_root / "ai_context"
@@ -326,9 +504,12 @@ When faced with implementation decisions:
 - The best code is often the simplest
 """
         impl_philosophy_path.write_text(impl_philosophy_content)
-        created_files.append(("ai_context/IMPLEMENTATION_PHILOSOPHY.md", True))
+        created_files.append(("ai_context/IMPLEMENTATION_PHILOSOPHY.md", "created"))
+    elif force:
+        impl_philosophy_path.write_text(impl_philosophy_content)
+        created_files.append(("ai_context/IMPLEMENTATION_PHILOSOPHY.md", "created"))
     else:
-        created_files.append(("ai_context/IMPLEMENTATION_PHILOSOPHY.md", False))
+        created_files.append(("ai_context/IMPLEMENTATION_PHILOSOPHY.md", "preserved"))
 
     # Create MODULAR_DESIGN_PHILOSOPHY.md
     modular_philosophy_path = ai_context_dir / "MODULAR_DESIGN_PHILOSOPHY.md"
@@ -405,9 +586,12 @@ module_name/
 - Iterate rapidly based on results
 """
         modular_philosophy_path.write_text(modular_philosophy_content)
-        created_files.append(("ai_context/MODULAR_DESIGN_PHILOSOPHY.md", True))
+        created_files.append(("ai_context/MODULAR_DESIGN_PHILOSOPHY.md", "created"))
+    elif force:
+        modular_philosophy_path.write_text(modular_philosophy_content)
+        created_files.append(("ai_context/MODULAR_DESIGN_PHILOSOPHY.md", "created"))
     else:
-        created_files.append(("ai_context/MODULAR_DESIGN_PHILOSOPHY.md", False))
+        created_files.append(("ai_context/MODULAR_DESIGN_PHILOSOPHY.md", "preserved"))
 
     # Create .mcp.json if it doesn't exist
     mcp_json_path = project_root / ".mcp.json"
@@ -424,11 +608,11 @@ module_name/
         }
         with open(mcp_json_path, "w", encoding="utf-8") as f:
             json.dump(mcp_json_content, f, indent=2)
-        created_files.append((".mcp.json", True))
+        created_files.append((".mcp.json", "created"))
     else:
-        created_files.append((".mcp.json", False))
+        created_files.append((".mcp.json", "preserved"))
 
-    return created_files
+    return created_files, skipped_files
 
 
 def _repair_project(output) -> None:
@@ -495,9 +679,9 @@ def _repair_project(output) -> None:
         if not file_path.exists():
             issues_found.append(f"Missing {file_name}")
             # Create the missing file
-            created_files = _create_project_files(force=False)
-            for created_path, was_created in created_files:
-                if was_created and created_path == file_name:
+            created_files, _ = _create_project_files(force=False, merge=False)
+            for created_path, action in created_files:
+                if action == "created" and created_path == file_name:
                     repairs_made.append(f"Created {file_name}")
 
     # Report results
