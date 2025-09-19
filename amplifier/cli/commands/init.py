@@ -29,6 +29,8 @@ from amplifier.cli.core import validate_paths
 from amplifier.cli.core.decorators import handle_errors
 from amplifier.cli.core.decorators import log_command
 from amplifier.cli.core.errors import ConfigurationError
+from amplifier.cli.core.file_utils import copy_with_permissions
+from amplifier.cli.core.file_utils import get_package_data_path
 from amplifier.cli.core.output import get_output_manager
 from amplifier.cli.models import Settings
 
@@ -113,18 +115,20 @@ def cmd(ctx: click.Context, force: bool, repair: bool, merge: bool) -> None:
         save_manifest(manifest)
     output.success("Created manifest.json", detail=str(manifest_path))
 
-    # Create default settings.json
-    with output.spinner("Creating settings..."):
-        settings = Settings(
-            defaults={
-                "auto_update": False,
-                "resource_source": "local",  # For Phase 1
-            }
-        )
-        settings_path = get_settings_path()
-        with open(settings_path, "w", encoding="utf-8") as f:
-            json.dump(settings.model_dump(mode="json"), f, indent=2)
-    output.success("Created .claude/settings.json", detail=str(settings_path))
+    # Create default settings.json only if it doesn't exist
+    # (init_new.py may have already created the real one from package data)
+    settings_path = get_settings_path()
+    if not settings_path.exists():
+        with output.spinner("Creating settings..."):
+            settings = Settings(
+                defaults={
+                    "auto_update": False,
+                    "resource_source": "local",  # For Phase 1
+                }
+            )
+            with open(settings_path, "w", encoding="utf-8") as f:
+                json.dump(settings.model_dump(mode="json"), f, indent=2)
+        output.success("Created .claude/settings.json", detail=str(settings_path))
 
     # Validate paths were created correctly
     try:
@@ -158,6 +162,16 @@ def cmd(ctx: click.Context, force: bool, repair: bool, merge: bool) -> None:
 
 
 def _create_project_files(force: bool = False, merge: bool = False) -> tuple[list[tuple[str, str]], list[str]]:
+    """Create essential project files for AI assistants.
+
+    This function now copies real files from package data if available,
+    otherwise falls back to creating template content.
+    """
+    # Use the implementation that copies real files from package data
+    return _create_project_files_from_package_data(force, merge)
+
+
+def _create_project_files_original(force: bool = False, merge: bool = False) -> tuple[list[tuple[str, str]], list[str]]:
     """Create essential project files for AI assistants.
 
     Args:
@@ -608,6 +622,154 @@ module_name/
         }
         with open(mcp_json_path, "w", encoding="utf-8") as f:
             json.dump(mcp_json_content, f, indent=2)
+        created_files.append((".mcp.json", "created"))
+    else:
+        created_files.append((".mcp.json", "preserved"))
+
+    return created_files, skipped_files
+
+
+def _create_project_files_from_package_data(
+    force: bool = False, merge: bool = False
+) -> tuple[list[tuple[str, str]], list[str]]:
+    """Create essential project files by copying from package data.
+
+    Args:
+        force: Whether to overwrite existing files
+        merge: Whether to merge content into existing files
+
+    Returns:
+        Tuple of (created_files, skipped_files)
+    """
+    created_files = []
+    skipped_files = []
+    project_root = Path(".")
+
+    # Files to copy from package data
+    files_to_copy = [
+        ("CLAUDE.md", "CLAUDE.md"),
+        ("AGENTS.md", "AGENTS.md"),
+        ("DISCOVERIES.md", "DISCOVERIES.md"),
+    ]
+
+    # Copy main documentation files
+    for source_name, target_name in files_to_copy:
+        source_path = get_package_data_path(source_name)
+        target_path = project_root / target_name
+
+        if not source_path.exists():
+            # Fall back to template creation if package data doesn't exist
+            continue
+
+        if target_path.exists() and not force and not merge:
+            skipped_files.append(target_name)
+            created_files.append((target_name, "preserved"))
+        else:
+            if target_path.exists() and merge and target_name == "CLAUDE.md":
+                # For CLAUDE.md, merge content
+                existing_content = target_path.read_text()
+                if "## Amplifier Resources" not in existing_content:
+                    amplifier_section = """\n\n## Amplifier Resources
+
+This project uses Amplifier CLI to manage Claude Code resources.
+
+### Available Commands
+
+- `amplifier list` - List available and installed resources
+- `amplifier install agents <name>` - Install specific agents
+- `amplifier update` - Update installed resources
+- `amplifier remove <type> <name>` - Remove installed resources
+
+### Project Structure
+
+- `.claude/` - Claude Code resources (agents, tools, commands, mcp-servers)
+- `.amplifier/` - Amplifier metadata and configuration
+- `AGENTS.md` - Guidance for AI assistants
+- `DISCOVERIES.md` - Documentation of solved problems and patterns
+"""
+                    merged_content = existing_content.rstrip() + amplifier_section
+                    target_path.write_text(merged_content)
+                    created_files.append((target_name, "merged"))
+                else:
+                    created_files.append((target_name, "preserved"))
+            else:
+                # Copy the file (force=True or file doesn't exist)
+                copy_with_permissions(source_path, target_path)
+                created_files.append((target_name, "created"))
+
+    # Copy .claude directory with tools and commands from repo
+    claude_source = get_package_data_path(".claude")
+    claude_target = project_root / ".claude"
+
+    if claude_source.exists():
+        # Copy specific subdirectories we want to include
+        subdirs = ["tools", "commands"]
+
+        for subdir in subdirs:
+            source_subdir = claude_source / subdir
+            target_subdir = claude_target / subdir
+
+            if not source_subdir.exists():
+                continue
+
+            target_subdir.mkdir(parents=True, exist_ok=True)
+
+            # Copy files preserving permissions
+            for file in source_subdir.iterdir():
+                if file.is_file() and not file.name.startswith("."):
+                    target_file = target_subdir / file.name
+
+                    if target_file.exists() and not force:
+                        skipped_files.append(str(target_file.relative_to(project_root)))
+                    else:
+                        copy_with_permissions(file, target_file)
+                        created_files.append((str(target_file.relative_to(project_root)), "created"))
+
+    # Copy settings.json from package data
+    settings_source = claude_source / "settings.json" if claude_source.exists() else None
+    settings_target = claude_target / "settings.json"
+
+    if settings_source and settings_source.exists():
+        if not settings_target.exists() or force:
+            settings_target.parent.mkdir(parents=True, exist_ok=True)
+            copy_with_permissions(settings_source, settings_target)
+            created_files.append((".claude/settings.json", "created"))
+        else:
+            created_files.append((".claude/settings.json", "preserved"))
+
+    # Create ai_context directory structure
+    ai_context_dir = project_root / "ai_context"
+    ai_context_dir.mkdir(exist_ok=True)
+
+    # Copy philosophy files if they exist in package data
+    philosophy_files = ["ai_context/IMPLEMENTATION_PHILOSOPHY.md", "ai_context/MODULAR_DESIGN_PHILOSOPHY.md"]
+
+    for rel_path in philosophy_files:
+        source_path = get_package_data_path(rel_path)
+        target_path = project_root / rel_path
+
+        if source_path.exists():
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            if not target_path.exists() or force:
+                copy_with_permissions(source_path, target_path)
+                created_files.append((rel_path, "created"))
+            else:
+                created_files.append((rel_path, "preserved"))
+
+    # Create .mcp.json if it doesn't exist
+    mcp_json_path = project_root / ".mcp.json"
+    if not mcp_json_path.exists():
+        mcp_json_content = {
+            "mcpServers": {
+                "example": {
+                    "comment": "Add your MCP server configurations here",
+                    "command": "example-server",
+                    "args": [],
+                    "env": {},
+                }
+            }
+        }
+        mcp_json_path.write_text(json.dumps(mcp_json_content, indent=2))
         created_files.append((".mcp.json", "created"))
     else:
         created_files.append((".mcp.json", "preserved"))

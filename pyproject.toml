@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "amplifier"
 version = "0.1.0"
-description = "Amplifier CLI v3 - Manage Claude Code resources"
+description = "Amplifier supercharges AI coding assistants with discovered patterns, specialized expertise, and powerful automation"
 requires-python = ">=3.11"
 dependencies = [
     "claude-code-sdk>=0.0.20",
@@ -33,6 +33,8 @@ amplifier = "amplifier.cli:main"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["amplifier", "amplifier.*"]
+
+# Package data removed - using files directly from repo to prevent drift
 
 [tool.uv]
 package = true
@@ -71,7 +73,7 @@ exclude = [
     "build/**",
     "dist/**",
     ".data/**",
-    "ai_working/**"
+    "ai_working/**",
 ]
 typeCheckingMode = "basic"
 reportMissingImports = false

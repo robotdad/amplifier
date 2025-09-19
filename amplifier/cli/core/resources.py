@@ -13,7 +13,9 @@ Contract:
     - list_github_resources(type, ref) → List resources from GitHub
 """
 
+import os
 import shutil
+import stat
 from pathlib import Path
 
 from amplifier.cli.core.github import GitHubClient
@@ -72,9 +74,19 @@ def install_resource(
             # Write content directly
             with open(target_file, "w", encoding="utf-8") as f:
                 f.write(content)
+            # Make tools executable (scripts and Python files need execution permissions)
+            if resource_type == "tools":
+                current_mode = target_file.stat().st_mode
+                new_mode = current_mode | stat.S_IXUSR | stat.S_IRUSR | stat.S_IWUSR
+                os.chmod(target_file, new_mode)
         elif source_path and source_path.exists():
-            # Copy from source
+            # Copy from source with permission preservation
             shutil.copy2(source_path, target_file)
+            # Make tools executable if needed
+            if resource_type == "tools":
+                current_mode = target_file.stat().st_mode
+                new_mode = current_mode | stat.S_IXUSR | stat.S_IRUSR | stat.S_IWUSR
+                os.chmod(target_file, new_mode)
         else:
             return False
 
@@ -249,7 +261,6 @@ async def list_available_github_resources(resource_type: str | None = None, ref:
     Example:
         >>> available = asyncio.run(list_available_github_resources())
     """
-    import os
 
     # Get GitHub token from environment for better rate limits
     token = os.getenv("GITHUB_TOKEN") or os.getenv("GH_TOKEN")
@@ -282,7 +293,6 @@ async def fetch_from_github(resource_type: str, name: str, ref: str = "main") ->
     Example:
         >>> content, sha = asyncio.run(fetch_from_github("agents", "zen-architect"))
     """
-    import os
 
     # Get token from environment for better rate limits
     token = os.getenv("GITHUB_TOKEN") or os.getenv("GH_TOKEN")
@@ -304,7 +314,6 @@ async def list_github_resources(resource_type: str, ref: str = "main") -> list[s
     Example:
         >>> resources = asyncio.run(list_github_resources("agents"))
     """
-    import os
 
     # Get token from environment for better rate limits
     token = os.getenv("GITHUB_TOKEN") or os.getenv("GH_TOKEN")
