@@ -97,7 +97,6 @@ class CliBuilder:
                     options = SessionOptions(
                         system_prompt="{{ system_prompt }}",
                         max_turns=max_turns,
-                        timeout_seconds=120,
                     )
 
                     try:
@@ -201,7 +200,6 @@ class CliBuilder:
                     options = SessionOptions(
                         system_prompt=agent.system_prompt,
                         max_turns=3,
-                        timeout_seconds=180,
                     )
 
                     results = []
@@ -440,7 +438,7 @@ Created with CCSDK Toolkit
         target = f"""
 # CCSDK Tool: {tool_name}
 {safe_name}: ## Run {tool_name} tool
-\tpython amplifier/ccsdk_toolkit/tools/{safe_name}/{safe_name}.py $(ARGS)
+\tpython amplifier/ccsdk_toolkit/examples/{safe_name}/{safe_name}.py $(ARGS)
 """
 
         # Append to Makefile

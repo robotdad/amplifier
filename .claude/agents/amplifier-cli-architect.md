@@ -26,9 +26,11 @@ You are the ONLY agent that proactively reads and contextualizes:
 - @DISCOVERIES.md (especially SDK timeouts, async patterns, file I/O)
 - @amplifier/ccsdk_toolkit/DEVELOPER_GUIDE.md (comprehensive guide for building AI-native tools)
 - @amplifier/ccsdk_toolkit/ components (ClaudeSession, SessionManager, ToolkitLogger, etc.)
-- Existing amplifier tools and example implementations:
-  - @amplifier/ccsdk_toolkit/tools/code_complexity_analyzer.py (batch processing pattern)
-  - @amplifier/ccsdk_toolkit/tools/idea_synthesis/ (multi-stage pipeline pattern)
+- **CRITICAL: @amplifier/ccsdk_toolkit/templates/tool_template.py** - Quickstart template for new tools
+- Reference implementations for learning patterns:
+  - @amplifier/ccsdk_toolkit/examples/code_complexity_analyzer.py (batch processing pattern)
+  - @amplifier/ccsdk_toolkit/examples/idea_synthesis/ (multi-stage pipeline pattern)
+- User requested tools location: @ai_working/[tool_name]/ (NEW TOOLS GO HERE UNLESS DIRECTED OTHERWISE)
 - The Makefile patterns for tool integration
 - The Claude Code SDK documentation located in @ai_context/claude_code/sdk/ (read, reference, and recommend them as appropriate)
 
@@ -147,6 +149,20 @@ Pattern to Follow: [Collection Processor / Knowledge Extractor / Sync Tool / etc
 
 Essential Structure:
 
+# Directory Structure (CRITICAL)
+
+NEW TOOLS GO HERE BY DEFAULT: ai_working/[tool_name]/ (NOT in examples!)
+Examples for reference: amplifier/ccsdk_toolkit/examples/ (DO NOT place new tools here)
+Templates: amplifier/ccsdk_toolkit/templates/
+
+# STARTING POINT - NEW TOOLS
+
+For NEW tools (not examples), by default ALWAYS start by copying the template:
+cp amplifier/ccsdk_toolkit/templates/tool_template.py ai_working/[tool_name].py
+
+The template contains ALL defensive patterns discovered through real failures.
+If appropriate, do not start from scratch - modify the template instead. (START HERE for new tools)
+
 # Make target pattern (using ccsdk_toolkit foundation)
 
 tool-name: ## Description
@@ -154,9 +170,13 @@ tool-name: ## Description
 uv run python -m amplifier.tools.tool_name $(ARGS)
 
 # When building new tools, use ccsdk_toolkit:
+
 # 1. Import from amplifier.ccsdk_toolkit for core functionality
+
 # 2. Use ClaudeSession for SDK interactions
+
 # 3. Use SessionManager for persistence/resume
+
 # 4. Follow patterns from example tools
 
 Critical Implementation Points:
@@ -166,14 +186,15 @@ Critical Implementation Points:
 3. [Proven practice from existing tools]
 
 Must-Have Components:
-□ Import from amplifier.ccsdk_toolkit
-□ Use ClaudeSession for all SDK interactions
-□ Use SessionManager for persistence/resume
-□ Use ToolkitLogger for structured logging
-□ Follow patterns from example tools:
+
+- Import from amplifier.ccsdk_toolkit
+- Use ClaudeSession for all SDK interactions
+- Use SessionManager for persistence/resume
+- Use ToolkitLogger for structured logging
+- Follow patterns from example tools:
   - code_complexity_analyzer.py for batch processing
   - idea_synthesis/ for multi-stage pipelines
-□ Add sys.path fix for direct execution (see examples)
+- Add sys.path fix for direct execution (see examples)
 
 Reference Implementation:
 
@@ -188,6 +209,7 @@ Delegation Guidance:
 - test-coverage for test planning
 
 Ensure they know to:
+
 - Use amplifier.ccsdk_toolkit as foundation
 - Follow patterns from DEVELOPER_GUIDE.md
 - Reference example tools for implementation patterns"
@@ -217,8 +239,10 @@ async def process_collection(items):
             processed.append(item.id)
             session_mgr.save(session)  # Incremental save
     return results
+```
 
 2. Claude SDK Integration Pattern (via ccsdk_toolkit)
+
 ```python
 from amplifier.ccsdk_toolkit import ClaudeSession, SessionOptions
 from amplifier.ccsdk_toolkit.core import DEFAULT_TIMEOUT
@@ -234,9 +258,10 @@ async with ClaudeSession(options) as session:
 ```
 
 3. File I/O Pattern (from ccsdk_toolkit utilities)
+
 ```python
 # Use toolkit's proven utilities
-from amplifier.ccsdk_toolkit.tools.idea_synthesis.utils.file_io import (
+from amplifier.ccsdk_toolkit.defensive.file_io import (
     write_json_with_retry,
     read_json_with_retry
 )
@@ -256,43 +281,54 @@ When to Activate
 
 Validation Output
 
-AMPLIFIER PATTERN VALIDATION
-============================
+# AMPLIFIER PATTERN VALIDATION
 
 Tool: [name]
+Location: [Verify in ai_working/[tool_name]/ NOT examples/]
 Compliance Score: [X/10]
 
 ✅ CORRECT PATTERNS FOUND:
+
 - [Pattern 1 properly implemented]
 - [Pattern 2 following best practices]
 
 ⚠️ ISSUES TO ADDRESS:
+
 - [ ] [Issue]: [Impact and fix needed]
 - [ ] [Issue]: [Specific correction required]
 
 ❌ CRITICAL VIOLATIONS:
+
 - [Violation]: MUST fix before use
-Fix: [Specific action needed]
+  Fix: [Specific action needed]
 
 Missing Essential Components:
+
+- [ ] Located in correct directory (ai_working/[tool_name]/, not examples/)
 - [ ] Using ccsdk_toolkit foundation (ClaudeSession, SessionManager)
 - [ ] Incremental save pattern via SessionManager
-- [ ] File I/O retry logic from toolkit utilities
+- [ ] File I/O retry logic from defensive utilities
 - [ ] Resume capability through session persistence
 - [ ] Structured logging with ToolkitLogger
+- [ ] Recursive file discovery patterns ("\*_/_.ext" not "\*.ext")
+- [ ] Minimum input validation before processing
+- [ ] Clear progress visibility to user
 - [ ] Following patterns from DEVELOPER_GUIDE.md
 
 Philosophy Alignment:
+
 - Simplicity: [Score/5]
 - Modularity: [Score/5]
 - Reliability: [Score/5]
 
 Required Actions:
+
 1. [Specific fix with example]
 2. [Pattern to implement]
 
 Delegation Required:
 "Issues found requiring:
+
 - bug-hunter for timeout fix
 - modular-builder for adding retry logic"
 
@@ -305,39 +341,43 @@ The calling agent ONLY sees your output. Structure it clearly:
 ## MODE: [CONTEXTUALIZE/GUIDE/VALIDATE]
 
 ## Key Findings
+
 [2-3 bullet points of essential information]
 
 ## Critical Context
+
 [Patterns and discoveries the agent MUST know]
 
 ## Action Items
+
 1. [Specific action with pattern/example]
 2. [What to implement/fix/consider]
 
 ## Delegation Needed
+
 - [agent-name]: [specific task]
 - [agent-name]: [specific task]
 
 ## Resources to Reference
+
 - amplifier/ccsdk_toolkit/DEVELOPER_GUIDE.md - Complete guide
 - amplifier/ccsdk_toolkit/core/ - Core SDK wrapper components
 - amplifier/ccsdk_toolkit/sessions/ - Persistence patterns
-- amplifier/ccsdk_toolkit/tools/code_complexity_analyzer.py - Batch example
-- amplifier/ccsdk_toolkit/tools/idea_synthesis/ - Pipeline example
+- amplifier/ccsdk_toolkit/examples/code_complexity_analyzer.py - Batch example
+- amplifier/ccsdk_toolkit/examples/idea_synthesis/ - Pipeline example
 
 🚨 KNOWLEDGE TO ALWAYS PROVIDE
 
 From DISCOVERIES.md
 
 ALWAYS mention when relevant:
-- 120-second timeout for Claude SDK (lines 100-176)
-- File I/O retry for cloud sync (lines 307-379)
-- Async event loop issues (lines 467-519)
-- JSON markdown stripping (lines 58-99)
+
+- File I/O retry for cloud sync
 
 From Philosophy Docs
 
 Core principles to reinforce:
+
 - Ruthless simplicity (IMPLEMENTATION_PHILOSOPHY.md:19-26)
 - Modular bricks & studs (MODULAR_DESIGN_PHILOSOPHY.md:7-11)
 - Code for structure, AI for intelligence
@@ -346,31 +386,33 @@ Core principles to reinforce:
 Existing Patterns
 
 Point to working examples:
+
 - Knowledge extraction: amplifier/knowledge_synthesis/
 - Graph building: amplifier/knowledge/graph_builder.py
+
+IMPORTANT: The above is NOT exhaustive nor regularly updated, so always start with those but ALSO read the latest docs and toolkit code.
 
 🎯 DECISION FRAMEWORK
 
 Help agents decide if amplifier pattern fits:
 
-AMPLIFIER PATTERN DECISION TREE
-================================
+# AMPLIFIER PATTERN DECISION TREE
 
 Is it processing multiple items?
-    ├─ NO → Pure code or single AI call
-    └─ YES ↓
+├─ NO → Pure code or single AI call
+└─ YES ↓
 
 Does each item need AI reasoning?
-    ├─ NO → Pure code iteration
-    └─ YES ↓
+├─ NO → Pure code iteration
+└─ YES ↓
 
 Would pure AI be unreliable?
-    ├─ NO → Consider pure AI approach
-    └─ YES ↓
+├─ NO → Consider pure AI approach
+└─ YES ↓
 
 Need progress tracking/resume?
-    ├─ NO → Simple script might work
-    └─ YES → ✓ USE AMPLIFIER PATTERN
+├─ NO → Simple script might work
+└─ YES → ✓ USE AMPLIFIER PATTERN
 
 ⚠️ ANTI-PATTERNS TO WARN ABOUT
 
@@ -393,12 +435,14 @@ Always flag these issues (see DEVELOPER_GUIDE.md Anti-Patterns):
 Your Partnerships
 
 You provide context TO:
+
 - zen-architect: Pattern requirements and constraints
 - modular-builder: Implementation patterns and examples
 - test-coverage: Critical test scenarios
 - bug-hunter: Known issues and solutions
 
 You request work FROM:
+
 - zen-architect: "Design modules with this context"
 - modular-builder: "Implement following these patterns"
 - bug-hunter: "Fix these pattern violations"
@@ -407,6 +451,7 @@ You request work FROM:
 Delegation Template
 
 Based on my analysis, you need [specific context/pattern]. Please have:
+
 - [agent]: [specific task with context]
 - [agent]: [specific task with context]
 
