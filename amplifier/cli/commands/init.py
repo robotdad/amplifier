@@ -607,21 +607,27 @@ module_name/
     else:
         created_files.append(("ai_context/MODULAR_DESIGN_PHILOSOPHY.md", "preserved"))
 
-    # Create .mcp.json if it doesn't exist
+    # Copy .mcp.json from package data if it doesn't exist
     mcp_json_path = project_root / ".mcp.json"
     if not mcp_json_path.exists():
-        mcp_json_content = {
-            "mcpServers": {
-                "example": {
-                    "comment": "Add your MCP server configurations here",
-                    "command": "example-server",
-                    "args": [],
-                    "env": {},
+        # Try to copy from package data first
+        mcp_source = get_package_data_path(".mcp.json")
+        if mcp_source.exists():
+            copy_with_permissions(mcp_source, mcp_json_path)
+        else:
+            # Fallback to stub if package data doesn't have it
+            mcp_json_content = {
+                "mcpServers": {
+                    "example": {
+                        "comment": "Add your MCP server configurations here",
+                        "command": "example-server",
+                        "args": [],
+                        "env": {},
+                    }
                 }
             }
-        }
-        with open(mcp_json_path, "w", encoding="utf-8") as f:
-            json.dump(mcp_json_content, f, indent=2)
+            with open(mcp_json_path, "w", encoding="utf-8") as f:
+                json.dump(mcp_json_content, f, indent=2)
         created_files.append((".mcp.json", "created"))
     else:
         created_files.append((".mcp.json", "preserved"))
@@ -756,20 +762,26 @@ This project uses Amplifier CLI to manage Claude Code resources.
             else:
                 created_files.append((rel_path, "preserved"))
 
-    # Create .mcp.json if it doesn't exist
+    # Copy .mcp.json from package data if it doesn't exist
     mcp_json_path = project_root / ".mcp.json"
     if not mcp_json_path.exists():
-        mcp_json_content = {
-            "mcpServers": {
-                "example": {
-                    "comment": "Add your MCP server configurations here",
-                    "command": "example-server",
-                    "args": [],
-                    "env": {},
+        # Try to copy from package data first
+        mcp_source = get_package_data_path(".mcp.json")
+        if mcp_source.exists():
+            copy_with_permissions(mcp_source, mcp_json_path)
+        else:
+            # Fallback to stub if package data doesn't have it
+            mcp_json_content = {
+                "mcpServers": {
+                    "example": {
+                        "comment": "Add your MCP server configurations here",
+                        "command": "example-server",
+                        "args": [],
+                        "env": {},
+                    }
                 }
             }
-        }
-        mcp_json_path.write_text(json.dumps(mcp_json_content, indent=2))
+            mcp_json_path.write_text(json.dumps(mcp_json_content, indent=2))
         created_files.append((".mcp.json", "created"))
     else:
         created_files.append((".mcp.json", "preserved"))
