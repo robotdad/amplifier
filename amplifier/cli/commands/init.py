@@ -87,6 +87,28 @@ def cmd(ctx: click.Context, force: bool, repair: bool, merge: bool) -> None:
     if amplifier_dir.exists():
         output.success("Created .amplifier/")
 
+    # Create .ai directory for AI context and documentation
+    ai_dir = Path(".ai")
+    ai_dir.mkdir(exist_ok=True)
+    if ai_dir.exists():
+        output.success("Created .ai/")
+
+    # Create .data directory with subdirectories for application data
+    data_dir = Path(".data")
+    data_dir.mkdir(exist_ok=True)
+    if data_dir.exists():
+        output.success("Created .data/")
+
+    # Create .data subdirectories
+    for subdir in ["cache", "indexes", "knowledge", "memories", "state", "transcripts", "subagents-logs"]:
+        (data_dir / subdir).mkdir(exist_ok=True, parents=True)
+
+    # Create .vscode directory (empty for user customization)
+    vscode_dir = Path(".vscode")
+    vscode_dir.mkdir(exist_ok=True)
+    if vscode_dir.exists():
+        output.success("Created .vscode/")
+
     # Create AI context files
     output.section_header("Creating AI Context Files")
     with output.spinner("Creating project documentation..."):
@@ -142,9 +164,10 @@ def cmd(ctx: click.Context, force: bool, repair: bool, merge: bool) -> None:
     output.panel(
         "✨ [bold green]Project initialized successfully![/bold green]\n\n"
         "[bold]Created:[/bold]\n"
-        "  • Project structure (.claude/, .amplifier/)\n"
+        "  • Project structure (.claude/, .amplifier/, .ai/, .data/, .vscode/)\n"
         "  • AI context files (CLAUDE.md, AGENTS.md, DISCOVERIES.md)\n"
-        "  • Philosophy documentation (ai_context/)\n\n"
+        "  • Philosophy documentation (ai_context/)\n"
+        "  • Data storage directories for memories, knowledge, and transcripts\n\n"
         "[bold]Next steps:[/bold]\n"
         "  • Review and customize CLAUDE.md for project-specific instructions\n"
         "  • Run [cyan]amplifier list --available[/cyan] to see available resources\n"
@@ -802,13 +825,44 @@ def _repair_project(output) -> None:
     issues_found = []
     repairs_made = []
 
-    # Check directory structure
+    # Check .claude directory structure
     for directory in ["agents", "tools", "commands", "mcp-servers"]:
         dir_path = claude_dir / directory
         if not dir_path.exists():
             issues_found.append(f"Missing directory: .claude/{directory}/")
             dir_path.mkdir(parents=True, exist_ok=True)
             repairs_made.append(f"Created .claude/{directory}/")
+
+    # Check additional directories
+    project_root = Path(".")
+
+    # Check .ai directory
+    ai_dir = project_root / ".ai"
+    if not ai_dir.exists():
+        issues_found.append("Missing directory: .ai/")
+        ai_dir.mkdir(exist_ok=True)
+        repairs_made.append("Created .ai/")
+
+    # Check .data directory and subdirectories
+    data_dir = project_root / ".data"
+    if not data_dir.exists():
+        issues_found.append("Missing directory: .data/")
+        data_dir.mkdir(exist_ok=True)
+        repairs_made.append("Created .data/")
+
+    for subdir in ["cache", "indexes", "knowledge", "memories", "state", "transcripts", "subagents-logs"]:
+        subdir_path = data_dir / subdir
+        if not subdir_path.exists():
+            issues_found.append(f"Missing directory: .data/{subdir}/")
+            subdir_path.mkdir(exist_ok=True, parents=True)
+            repairs_made.append(f"Created .data/{subdir}/")
+
+    # Check .vscode directory
+    vscode_dir = project_root / ".vscode"
+    if not vscode_dir.exists():
+        issues_found.append("Missing directory: .vscode/")
+        vscode_dir.mkdir(exist_ok=True)
+        repairs_made.append("Created .vscode/")
 
     # Check manifest
     if not manifest_path.exists():
