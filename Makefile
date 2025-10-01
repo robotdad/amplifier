@@ -44,6 +44,9 @@ default: ## Show essential commands
 	@echo "Blog Writing:"
 	@echo "  make blog-write      Create a blog post from your ideas"
 	@echo ""
+	@echo "Social Media:"
+	@echo "  make social-posts    Generate social media posts from articles"
+	@echo ""
 	@echo "Other:"
 	@echo "  make clean          Clean build artifacts"
 	@echo "  make help           Show ALL available commands"
@@ -113,6 +116,10 @@ help: ## Show ALL available commands
 	@echo "BLOG WRITING:"
 	@echo "  make blog-write IDEA=<file> WRITINGS=<dir> [INSTRUCTIONS=\"...\"]  Create blog"
 	@echo "  make blog-resume       Resume most recent blog writing session"
+	@echo ""
+	@echo "SOCIAL MEDIA:"
+	@echo "  make social-posts ARTICLE=<file> [TONE=\"...\"] [PLATFORMS=\"...\"] [COUNT=N]  Generate posts"
+	@echo "  make social-posts-resume  Resume most recent social posts session"
 	@echo ""
 	@echo "UTILITIES:"
 	@echo "  make clean           Clean build artifacts"
@@ -513,6 +520,35 @@ blog-write-example: ## Run blog writer with example data
 	@uv run python -m scenarios.blog_writer \
 		--idea scenarios/blog_writer/tests/sample_brain_dump.md \
 		--writings-dir scenarios/blog_writer/tests/sample_writings/
+
+# Social Media Posts
+social-posts: ## Generate social media posts from articles. Usage: make social-posts ARTICLE=article.md [TONE="..."] [PLATFORMS="..."] [COUNT=N]
+	@if [ -z "$(ARTICLE)" ]; then \
+		echo "Error: Please provide an article file. Usage: make social-posts ARTICLE=article.md"; \
+		exit 1; \
+	fi
+	@echo "📱 Starting social media post generator..."; \
+	echo "  Article: $(ARTICLE)"; \
+	if [ -n "$(TONE)" ]; then echo "  Tone: $(TONE)"; fi; \
+	if [ -n "$(PLATFORMS)" ]; then echo "  Platforms: $(PLATFORMS)"; fi; \
+	if [ -n "$(COUNT)" ]; then echo "  Count: $(COUNT)"; fi; \
+	echo "  Output: Auto-generated in session directory"; \
+	CMD="uv run python -m scenarios.social_posts $(ARTICLE)"; \
+	if [ -n "$(TONE)" ]; then CMD="$$CMD --tone \"$(TONE)\""; fi; \
+	if [ -n "$(PLATFORMS)" ]; then CMD="$$CMD --platforms \"$(PLATFORMS)\""; fi; \
+	if [ -n "$(COUNT)" ]; then CMD="$$CMD --count $(COUNT)"; fi; \
+	eval $$CMD
+
+social-posts-resume: ## Resume an interrupted social posts session
+	@echo "📱 Resuming social media post generator..."
+	@uv run python -m scenarios.social_posts --resume
+
+social-posts-example: ## Run social posts generator with example data
+	@echo "📱 Running social posts generator with example data..."
+	@uv run python -m scenarios.social_posts \
+		scenarios/social_posts/tests/sample_article.md \
+		--count 3 \
+		--platforms twitter,linkedin
 
 # Clean WSL Files
 clean-wsl-files: ## Clean up WSL-related files (Zone.Identifier, sec.endpointdlp)
