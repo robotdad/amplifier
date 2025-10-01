@@ -496,3 +496,24 @@ dot-to-mermaid: ## Convert DOT files to Mermaid format. Usage: make dot-to-merma
 	mkdir -p "$$SESSION_DIR"; \
 	echo "Converting DOT files to Mermaid format..."; \
 	uv run python -m ai_working.dot_to_mermaid.cli "$(INPUT)" --session-file "$$SESSION_DIR/session.json"
+
+# Parallel Experiment Orchestrator
+parallel-experiment: ## Run parallel experiments. Usage: make parallel-experiment NAME="exp-name" VARIANTS='{"v1":"desc1","v2":"desc2"}'
+	@if [ -z "$(NAME)" ] || [ -z "$(VARIANTS)" ]; then \
+		echo "Error: NAME and VARIANTS required."; \
+		echo "Usage: make parallel-experiment NAME=\"my-experiment\" VARIANTS='{\"functional\":\"use functions\",\"oop\":\"use classes\"}'"; \
+		exit 1; \
+	fi
+	@echo "🚀 Starting parallel experiment: $(NAME)"
+	@echo "Variants: $(VARIANTS)"
+	@uv run python -c "import asyncio; from amplifier.parallel_experiment import run_parallel_experiment_sync; result = run_parallel_experiment_sync('$(NAME)', eval('$(VARIANTS)')); print('\n✅ Experiment complete!'); print(result['summary'])"
+
+parallel-experiment-list: ## List all parallel experiments
+	@uv run python -c "from amplifier.parallel_experiment import list_experiments; exps = list_experiments(); print(f'Found {len(exps)} experiments:'); [print(f'  - {exp}') for exp in exps]"
+
+parallel-experiment-cleanup: ## Clean up an experiment. Usage: make parallel-experiment-cleanup NAME="exp-name"
+	@if [ -z "$(NAME)" ]; then \
+		echo "Error: NAME required. Usage: make parallel-experiment-cleanup NAME=\"my-experiment\""; \
+		exit 1; \
+	fi
+	@uv run python -c "from amplifier.parallel_experiment import cleanup_experiment; cleanup_experiment('$(NAME)'); print('✅ Cleaned up experiment: $(NAME)')"
