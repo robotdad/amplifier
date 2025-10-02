@@ -17,18 +17,22 @@ Contract:
 
   Side Effects:
     - Creates Claude SDK sessions (REAL implementation)
-    - Writes progress to amplifier/data/parallel_experiments/{name}/
+    - Writes progress to .data/parallel_explorer/{name}/
     - Modifies worktree contents
     - Consumes API quota
 """
 
 import asyncio
-import json
 import logging
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+from amplifier.ccsdk_toolkit.defensive import parse_llm_json  # Extract JSON from any LLM response
+from amplifier.ccsdk_toolkit.defensive import retry_with_feedback  # Intelligent retry with error correction
+from amplifier.ccsdk_toolkit.defensive import write_json_with_retry  # Cloud sync-aware file operations
+from scenarios.parallel_explorer.paths import ExperimentPaths
 
 logger = logging.getLogger(__name__)
 
@@ -58,13 +62,14 @@ class ParallelOrchestrator:
             experiment_name: Identifier for this experiment
         """
         self.experiment_name = experiment_name
-        self.data_dir = Path("amplifier/data/parallel_experiments") / experiment_name
+        self.paths = ExperimentPaths(experiment_name)
         self.results: dict[str, ExperimentResult] = {}
         self.semaphore: asyncio.Semaphore | None = None
 
-        # Ensure data directory exists
-        self.data_dir.mkdir(parents=True, exist_ok=True)
+        # Ensure directories exist
+        self.paths.ensure_directories()
         logger.info(f"Initialized orchestrator for experiment: {experiment_name}")
+        logger.debug(f"Data directory: {self.paths.base_dir}")
 
     def load_ultrathink_instructions(self) -> str:
         """Load instructions from .claude/commands/ultrathink-task.md
@@ -107,7 +112,7 @@ class ParallelOrchestrator:
 
         # Import worktree manager
         try:
-            from amplifier.parallel_experiment.worktree_manager import WorktreeManager
+            from scenarios.parallel_explorer.worktree_manager import WorktreeManager
 
             worktree_mgr = WorktreeManager(self.experiment_name)
         except ImportError:
@@ -193,7 +198,7 @@ class ParallelOrchestrator:
             )
 
     async def run_variant(self, worktree_path: Path, variant_name: str, task_variation: str) -> dict[str, Any]:
-        """Run single variant in its worktree - Real CCSDK Implementation
+        """Run single variant in its worktree - Real CCSDK Implementation with Defensive Utilities
 
         Args:
             worktree_path: Path to the worktree for this variant
@@ -221,7 +226,7 @@ class ParallelOrchestrator:
         # Load instructions
         instructions = self.load_ultrathink_instructions()
 
-        # Combine instructions with task variation
+        # Combine task variation with worktree context
         full_prompt = f"{task_variation}\n\nWorking directory: {worktree_path}"
 
         logger.info(f"Starting Claude session for {variant_name}")
@@ -235,15 +240,24 @@ class ParallelOrchestrator:
                 max_turns=10,  # Reasonable limit for experiments
             )
 
-            # Run the Claude session
+            # Run the Claude session with retry support
             async with ClaudeSession(options) as session:
                 logger.info(f"Claude session active for {variant_name}")
 
-                # Send the task variation as the query
-                response = await session.query(full_prompt)
+                # Send the task variation with retry and feedback
+                response = await retry_with_feedback(func=session.query, prompt=full_prompt, max_retries=3)
 
-                # Extract the response content
-                output = response.content if hasattr(response, "content") else str(response)
+                # Extract response defensively
+                if hasattr(response, "content"):
+                    output = response.content
+                else:
+                    output = str(response)
+
+                # Try to parse as JSON if it looks like JSON
+                if output.strip().startswith("{") or output.strip().startswith("["):
+                    parsed_output = parse_llm_json(output, default={"raw": output})
+                else:
+                    parsed_output = {"content": output}
 
                 logger.info(f"Claude session completed for {variant_name}")
 
@@ -253,17 +267,15 @@ class ParallelOrchestrator:
 
                 metrics = {
                     "duration_seconds": duration,
-                    "response_length": len(output),
-                    "session_id": session_id,
-                    "worktree": str(worktree_path),
-                    "max_turns": options.max_turns,
-                    "actual_turns": 1,  # Single query for now
+                    "status": "completed",
+                    "variant": variant_name,
                 }
 
                 return {
                     "variant_name": variant_name,
                     "status": "completed",
                     "output": output,
+                    "parsed": parsed_output,
                     "metrics": metrics,
                 }
 
@@ -279,27 +291,22 @@ class ParallelOrchestrator:
                 "status": "failed",
                 "output": None,
                 "error": str(e),
-                "metrics": {"duration_seconds": duration, "session_id": session_id, "error_type": type(e).__name__},
+                "metrics": {
+                    "duration_seconds": duration,
+                    "status": "failed",
+                    "variant": variant_name,
+                },
             }
 
     def save_progress(self, variant: str, status: str, data: dict):
-        """Save progress to disk for recovery/monitoring
+        """Save progress to disk for recovery/monitoring - with defensive utilities
 
         Args:
             variant: Variant name
             status: Current status
             data: Additional data to save
         """
-        try:
-            # Try to import file_io for robust writes
-            from amplifier.utils.file_io import write_json
-
-            use_robust_write = True
-        except ImportError:
-            logger.debug("file_io not available, using standard write")
-            use_robust_write = False
-
-        progress_file = self.data_dir / f"{variant}_progress.json"
+        progress_file = self.paths.results_dir / f"{variant}_progress.json"
 
         progress_data = {
             "variant": variant,
@@ -309,11 +316,8 @@ class ParallelOrchestrator:
             **data,
         }
 
-        if use_robust_write:
-            write_json(progress_data, progress_file)
-        else:
-            with open(progress_file, "w", encoding="utf-8") as f:
-                json.dump(progress_data, f, indent=2, default=str)
+        # Always use defensive write (handles cloud sync issues)
+        write_json_with_retry(progress_data, progress_file)
 
         logger.debug(f"Saved progress for {variant}: {status}")
 
@@ -373,26 +377,3 @@ class ParallelOrchestrator:
             lines.append("")
 
         return "\n".join(lines)
-
-    async def monitor_session(self, session_id: str) -> dict:
-        """Monitor a running Claude session
-
-        Args:
-            session_id: ID of the session to monitor
-
-        Returns:
-            Current session status and metrics
-        """
-        # Look up session in results
-        for variant_name, result in self.results.items():
-            if result.session_id == session_id:
-                return {
-                    "session_id": session_id,
-                    "status": result.status,
-                    "variant": variant_name,
-                    "worktree": str(result.worktree_path),
-                    "metrics": result.metrics if result.metrics else {},
-                }
-
-        # Session not found
-        return {"session_id": session_id, "status": "not_found", "error": "Session ID not found in active experiments"}

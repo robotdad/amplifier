@@ -540,23 +540,31 @@ dot-to-mermaid: ## Convert DOT files to Mermaid format. Usage: make dot-to-merma
 	echo "Converting DOT files to Mermaid format..."; \
 	uv run python -m ai_working.dot_to_mermaid.cli "$(INPUT)" --session-file "$$SESSION_DIR/session.json"
 
-# Parallel Experiment Orchestrator
-parallel-experiment: ## Run parallel experiments. Usage: make parallel-experiment NAME="exp-name" VARIANTS='{"v1":"desc1","v2":"desc2"}'
+# Parallel Explorer
+parallel-explore: ## Explore multiple approaches. Usage: make parallel-explore NAME="exp-name" VARIANTS='{"v1":"desc1","v2":"desc2"}'
 	@if [ -z "$(NAME)" ] || [ -z "$(VARIANTS)" ]; then \
 		echo "Error: NAME and VARIANTS required."; \
-		echo "Usage: make parallel-experiment NAME=\"my-experiment\" VARIANTS='{\"functional\":\"use functions\",\"oop\":\"use classes\"}'"; \
+		echo "Usage: make parallel-explore NAME=\"my-experiment\" VARIANTS='{\"functional\":\"use functions\",\"oop\":\"use classes\"}'"; \
 		exit 1; \
 	fi
-	@echo "🚀 Starting parallel experiment: $(NAME)"
+	@echo "🔍 Starting parallel exploration: $(NAME)"
 	@echo "Variants: $(VARIANTS)"
-	@uv run python -c "import asyncio; from amplifier.parallel_experiment import run_parallel_experiment_sync; result = run_parallel_experiment_sync('$(NAME)', eval('$(VARIANTS)')); print('\n✅ Experiment complete!'); print(result['summary'])"
+	@uv run python -c "import asyncio; from scenarios.parallel_explorer import run_parallel_experiment_sync; result = run_parallel_experiment_sync('$(NAME)', eval('$(VARIANTS)')); print('\n✅ Exploration complete!'); print(result['summary'])"
 
-parallel-experiment-list: ## List all parallel experiments
-	@uv run python -c "from amplifier.parallel_experiment import list_experiments; exps = list_experiments(); print(f'Found {len(exps)} experiments:'); [print(f'  - {exp}') for exp in exps]"
+parallel-explore-list: ## List all experiments
+	@uv run python -c "from scenarios.parallel_explorer import list_experiments; exps = list_experiments(); print(f'Found {len(exps)} experiments:'); [print(f'  - {exp}') for exp in exps]"
 
-parallel-experiment-cleanup: ## Clean up an experiment. Usage: make parallel-experiment-cleanup NAME="exp-name"
+parallel-explore-results: ## Show results for an experiment. Usage: make parallel-explore-results NAME="exp-name"
 	@if [ -z "$(NAME)" ]; then \
-		echo "Error: NAME required. Usage: make parallel-experiment-cleanup NAME=\"my-experiment\""; \
+		echo "Error: NAME required. Usage: make parallel-explore-results NAME=\"my-experiment\""; \
 		exit 1; \
 	fi
-	@uv run python -c "from amplifier.parallel_experiment import cleanup_experiment; cleanup_experiment('$(NAME)'); print('✅ Cleaned up experiment: $(NAME)')"
+	@echo "📊 Results for: $(NAME)"
+	@cat .data/parallel_explorer/$(NAME)/results/*.json 2>/dev/null || echo "No results found"
+
+parallel-explore-cleanup: ## Clean up an experiment. Usage: make parallel-explore-cleanup NAME="exp-name"
+	@if [ -z "$(NAME)" ]; then \
+		echo "Error: NAME required. Usage: make parallel-explore-cleanup NAME=\"my-experiment\""; \
+		exit 1; \
+	fi
+	@uv run python -c "from scenarios.parallel_explorer import cleanup_experiment; cleanup_experiment('$(NAME)'); print('✅ Cleaned up experiment: $(NAME)')"

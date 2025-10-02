@@ -11,7 +11,7 @@ This module provides tools for:
 - Full CCSDK integration for real Claude sessions
 
 Example:
-    >>> from amplifier.parallel_experiment import run_parallel_experiment
+    >>> from scenarios.parallel_explorer import run_parallel_experiment
     >>>
     >>> variants = {
     ...     "functional": "Use pure functions and immutability",
@@ -31,9 +31,9 @@ import asyncio
 from pathlib import Path
 from typing import Any
 
-from amplifier.parallel_experiment.orchestrator import ExperimentResult
-from amplifier.parallel_experiment.orchestrator import ParallelOrchestrator
-from amplifier.parallel_experiment.worktree_manager import WorktreeManager
+from scenarios.parallel_explorer.orchestrator import ExperimentResult
+from scenarios.parallel_explorer.orchestrator import ParallelOrchestrator
+from scenarios.parallel_explorer.worktree_manager import WorktreeManager
 
 __version__ = "0.1.0"
 
@@ -117,7 +117,7 @@ def list_experiments() -> list[str]:
     """
     from amplifier.config.paths import paths
 
-    experiments_dir = paths.data_dir / "parallel_experiments"
+    experiments_dir = paths.data_dir / "parallel_explorer"
 
     if not experiments_dir.exists():
         return []
@@ -151,7 +151,7 @@ def cleanup_experiment(name: str, remove_data: bool = True) -> None:
 
     # Optionally remove data directory
     if remove_data:
-        data_dir = paths.data_dir / "parallel_experiments" / name
+        data_dir = paths.data_dir / "parallel_explorer" / name
         if data_dir.exists():
             shutil.rmtree(data_dir)
             print(f"Removed data directory: {data_dir}")

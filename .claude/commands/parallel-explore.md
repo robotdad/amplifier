@@ -1,6 +1,6 @@
-# Parallel Experiment
+# Parallel Explore
 
-Run multiple implementation approaches in parallel to explore solution spaces and compare different strategies.
+Explore multiple implementation approaches in parallel to find the best solution through empirical comparison.
 
 ## What This Does
 
@@ -53,7 +53,7 @@ After gathering all requirements, I'll:
 ## Example Session
 
 ```
-You: /parallel-experiment
+You: /parallel-explore
 Me: What name should we use for this experiment?
 You: rate-limiter-strategies
 Me: What's the base task to explore?
@@ -74,11 +74,11 @@ Creating worktrees and launching experiments...
 ✅ Experiment started!
 
 Worktrees created at:
-- ../amplifier-experiments/rate-limiter-strategies/token-bucket/
-- ../amplifier-experiments/rate-limiter-strategies/sliding-window/
-- ../amplifier-experiments/rate-limiter-strategies/distributed/
+- .data/parallel_explorer/rate-limiter-strategies/worktrees/token-bucket/
+- .data/parallel_explorer/rate-limiter-strategies/worktrees/sliding-window/
+- .data/parallel_explorer/rate-limiter-strategies/worktrees/distributed/
 
-Progress: amplifier/data/parallel_experiments/rate-limiter-strategies/
+Progress: .data/parallel_explorer/rate-limiter-strategies/
 ```
 
 ## Results
@@ -95,19 +95,21 @@ Markdown comparison of all approaches:
 ### Individual Results
 Per-variant details in:
 ```
-amplifier/data/parallel_experiments/{experiment_name}/
-├── summary.md              # Overall comparison
-├── progress.json           # Current status
-└── variants/
-    ├── variant1.json       # Detailed results
-    ├── variant2.json
-    └── variant3.json
+.data/parallel_explorer/{experiment_name}/
+├── results/
+│   ├── variant1_progress.json
+│   ├── variant2_progress.json
+│   └── variant3_progress.json
+└── worktrees/
+    ├── variant1/           # Git worktree with implementation
+    ├── variant2/
+    └── variant3/
 ```
 
 ### Worktrees
 Navigate to any worktree to see the implementation:
 ```bash
-cd ../amplifier-experiments/{experiment_name}/{variant}/
+cd .data/parallel_explorer/{experiment_name}/worktrees/{variant}/
 ```
 
 ## Tips
@@ -138,15 +140,15 @@ cd ../amplifier-experiments/{experiment_name}/{variant}/
 ### Module Integration
 
 This command uses:
-- `amplifier.parallel_experiment.orchestrator` - Core orchestration
-- `amplifier.parallel_experiment.worktree_manager` - Git worktree management
+- `scenarios.parallel_explorer.orchestrator` - Core orchestration
+- `scenarios.parallel_explorer.worktree_manager` - Git worktree management
 - Fresh ultrathink instructions from `.claude/commands/ultrathink-task.md`
 
 ## Cleanup
 
 After reviewing results, clean up with:
 ```python
-from amplifier.parallel_experiment import cleanup_experiment
+from scenarios.parallel_explorer import cleanup_experiment
 cleanup_experiment("experiment-name")  # Removes worktrees and data
 ```
 
