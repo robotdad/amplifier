@@ -550,4 +550,11 @@ When creating files, use paths relative to the worktree directory."""
 
             lines.append("")
 
+        # Defensive check: ensure all items are strings before joining
+        for i, line in enumerate(lines):
+            if not isinstance(line, str):
+                logger.error(f"Non-string found in lines at index {i}: type={type(line)}, value={line}")
+                # Convert to string to prevent crash
+                lines[i] = str(line)
+
         return "\n".join(lines)

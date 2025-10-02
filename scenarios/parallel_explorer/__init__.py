@@ -42,6 +42,7 @@ __all__ = [
     "ParallelOrchestrator",
     "ExperimentResult",
     "run_parallel_experiment",
+    "run_from_saved_context",
     "list_experiments",
     "cleanup_experiment",
 ]
@@ -176,3 +177,45 @@ def run_parallel_experiment_sync(
         ... )
     """
     return asyncio.run(run_parallel_experiment(name, variants, max_parallel, timeout_minutes))
+
+
+def run_from_saved_context(
+    name: str,
+    max_parallel: int = 3,
+    timeout_minutes: int = 30,
+) -> dict[str, Any]:
+    """
+    Run a parallel experiment using saved context from /explore-variants.
+
+    Args:
+        name: Experiment name (must have context.json saved)
+        max_parallel: Maximum number of concurrent sessions (default: 3)
+        timeout_minutes: Timeout per variant in minutes (default: 30)
+
+    Returns:
+        Dictionary of results keyed by variant name, plus summary
+
+    Example:
+        >>> # First save context with /explore-variants
+        >>> # Then run:
+        >>> results = run_from_saved_context("content-engine")
+    """
+    import json
+    from amplifier.config.paths import paths
+
+    # Load saved context
+    context_file = paths.data_dir / "parallel_explorer" / name / "context.json"
+    if not context_file.exists():
+        raise FileNotFoundError(f"No saved context found at {context_file}. Use /explore-variants first.")
+
+    with open(context_file) as f:
+        context = json.load(f)
+
+    # Extract variants from context
+    variants = {}
+    for variant_name, variant_info in context["variants"].items():
+        # Use the description as the base prompt
+        variants[variant_name] = variant_info.get("description", variant_name)
+
+    # Run the experiment with the loaded variants
+    return run_parallel_experiment_sync(name, variants, max_parallel, timeout_minutes)

@@ -172,23 +172,32 @@ class ContextManager:
 
         # Add requirements if present
         if context.get("requirements"):
-            prompt_parts.extend(
-                [
-                    "## REQUIREMENTS",
-                    context["requirements"],
-                    "",
-                ]
-            )
+            prompt_parts.append("## REQUIREMENTS")
+            requirements = context.get("requirements")
+            if isinstance(requirements, str):
+                prompt_parts.append(requirements)
+            elif isinstance(requirements, list):
+                for req in requirements:
+                    prompt_parts.append(f"- {req}")
+            else:
+                prompt_parts.append(str(requirements))
+            prompt_parts.append("")
 
         # Add common context if present
         if context.get("common_context"):
-            prompt_parts.extend(
-                [
-                    "## COMMON CONTEXT (applies to all variants)",
-                    context["common_context"],
-                    "",
-                ]
-            )
+            prompt_parts.append("## COMMON CONTEXT (applies to all variants)")
+
+            # Handle both string and dict formats
+            common_context = context.get("common_context")
+            if isinstance(common_context, str):
+                prompt_parts.append(common_context)
+            elif isinstance(common_context, dict):
+                for key, value in common_context.items():
+                    if isinstance(value, list):
+                        prompt_parts.append(f"**{key.replace('_', ' ').title()}**: {', '.join(value)}")
+                    else:
+                        prompt_parts.append(f"**{key.replace('_', ' ').title()}**: {value}")
+            prompt_parts.append("")
 
         # Add variant-specific information
         prompt_parts.extend(
@@ -236,23 +245,29 @@ class ContextManager:
 
         # Add success criteria
         if context.get("success_criteria"):
-            prompt_parts.extend(
-                [
-                    "## SUCCESS CRITERIA",
-                    context["success_criteria"],
-                    "",
-                ]
-            )
+            prompt_parts.append("## SUCCESS CRITERIA")
+            success_criteria = context.get("success_criteria")
+            if isinstance(success_criteria, str):
+                prompt_parts.append(success_criteria)
+            elif isinstance(success_criteria, list):
+                for criterion in success_criteria:
+                    prompt_parts.append(f"- {criterion}")
+            else:
+                prompt_parts.append(str(success_criteria))
+            prompt_parts.append("")
 
         # Add technical requirements
         if context.get("technical_requirements"):
-            prompt_parts.extend(
-                [
-                    "## TECHNICAL REQUIREMENTS",
-                    context["technical_requirements"],
-                    "",
-                ]
-            )
+            prompt_parts.append("## TECHNICAL REQUIREMENTS")
+            technical_requirements = context.get("technical_requirements")
+            if isinstance(technical_requirements, str):
+                prompt_parts.append(technical_requirements)
+            elif isinstance(technical_requirements, list):
+                for req in technical_requirements:
+                    prompt_parts.append(f"- {req}")
+            else:
+                prompt_parts.append(str(technical_requirements))
+            prompt_parts.append("")
 
         # CRITICAL: Add explicit worktree instructions
         prompt_parts.extend(
@@ -279,6 +294,13 @@ class ContextManager:
                 "Now implement this variant following the approach above. Remember to create all files in the worktree directory.",
             ]
         )
+
+        # Defensive check: ensure all items are strings before joining
+        for i, part in enumerate(prompt_parts):
+            if not isinstance(part, str):
+                logger.error(f"Non-string found at index {i}: type={type(part)}, value={part}")
+                # Convert to string to prevent crash
+                prompt_parts[i] = str(part)
 
         return "\n".join(prompt_parts)
 

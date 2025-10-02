@@ -588,14 +588,27 @@ dot-to-mermaid: ## Convert DOT files to Mermaid format. Usage: make dot-to-merma
 
 # Parallel Explorer
 parallel-explore: ## Explore multiple approaches. Usage: make parallel-explore NAME="exp-name" VARIANTS='{"v1":"desc1","v2":"desc2"}'
-	@if [ -z "$(NAME)" ] || [ -z "$(VARIANTS)" ]; then \
-		echo "Error: NAME and VARIANTS required."; \
+	@if [ -z "$(NAME)" ]; then \
+		echo "Error: NAME required."; \
 		echo "Usage: make parallel-explore NAME=\"my-experiment\" VARIANTS='{\"functional\":\"use functions\",\"oop\":\"use classes\"}'"; \
+		echo "       make parallel-explore NAME=\"my-experiment\"  # Uses saved context if available"; \
 		exit 1; \
 	fi
-	@echo "🔍 Starting parallel exploration: $(NAME)"
-	@echo "Variants: $(VARIANTS)"
-	@uv run python -c "import asyncio; from scenarios.parallel_explorer import run_parallel_experiment_sync; result = run_parallel_experiment_sync('$(NAME)', eval('$(VARIANTS)')); print('\n✅ Exploration complete!'); print(result['summary'])"
+	@if [ -z "$(VARIANTS)" ]; then \
+		if [ -f ".data/parallel_explorer/$(NAME)/context.json" ]; then \
+			echo "🔍 Starting parallel exploration: $(NAME) (loading from saved context)"; \
+			uv run python -c "import asyncio; from scenarios.parallel_explorer import run_from_saved_context; result = run_from_saved_context('$(NAME)'); print('\n✅ Exploration complete!'); print(result['summary'])"; \
+		else \
+			echo "Error: VARIANTS required when no saved context exists."; \
+			echo "Usage: make parallel-explore NAME=\"my-experiment\" VARIANTS='{\"functional\":\"use functions\",\"oop\":\"use classes\"}'"; \
+			echo "       Or save context first using /explore-variants in Claude Code"; \
+			exit 1; \
+		fi \
+	else \
+		echo "🔍 Starting parallel exploration: $(NAME)"; \
+		echo "Variants: $(VARIANTS)"; \
+		uv run python -c "import asyncio; from scenarios.parallel_explorer import run_parallel_experiment_sync; result = run_parallel_experiment_sync('$(NAME)', eval('$(VARIANTS)')); print('\n✅ Exploration complete!'); print(result['summary'])"; \
+	fi
 
 parallel-explore-list: ## List all experiments
 	@uv run python -c "from scenarios.parallel_explorer import list_experiments; exps = list_experiments(); print(f'Found {len(exps)} experiments:'); [print(f'  - {exp}') for exp in exps]"
