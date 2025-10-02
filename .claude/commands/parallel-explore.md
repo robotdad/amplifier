@@ -1,170 +1,129 @@
-# Parallel Explore
+---
+description: Execute parallel experiments across git worktrees
+category: experiments
+allowed-tools: ["Bash", "SlashCommand"]
+---
 
-Explore multiple implementation approaches in parallel to find the best solution through empirical comparison.
-
-## What This Does
-
-This command helps you:
-1. **Explore multiple approaches** simultaneously (functional, OOP, reactive, etc.)
-2. **Create isolated worktrees** for each variation
-3. **Run parallel Claude sessions** with ultrathink methodology
-4. **Aggregate and compare results** automatically
+Execute multiple implementation approaches in parallel using git worktrees to find optimal solutions through empirical comparison. Now with enhanced context support for better implementation results.
 
 ## Usage
 
-I'll guide you through setting up a parallel experiment. Here's what I need to know:
-
-### 1. Experiment Name
-What should we call this experiment? (Used for organizing worktrees and results)
-
-Example: `rate-limiter-exploration`, `auth-system-variants`
-
-### 2. Base Task
-What's the core task you want to explore?
-
-Example: "Implement a rate limiter for API requests"
-
-### 3. Variations
-What different approaches should we explore?
-
-You can either:
-- **Specify count**: "Generate 3 different approaches"
-- **Name specific approaches**: "functional, OOP, event-driven"
-
-## Interactive Setup
-
-Let me gather the information we need:
-
-**Question 1**: What name should we use for this experiment?
-
-*Waiting for your response...*
-
----
-
-After gathering all requirements, I'll:
-
-1. ✅ Generate detailed approach descriptions for each variant
-2. ✅ Create isolated git worktrees
-3. ✅ Load fresh ultrathink instructions
-4. ✅ Launch parallel Claude sessions
-5. ✅ Monitor progress and save results
-6. ✅ Generate comparison summary
-
-## Example Session
-
 ```
-You: /parallel-explore
-Me: What name should we use for this experiment?
-You: rate-limiter-strategies
-Me: What's the base task to explore?
-You: Implement a rate limiter for API requests
-Me: How many variations? (or name specific approaches)
-You: 3 different approaches
-Me: I'll generate 3 distinct implementation strategies...
-
-[Generates approaches via Claude]
-
-Approaches generated:
-1. Token Bucket Algorithm
-2. Sliding Window with Redis
-3. Distributed Rate Limiting
-
-Creating worktrees and launching experiments...
-
-✅ Experiment started!
-
-Worktrees created at:
-- .data/parallel_explorer/rate-limiter-strategies/worktrees/token-bucket/
-- .data/parallel_explorer/rate-limiter-strategies/worktrees/sliding-window/
-- .data/parallel_explorer/rate-limiter-strategies/worktrees/distributed/
-
-Progress: .data/parallel_explorer/rate-limiter-strategies/
+/parallel-explore [experiment-name]
 ```
 
-## Results
+Examples:
+- `/parallel-explore` - Interactive mode, asks for name
+- `/parallel-explore cache-layer` - Direct mode, uses saved context for "cache-layer"
 
-After completion, you'll get:
+Interactive setup guides you through:
+1. Experiment name (for organizing worktrees/results)
+2. Base task description (if no saved context)
+3. Number or types of variations to explore
 
-### Summary Report
-Markdown comparison of all approaches:
-- Implementation approach used
-- Files created/modified
-- Key design decisions
-- Pros/cons of each approach
+## Enhanced Context Support
 
-### Individual Results
-Per-variant details in:
+The command now:
+- **Loads saved context** from `/explore-variants` if available
+- **Creates rich context** for better variant implementations
+- **Provides detailed instructions** to each variant
+- **Ensures worktree isolation** with explicit path guidance
+
+## What It Does
+
+- Checks for existing context in `.data/parallel_explorer/{name}/context.json`
+- Creates isolated git worktrees for each variant approach
+- Provides comprehensive prompts with full context to each variant
+- Delegates to `parallel-orchestrator` agent for coordination
+- Runs concurrent experiments with ultrathink methodology
+- Validates that files are created in the correct worktree
+- Aggregates results for comparison
+- Preserves all implementations in separate worktrees
+
+## Examples
+
+### Basic exploration
 ```
-.data/parallel_explorer/{experiment_name}/
-├── results/
-│   ├── variant1_progress.json
-│   ├── variant2_progress.json
-│   └── variant3_progress.json
-└── worktrees/
-    ├── variant1/           # Git worktree with implementation
-    ├── variant2/
-    └── variant3/
+/parallel-explore
+> Name: rate-limiter
+> Task: Implement API rate limiting with Redis backend
+> Variations: 3
 ```
 
-### Worktrees
-Navigate to any worktree to see the implementation:
+### Named approaches with context
+```
+# First, generate variants with context
+/explore-variants
+> Name: auth-system
+> Task: Build secure authentication module
+> Requirements: JWT-based, refresh tokens, rate limiting
+
+# Then run parallel exploration (will use saved context)
+/parallel-explore
+> Name: auth-system  # Uses saved context automatically
+```
+
+### Direct with pre-saved context
+```
+/parallel-explore
+> Name: cache-layer  # If context exists, it will be loaded
+> Variations: [will use variants from context]
+```
+
+## Context Loading Priority
+
+1. **Saved context** (`.data/parallel_explorer/{name}/context.json`) - Highest priority
+2. **Command-line context** (if provided via `--context-file`)
+3. **Interactive input** - Fallback if no context exists
+
+## Delegation Details
+
+The `parallel-orchestrator` agent receives:
+- Full experiment context (task, requirements, success criteria)
+- Variant-specific instructions (approach, focus areas, constraints)
+- Explicit worktree paths and creation instructions
+- Validation to ensure files are created correctly
+
+## Troubleshooting
+
+### Files created in wrong location
+- Context now includes explicit `cd` commands
+- Validation checks actual worktree contents
+- Clear instructions about where to create files
+
+### Insufficient context
+- Use `/explore-variants` first to create rich context
+- Check `.data/parallel_explorer/{name}/context.json` exists
+- Review context with `cat .data/parallel_explorer/{name}/context.json`
+
+### Validation failures
+- New validation checks any files in worktree (not specific paths)
+- Supports Python, documentation, config, and other code files
+- Logs detailed information about what was found
+
+## View Available Experiments
+
+To see what experiments have saved context:
 ```bash
-cd .data/parallel_explorer/{experiment_name}/worktrees/{variant}/
+ls -la .data/parallel_explorer/
 ```
+Each directory represents an experiment with saved context.
 
-## Tips
+## Note on Command Names
 
-**For Best Results:**
-- Use clear, specific task descriptions
-- Try genuinely different approaches (not minor variations)
-- Let experiments run to completion for fair comparison
-- Review all implementations before choosing one
+The commands are:
+- `/explore-variants` - for brainstorming variant approaches
+- `/parallel-explore` - for running parallel experiments
 
-**Recommended Variations:**
-- Paradigms: functional vs OOP vs procedural
-- Patterns: events vs callbacks vs async/await
-- Complexity: simple vs robust vs optimized
-- Architecture: monolithic vs modular vs microservices
+While the naming isn't perfectly symmetric (historical reasons), think of it as:
+- First you "explore variants" (brainstorm)
+- Then you "parallel explore" (execute in parallel)
 
-## Technical Details
+Future versions may introduce aliases for consistency.
 
-### What Happens Behind the Scenes
+## See Also
 
-1. **Variation Generation**: Uses Claude to generate distinct approaches
-2. **Worktree Creation**: Creates isolated git worktrees for each variant
-3. **Instruction Loading**: Loads latest `/ultrathink-task` instructions
-4. **Parallel Execution**: Spawns async Claude sessions (max 3 concurrent)
-5. **Progress Tracking**: Saves state after each operation
-6. **Result Aggregation**: Compiles comparison report
-
-### Module Integration
-
-This command uses:
-- `scenarios.parallel_explorer.orchestrator` - Core orchestration
-- `scenarios.parallel_explorer.worktree_manager` - Git worktree management
-- Fresh ultrathink instructions from `.claude/commands/ultrathink-task.md`
-
-## Cleanup
-
-After reviewing results, clean up with:
-```python
-from scenarios.parallel_explorer import cleanup_experiment
-cleanup_experiment("experiment-name")  # Removes worktrees and data
-```
-
-Or keep data for later reference:
-```python
-cleanup_experiment("experiment-name", remove_data=False)
-```
-
-## Philosophy
-
-This tool embodies:
-- **Trust in emergence**: Multiple approaches reveal optimal patterns
-- **Empirical comparison**: Real implementations beat theoretical debates
-- **Risk mitigation**: If one approach fails, others may succeed
-- **Learning acceleration**: Parallel exploration maximizes learning velocity
-
----
-
-Ready to start? Tell me the experiment name and I'll guide you through the rest!
+- `/explore-variants` - Create rich context before running
+- `make parallel-explore NAME=experiment` - Direct CLI with context
+- `make parallel-explore-results` - View experiment results
+- `make parallel-explore-cleanup` - Remove experiment data

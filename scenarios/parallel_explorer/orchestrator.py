@@ -32,6 +32,7 @@ from typing import Any
 from amplifier.ccsdk_toolkit.defensive import parse_llm_json  # Extract JSON from any LLM response
 from amplifier.ccsdk_toolkit.defensive import retry_with_feedback  # Intelligent retry with error correction
 from amplifier.ccsdk_toolkit.defensive import write_json_with_retry  # Cloud sync-aware file operations
+from scenarios.parallel_explorer.context_manager import ContextManager
 from scenarios.parallel_explorer.paths import ExperimentPaths
 
 logger = logging.getLogger(__name__)
@@ -63,6 +64,7 @@ class ParallelOrchestrator:
         """
         self.experiment_name = experiment_name
         self.paths = ExperimentPaths(experiment_name)
+        self.context_manager = ContextManager(experiment_name)
         self.results: dict[str, ExperimentResult] = {}
         self.semaphore: asyncio.Semaphore | None = None
 
@@ -93,7 +95,12 @@ class ParallelOrchestrator:
             return f"# Error loading instructions\n\n{str(e)}"
 
     async def run_experiment(
-        self, variants: dict[str, str], max_parallel: int = 3, timeout_minutes: int = 30
+        self,
+        variants: dict[str, str],
+        max_parallel: int = 3,
+        timeout_minutes: int = 30,
+        task: str | None = None,
+        use_context: bool = True,
     ) -> dict[str, ExperimentResult]:
         """Main entry point - runs all variants and returns results
 
@@ -101,11 +108,48 @@ class ParallelOrchestrator:
             variants: Mapping of variant names to task variations
             max_parallel: Maximum concurrent sessions
             timeout_minutes: Timeout per variant
+            task: Base task description (optional, for creating context)
+            use_context: Whether to use/create rich context (default True)
 
         Returns:
             Dictionary mapping variant names to results
         """
         logger.info(f"Starting experiment with {len(variants)} variants, max_parallel={max_parallel}")
+
+        # Try to load existing context first
+        context = None
+        if use_context:
+            context = self.context_manager.load_context()
+            if context:
+                logger.info("Loaded existing experiment context")
+                # Update variants from context if available
+                if "variants" in context:
+                    # Merge provided variants with context variants
+                    for name in variants:
+                        if name in context["variants"]:
+                            # Context has richer info, keep it as-is
+                            continue
+                        # Add new variant to context
+                        context["variants"][name] = {
+                            "description": variants[name],
+                            "approach": f"Implement using {name} approach",
+                            "focus_areas": [],
+                            "context": "",
+                        }
+            else:
+                # Create new context from provided information
+                logger.info("Creating new experiment context")
+                if task:
+                    self.context_manager.create_context(
+                        task=task,
+                        variants=variants,
+                        requirements="Create a working implementation following best practices",
+                        success_criteria="Implementation should be functional and well-structured",
+                    )
+                    context = self.context_manager.load_context()
+
+        # Store context for use in variant execution
+        self.context = context
 
         # Initialize semaphore for parallel control
         self.semaphore = asyncio.Semaphore(max_parallel)
@@ -115,8 +159,17 @@ class ParallelOrchestrator:
             from scenarios.parallel_explorer.worktree_manager import WorktreeManager
 
             worktree_mgr = WorktreeManager(self.experiment_name)
+
+            # CRITICAL: Actually create the worktrees!
+            logger.info(f"Creating worktrees for {len(variants)} variants")
+            worktree_paths = worktree_mgr.create_worktrees(list(variants.keys()))
+            logger.info(f"Created/found {len(worktree_paths)} worktrees")
+
         except ImportError:
             logger.error("WorktreeManager not found - using mock paths")
+            worktree_mgr = None
+        except Exception as e:
+            logger.error(f"Failed to create worktrees: {e}")
             worktree_mgr = None
 
         # Create tasks for each variant
@@ -125,8 +178,7 @@ class ParallelOrchestrator:
             # Get or create worktree path
             if worktree_mgr:
                 worktree_path = worktree_mgr.get_worktree_path(variant_name)
-                # Ensure the directory exists
-                worktree_path.mkdir(parents=True, exist_ok=True)
+                # No need to mkdir - worktree creation already did this
             else:
                 worktree_path = Path(f"/tmp/worktree_{variant_name}")
                 worktree_path.mkdir(parents=True, exist_ok=True)
@@ -148,8 +200,10 @@ class ParallelOrchestrator:
             self.save_progress(variant_name, "pending", {})
 
             # Create async task
-            task = self._run_variant_with_timeout(worktree_path, variant_name, task_variation, timeout_minutes)
-            tasks.append(task)
+            async_task = asyncio.create_task(
+                self._run_variant_with_timeout(worktree_path, variant_name, task_variation, timeout_minutes)
+            )
+            tasks.append(async_task)
 
         # Run all tasks concurrently
         await asyncio.gather(*tasks, return_exceptions=True)
@@ -226,8 +280,27 @@ class ParallelOrchestrator:
         # Load instructions
         instructions = self.load_ultrathink_instructions()
 
-        # Combine task variation with worktree context
-        full_prompt = f"{task_variation}\n\nWorking directory: {worktree_path}"
+        # Generate prompt using context if available
+        if hasattr(self, "context") and self.context:
+            # Use rich context to generate comprehensive prompt
+            full_prompt = self.context_manager.get_variant_prompt(self.context, variant_name, worktree_path)
+            logger.info(f"Using rich context for variant {variant_name}")
+        else:
+            # Fallback to simple prompt with explicit worktree instructions
+            full_prompt = f"""{task_variation}
+
+## CRITICAL WORKTREE INSTRUCTIONS
+1. You are working in a git worktree at: {worktree_path}
+2. IMMEDIATELY run this command first: cd {worktree_path}
+3. Create ALL files under this directory: {worktree_path}
+4. Example file paths:
+   - {worktree_path}/implementation.py
+   - {worktree_path}/README.md
+   - {worktree_path}/tests/
+5. DO NOT create files anywhere else
+
+Your current working directory should be: {worktree_path}
+When creating files, use paths relative to the worktree directory."""
 
         logger.info(f"Starting Claude session for {variant_name}")
         logger.debug(f"System prompt length: {len(instructions)} chars")
@@ -261,22 +334,32 @@ class ParallelOrchestrator:
 
                 logger.info(f"Claude session completed for {variant_name}")
 
+                # CRITICAL: Validate that code was actually generated
+                implementation_created = self._validate_implementation(worktree_path, variant_name)
+
                 # Calculate metrics
                 end_time = datetime.now()
                 duration = (end_time - start_time).total_seconds()
 
+                # Determine actual status based on implementation validation
+                actual_status = "completed" if implementation_created else "failed"
+                if not implementation_created:
+                    logger.error(f"Variant {variant_name} marked as failed: No implementation files created")
+
                 metrics = {
                     "duration_seconds": duration,
-                    "status": "completed",
+                    "status": actual_status,
                     "variant": variant_name,
+                    "implementation_created": implementation_created,
                 }
 
                 return {
                     "variant_name": variant_name,
-                    "status": "completed",
+                    "status": actual_status,
                     "output": output,
                     "parsed": parsed_output,
                     "metrics": metrics,
+                    "error": None if implementation_created else "No implementation files created in worktree",
                 }
 
         except Exception as e:
@@ -295,8 +378,95 @@ class ParallelOrchestrator:
                     "duration_seconds": duration,
                     "status": "failed",
                     "variant": variant_name,
+                    "implementation_created": False,
                 },
             }
+
+    def _validate_implementation(self, worktree_path: Path, variant_name: str) -> bool:
+        """Validate that actual implementation files were created.
+
+        Args:
+            worktree_path: Path to the worktree
+            variant_name: Name of the variant
+
+        Returns:
+            True if implementation files exist, False otherwise
+        """
+        # More flexible validation - check for any substantial files created in the worktree
+        # Exclude .git directory and common system files
+
+        # First, check for Python files anywhere in the worktree
+        py_files = []
+        for file in worktree_path.rglob("*.py"):
+            # Exclude .git directory
+            if ".git" not in str(file):
+                py_files.append(file)
+
+        if py_files:
+            logger.info(f"Found {len(py_files)} Python files in worktree for {variant_name}")
+            for f in py_files[:3]:  # Log first 3 files
+                logger.debug(f"  - {f.relative_to(worktree_path)}")
+            return True
+
+        # Check for documentation files (README, docs, etc.)
+        doc_patterns = ["*.md", "*.rst", "*.txt"]
+        doc_files = []
+        for pattern in doc_patterns:
+            for file in worktree_path.rglob(pattern):
+                if ".git" not in str(file):
+                    doc_files.append(file)
+
+        # If we have meaningful documentation (more than just a single file)
+        if len(doc_files) > 1:
+            logger.info(f"Found {len(doc_files)} documentation files in worktree for {variant_name}")
+            for f in doc_files[:3]:
+                logger.debug(f"  - {f.relative_to(worktree_path)}")
+            return True
+
+        # Check for other code files (JS, TS, etc.)
+        code_patterns = ["*.js", "*.ts", "*.jsx", "*.tsx", "*.java", "*.cpp", "*.c", "*.go", "*.rs"]
+        code_files = []
+        for pattern in code_patterns:
+            for file in worktree_path.rglob(pattern):
+                if ".git" not in str(file):
+                    code_files.append(file)
+
+        if code_files:
+            logger.info(f"Found {len(code_files)} code files in worktree for {variant_name}")
+            return True
+
+        # Check for configuration files (package.json, requirements.txt, etc.)
+        config_patterns = [
+            "package.json",
+            "requirements.txt",
+            "pyproject.toml",
+            "Cargo.toml",
+            "go.mod",
+            "pom.xml",
+            "build.gradle",
+        ]
+        for pattern in config_patterns:
+            if (worktree_path / pattern).exists():
+                logger.info(f"Found config file {pattern} in worktree for {variant_name}")
+                return True
+
+        # Final check: Any files at all (excluding .git)?
+        all_files = []
+        for item in worktree_path.rglob("*"):
+            if item.is_file() and ".git" not in str(item):
+                all_files.append(item)
+
+        if all_files:
+            logger.warning(f"Found {len(all_files)} files in worktree for {variant_name}")
+            logger.info("Files found:")
+            for f in all_files[:5]:
+                logger.info(f"  - {f.relative_to(worktree_path)}")
+            # Consider it successful if any files were created
+            return len(all_files) > 0
+        logger.error(f"No files created in worktree at all for {variant_name}")
+        logger.error(f"Worktree path checked: {worktree_path}")
+
+        return False
 
     def save_progress(self, variant: str, status: str, data: dict):
         """Save progress to disk for recovery/monitoring - with defensive utilities
@@ -362,6 +532,10 @@ class ParallelOrchestrator:
                 lines.append("\n**Metrics:**")
                 for key, value in result.metrics.items():
                     lines.append(f"  - {key}: {value}")
+
+                # Special highlight for implementation validation
+                if "implementation_created" in result.metrics and not result.metrics["implementation_created"]:
+                    lines.append("\n⚠️ **WARNING: No implementation files were created!**")
 
             if result.output:
                 lines.append("\n**Output:**")

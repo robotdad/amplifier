@@ -181,7 +181,7 @@ All experiment data goes to:
 
 Worktrees with actual code:
 ```
-../amplifier-experiments/{experiment-name}/
+.data/parallel_explorer/{experiment-name}/worktrees/
 ├── functional/                 # Full git worktree
 ├── oop/
 └── reactive/

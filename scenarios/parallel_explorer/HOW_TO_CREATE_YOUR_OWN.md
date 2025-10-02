@@ -178,6 +178,49 @@ make parallel-explore \
   VARIANTS='{ ... }'
 ```
 
+### Step 4.5: Using Context for Better Results
+
+For richer implementations, use the two-step process:
+
+#### Option A: Interactive Context Creation
+```bash
+# First, create context with explore-variants
+/explore-variants
+> Name: rate-limiter
+> Task: Implement rate limiting with 100 req/min limit
+> Requirements: Must be thread-safe, support multiple users
+
+# This creates .data/parallel_explorer/rate-limiter/context.json
+
+# Then run parallel-explore (will auto-load context)
+make parallel-explore NAME="rate-limiter"
+```
+
+#### Option B: Manual Context File
+Create a `context.json` file:
+```json
+{
+  "task": "Implement rate limiting",
+  "requirements": "100 req/min, thread-safe, multi-user",
+  "common_context": "API protection for high-traffic service",
+  "variants": {
+    "token-bucket": {
+      "description": "Token bucket algorithm",
+      "approach": "Tokens refill at constant rate",
+      "focus_areas": ["burst handling", "fairness"]
+    }
+  },
+  "success_criteria": "Accurate limiting, minimal overhead"
+}
+```
+
+Then run:
+```bash
+make parallel-explore NAME="rate-limiter" CONTEXT_FILE="context.json"
+```
+
+The context system ensures each variant gets comprehensive instructions, resulting in better implementations.
+
 ### Step 5: Analyze Results
 
 Review each implementation:

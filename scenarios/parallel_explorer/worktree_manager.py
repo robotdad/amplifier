@@ -53,11 +53,25 @@ class WorktreeManager:
         """
         worktree_paths = []
 
+        # Use current branch if not on main
+        current_branch = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=self.repo_root,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+
+        # If we're not on main, use the current branch as base
+        if base_branch == "main" and current_branch != "main":
+            logger.info(f"Using current branch '{current_branch}' as base instead of 'main'")
+            base_branch = current_branch
+
         for variant in variants:
             worktree_path = self.get_worktree_path(variant)
 
             # Check if worktree already exists
-            if worktree_path.exists():
+            if worktree_path.exists() and (worktree_path / ".git").exists():
                 logger.info(f"Worktree already exists: {worktree_path}")
                 worktree_paths.append(worktree_path)
                 continue
@@ -71,14 +85,26 @@ class WorktreeManager:
 
             try:
                 logger.info(f"Creating worktree: {worktree_path}")
+                logger.debug(f"Command: {' '.join(cmd)}")
                 result = subprocess.run(cmd, cwd=self.repo_root, capture_output=True, text=True, check=True)
                 logger.debug(f"Git output: {result.stdout}")
                 worktree_paths.append(worktree_path)
 
             except subprocess.CalledProcessError as e:
                 logger.error(f"Failed to create worktree for {variant}: {e.stderr}")
-                # Continue with other variants
-                continue
+                # Try to create without new branch (in case branch already exists)
+                cmd_no_branch = ["git", "worktree", "add", str(worktree_path), base_branch]
+                try:
+                    logger.info("Retrying without creating new branch...")
+                    result = subprocess.run(
+                        cmd_no_branch, cwd=self.repo_root, capture_output=True, text=True, check=True
+                    )
+                    logger.debug(f"Git output: {result.stdout}")
+                    worktree_paths.append(worktree_path)
+                except subprocess.CalledProcessError as e2:
+                    logger.error(f"Also failed without new branch: {e2.stderr}")
+                    # Continue with other variants
+                    continue
 
         return worktree_paths
 
