@@ -8,7 +8,7 @@ import logging
 import subprocess
 from pathlib import Path
 
-from scenarios.parallel_explorer.paths import ExperimentPaths
+from .paths import ExperimentPaths
 
 logger = logging.getLogger(__name__)
 

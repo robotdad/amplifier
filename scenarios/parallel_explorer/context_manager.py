@@ -32,20 +32,26 @@ from typing import Any
 
 from amplifier.ccsdk_toolkit.defensive import read_json_with_retry
 from amplifier.ccsdk_toolkit.defensive import write_json_with_retry
-from scenarios.parallel_explorer.paths import ExperimentPaths
+
+from .paths import ExperimentPaths
 
 logger = logging.getLogger(__name__)
 
 # Context schema for reference
 CONTEXT_SCHEMA = {
+    "experiment_name": "Name of the experiment (used for tool naming)",
     "task": "Base task description",
-    "requirements": "Detailed requirements for the implementation",
+    "output_type": "Always 'scenario_tool' - generates amplifier CLI tools",
+    "tool_prefix": "Prefix for make commands (e.g., 'content' → 'make content-analyze')",
+    "requirements": "Detailed requirements for the implementation (can be string or list)",
     "common_context": "Shared knowledge and constraints across all variants",
     "variants": {
         "variant_name": {
             "description": "Brief one-line description",
             "approach": "Detailed approach to take for this variant",
             "focus_areas": ["Primary focus area", "Secondary focus area"],
+            "cli_command": "Suggested make command (e.g., 'content-analyze')",
+            "main_features": ["feature1", "feature2"],  # Guides module structure
             "context": "Variant-specific context and implementation hints",
             "constraints": "Optional variant-specific constraints",
         }
@@ -269,29 +275,39 @@ class ContextManager:
                 prompt_parts.append(str(technical_requirements))
             prompt_parts.append("")
 
-        # CRITICAL: Add explicit worktree instructions
+        # Add tool naming information
+        tool_name = f"{context.get('experiment_name', 'unknown')}_{variant_name}"
+
+        # CRITICAL: Add explicit scenario tool instructions
         prompt_parts.extend(
             [
-                "## CRITICAL WORKTREE INSTRUCTIONS",
-                f"1. You are working in a git worktree at: {worktree_path}",
-                f"2. **IMMEDIATELY** run this command first: cd {worktree_path}",
-                f"3. Create ALL files under this directory: {worktree_path}",
-                f"4. When creating files, use paths relative to: {worktree_path}",
+                "## SCENARIO TOOL IMPLEMENTATION",
+                f"You are creating a complete amplifier scenario tool at: scenarios/{tool_name}/",
                 "",
-                "## EXPECTED FILE STRUCTURE",
-                "Create your implementation with this structure:",
-                f"- {worktree_path}/implementation.py  # Main implementation",
-                f"- {worktree_path}/README.md  # Documentation",
-                f"- {worktree_path}/tests/  # Test files (optional)",
-                f"- {worktree_path}/requirements.txt  # Dependencies (if needed)",
+                "## LEARN FROM EXEMPLARS",
+                f"Study these working examples in your worktree at {worktree_path}:",
+                "- **scenarios/blog_writer/** - Multi-stage content generation with state management",
+                "- **scenarios/article_illustrator/** - Pipeline pattern with session resumability",
                 "",
-                "## IMPORTANT NOTES",
-                "- DO NOT create files in /Users/robotdad/Source/amplifier.parallels/",
-                "- DO NOT create files in the main repository",
-                f"- ALL files must be created under: {worktree_path}",
-                f"- Start by running: cd {worktree_path}",
+                "These tools demonstrate the scenario tool pattern:",
+                "- Python package structure (__init__.py, __main__.py, main.py, state.py)",
+                "- CLI interface using click",
+                "- State management for resumability",
+                "- Comprehensive documentation (README.md, HOW_TO_CREATE_YOUR_OWN.md)",
+                "- Modular feature directories",
                 "",
-                "Now implement this variant following the approach above. Remember to create all files in the worktree directory.",
+                "## YOUR IMPLEMENTATION",
+                f"Create your tool at: {worktree_path}/scenarios/{tool_name}/",
+                "",
+                "Follow the patterns you observe in the examples while implementing your variant's approach.",
+                "Your tool should match their structure and quality, adapted to your specific use case.",
+                "",
+                "Key paths:",
+                f"- Work in: {worktree_path}",
+                f"- Create at: scenarios/{tool_name}/",
+                "- Study: scenarios/blog_writer/ and scenarios/article_illustrator/",
+                "",
+                "Begin by reading the example tools, then build yours following their patterns.",
             ]
         )
 

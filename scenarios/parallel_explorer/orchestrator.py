@@ -29,11 +29,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from amplifier.ccsdk_toolkit.defensive import parse_llm_json  # Extract JSON from any LLM response
-from amplifier.ccsdk_toolkit.defensive import retry_with_feedback  # Intelligent retry with error correction
 from amplifier.ccsdk_toolkit.defensive import write_json_with_retry  # Cloud sync-aware file operations
-from scenarios.parallel_explorer.context_manager import ContextManager
-from scenarios.parallel_explorer.paths import ExperimentPaths
+
+from .context_manager import ContextManager
+from .paths import ExperimentPaths
 
 logger = logging.getLogger(__name__)
 
@@ -156,7 +155,7 @@ class ParallelOrchestrator:
 
         # Import worktree manager
         try:
-            from scenarios.parallel_explorer.worktree_manager import WorktreeManager
+            from .worktree_manager import WorktreeManager
 
             worktree_mgr = WorktreeManager(self.experiment_name)
 
@@ -252,7 +251,7 @@ class ParallelOrchestrator:
             )
 
     async def run_variant(self, worktree_path: Path, variant_name: str, task_variation: str) -> dict[str, Any]:
-        """Run single variant in its worktree - Real CCSDK Implementation with Defensive Utilities
+        """Run variant using proper amplifier pattern - code orchestrates, AI generates content.
 
         Args:
             worktree_path: Path to the worktree for this variant
@@ -262,11 +261,11 @@ class ParallelOrchestrator:
         Returns:
             Dictionary with variant results
         """
-        logger.info(f"Starting variant {variant_name} in {worktree_path}")
+        logger.info(f"Building scenario tool for {variant_name}")
 
-        # Import CCSDK here to avoid linter issues
-        from amplifier.ccsdk_toolkit import ClaudeSession
-        from amplifier.ccsdk_toolkit import SessionOptions
+        # Import the new tool builder
+        from scenarios.parallel_explorer.structure_validator import validate_tool_structure
+        from scenarios.parallel_explorer.tool_builder import build_scenario_tool
 
         # Update status to running
         self.results[variant_name].status = "running"
@@ -277,109 +276,93 @@ class ParallelOrchestrator:
         self.results[variant_name].session_id = session_id
         self.save_progress(variant_name, "running", {"session_id": session_id})
 
-        # Load instructions
-        instructions = self.load_ultrathink_instructions()
-
-        # Generate prompt using context if available
-        if hasattr(self, "context") and self.context:
-            # Use rich context to generate comprehensive prompt
-            full_prompt = self.context_manager.get_variant_prompt(self.context, variant_name, worktree_path)
-            logger.info(f"Using rich context for variant {variant_name}")
-        else:
-            # Fallback to simple prompt with explicit worktree instructions
-            full_prompt = f"""{task_variation}
-
-## CRITICAL WORKTREE INSTRUCTIONS
-1. You are working in a git worktree at: {worktree_path}
-2. IMMEDIATELY run this command first: cd {worktree_path}
-3. Create ALL files under this directory: {worktree_path}
-4. Example file paths:
-   - {worktree_path}/implementation.py
-   - {worktree_path}/README.md
-   - {worktree_path}/tests/
-5. DO NOT create files anywhere else
-
-Your current working directory should be: {worktree_path}
-When creating files, use paths relative to the worktree directory."""
-
-        logger.info(f"Starting Claude session for {variant_name}")
-        logger.debug(f"System prompt length: {len(instructions)} chars")
-        logger.debug(f"Task variation: {task_variation[:200]}...")
-
         try:
-            # Create session options with ultrathink instructions as system prompt
-            options = SessionOptions(
-                system_prompt=instructions,
-                max_turns=10,  # Reasonable limit for experiments
+            # Identify exemplars to learn from
+            exemplars = [
+                worktree_path / "scenarios" / "blog_writer",
+                worktree_path / "scenarios" / "article_illustrator"
+            ]
+
+            # Prepare requirements from context or task variation
+            requirements = {}
+            if hasattr(self, "context") and self.context:
+                # Extract variant-specific requirements from context
+                requirements = self.context.get("variants", {}).get(variant_name, {})
+                requirements["task_variation"] = task_variation
+                requirements["experiment_name"] = self.experiment_name
+                logger.info(f"Using rich context for variant {variant_name}")
+            else:
+                # Use task variation as base requirements
+                requirements = {
+                    "task_variation": task_variation,
+                    "experiment_name": self.experiment_name,
+                    "variant_name": variant_name,
+                    "description": f"Variant {variant_name} of {self.experiment_name}"
+                }
+
+            # Build the scenario tool with Python orchestration
+            tool_path = await build_scenario_tool(
+                variant_name=f"{self.experiment_name}_{variant_name}",
+                requirements=requirements,
+                worktree_path=worktree_path,
+                exemplar_paths=exemplars
             )
 
-            # Run the Claude session with retry support
-            async with ClaudeSession(options) as session:
-                logger.info(f"Claude session active for {variant_name}")
+            # Validate the generated tool
+            is_valid, issues = validate_tool_structure(tool_path)
 
-                # Send the task variation with retry and feedback
-                response = await retry_with_feedback(func=session.query, prompt=full_prompt, max_retries=3)
+            if is_valid:
+                logger.info(f"Successfully created scenario tool at {tool_path}")
 
-                # Extract response defensively
-                if hasattr(response, "content"):
-                    output = response.content
-                else:
-                    output = str(response)
+                # Update results
+                self.results[variant_name].status = "completed"
+                self.results[variant_name].output = f"Created scenario tool at {tool_path}"
+                self.results[variant_name].end_time = datetime.now()
 
-                # Try to parse as JSON if it looks like JSON
-                if output.strip().startswith("{") or output.strip().startswith("["):
-                    parsed_output = parse_llm_json(output, default={"raw": output})
-                else:
-                    parsed_output = {"content": output}
-
-                logger.info(f"Claude session completed for {variant_name}")
-
-                # CRITICAL: Validate that code was actually generated
-                implementation_created = self._validate_implementation(worktree_path, variant_name)
-
-                # Calculate metrics
-                end_time = datetime.now()
-                duration = (end_time - start_time).total_seconds()
-
-                # Determine actual status based on implementation validation
-                actual_status = "completed" if implementation_created else "failed"
-                if not implementation_created:
-                    logger.error(f"Variant {variant_name} marked as failed: No implementation files created")
-
-                metrics = {
-                    "duration_seconds": duration,
-                    "status": actual_status,
-                    "variant": variant_name,
-                    "implementation_created": implementation_created,
-                }
+                # Save progress
+                self.save_progress(variant_name, "completed", {
+                    "tool_path": str(tool_path),
+                    "duration": (datetime.now() - start_time).total_seconds()
+                })
 
                 return {
-                    "variant_name": variant_name,
-                    "status": actual_status,
-                    "output": output,
-                    "parsed": parsed_output,
-                    "metrics": metrics,
-                    "error": None if implementation_created else "No implementation files created in worktree",
+                    "status": "completed",
+                    "tool_path": str(tool_path),
+                    "output": f"Created scenario tool at {tool_path}",
+                    "session_id": session_id
                 }
+            error_msg = f"Validation failed: {', '.join(issues)}"
+            logger.error(f"Tool validation failed for {variant_name}: {error_msg}")
 
-        except Exception as e:
-            logger.error(f"Claude session failed for {variant_name}: {e}")
+            # Update results
+            self.results[variant_name].status = "failed"
+            self.results[variant_name].error = error_msg
+            self.results[variant_name].end_time = datetime.now()
 
-            # Calculate duration even on failure
-            end_time = datetime.now()
-            duration = (end_time - start_time).total_seconds()
+            # Save progress
+            self.save_progress(variant_name, "failed", {"error": error_msg})
 
             return {
-                "variant_name": variant_name,
                 "status": "failed",
-                "output": None,
+                "error": error_msg,
+                "session_id": session_id
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to build variant {variant_name}: {e}")
+
+            # Update results
+            self.results[variant_name].status = "failed"
+            self.results[variant_name].error = str(e)
+            self.results[variant_name].end_time = datetime.now()
+
+            # Save progress
+            self.save_progress(variant_name, "failed", {"error": str(e)})
+
+            return {
+                "status": "failed",
                 "error": str(e),
-                "metrics": {
-                    "duration_seconds": duration,
-                    "status": "failed",
-                    "variant": variant_name,
-                    "implementation_created": False,
-                },
+                "session_id": session_id
             }
 
     def _validate_implementation(self, worktree_path: Path, variant_name: str) -> bool:
@@ -392,17 +375,61 @@ When creating files, use paths relative to the worktree directory."""
         Returns:
             True if implementation files exist, False otherwise
         """
-        # More flexible validation - check for any substantial files created in the worktree
-        # Exclude .git directory and common system files
+        # Check for scenario tool implementation in the expected location
+        # The tool should be created at: scenarios/{tool_name}_{variant_name}/
+        scenarios_dir = worktree_path / "scenarios"
+        tool_name = self.experiment_name.replace("-", "_")
+        expected_dir_name = f"{tool_name}_{variant_name}"
+        expected_tool_dir = scenarios_dir / expected_dir_name
 
-        # First, check for Python files anywhere in the worktree
+        # First check if the expected directory exists
+        if expected_tool_dir.exists() and expected_tool_dir.is_dir():
+            # Check if __init__.py exists (required for a valid scenario tool)
+            init_file = expected_tool_dir / "__init__.py"
+            if init_file.exists():
+                logger.info(f"✓ Found scenario implementation: {expected_dir_name}")
+
+                # Count Python files
+                py_files = list(expected_tool_dir.glob("**/*.py"))
+                py_files = [f for f in py_files if "__pycache__" not in str(f)]
+
+                if py_files:
+                    logger.info(f"  - Contains {len(py_files)} Python files")
+                    for f in py_files[:3]:  # Log first 3 files
+                        logger.info(f"    • {f.relative_to(expected_tool_dir)}")
+                    return True
+                logger.warning("  - WARNING: __init__.py exists but no Python content found")
+            else:
+                logger.warning(f"Expected tool directory exists but missing __init__.py: {expected_tool_dir}")
+
+        # Fallback: Look for any new directories created in scenarios/
+        # (in case the naming convention is slightly different)
+        if scenarios_dir.exists():
+            scenario_dirs = [d for d in scenarios_dir.iterdir() if d.is_dir() and d.name != "__pycache__"]
+
+            # Look for directories that weren't there originally
+            original_dirs = {"blog_writer", "article_illustrator", "parallel_explorer"}
+            new_dirs = [d for d in scenario_dirs if d.name not in original_dirs]
+
+            for scenario_dir in new_dirs:
+                # Check if this directory contains implementation files
+                init_file = scenario_dir / "__init__.py"
+                if init_file.exists():
+                    logger.info(f"Found scenario implementation (unexpected name): {scenario_dir.name}")
+                    logger.info(f"  - Expected: {expected_dir_name}")
+                    logger.info("  - Consider using the exact naming convention")
+                    return True
+
+        # Fallback: Check for any new Python files in the worktree
+        # (but be more strict - require at least a few files to indicate real implementation)
         py_files = []
         for file in worktree_path.rglob("*.py"):
-            # Exclude .git directory
-            if ".git" not in str(file):
+            # Exclude .git and __pycache__
+            if ".git" not in str(file) and "__pycache__" not in str(file):
                 py_files.append(file)
 
-        if py_files:
+        # Require at least 3 Python files for a valid implementation
+        if len(py_files) >= 3:
             logger.info(f"Found {len(py_files)} Python files in worktree for {variant_name}")
             for f in py_files[:3]:  # Log first 3 files
                 logger.debug(f"  - {f.relative_to(worktree_path)}")

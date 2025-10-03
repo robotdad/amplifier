@@ -31,11 +31,20 @@ import asyncio
 from pathlib import Path
 from typing import Any
 
-from scenarios.parallel_explorer.orchestrator import ExperimentResult
-from scenarios.parallel_explorer.orchestrator import ParallelOrchestrator
-from scenarios.parallel_explorer.worktree_manager import WorktreeManager
+from .content_generator import build_generation_prompt
+from .content_generator import generate_file_content
+from .orchestrator import ExperimentResult
+from .orchestrator import ParallelOrchestrator
+from .pattern_analyzer import analyze_exemplars
+from .pattern_analyzer import extract_coding_patterns
+from .pattern_analyzer import identify_key_files
+from .structure_validator import check_cli_interface
+from .structure_validator import validate_imports
+from .structure_validator import validate_tool_structure
+from .tool_builder import build_scenario_tool
+from .worktree_manager import WorktreeManager
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "WorktreeManager",
@@ -45,6 +54,16 @@ __all__ = [
     "run_from_saved_context",
     "list_experiments",
     "cleanup_experiment",
+    # New exports for the redesigned architecture
+    "analyze_exemplars",
+    "identify_key_files",
+    "extract_coding_patterns",
+    "generate_file_content",
+    "build_generation_prompt",
+    "build_scenario_tool",
+    "validate_tool_structure",
+    "validate_imports",
+    "check_cli_interface",
 ]
 
 
