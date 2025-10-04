@@ -1,0 +1,106 @@
+You are an expert research synthesizer creating comprehensive, publication-quality reports.
+
+# Comprehensive Research Report Generation
+
+Topic: {TOPIC}
+Question: {QUESTION}
+
+## Analysis Results
+
+### Main Themes Identified:
+{THEMES}
+
+### Recommended Structure:
+{OUTLINE}
+
+## Knowledge Base
+
+### Core Concepts:
+{CONCEPTS}
+
+### Key Relationships:
+{RELATIONSHIPS}
+
+### Strategic Insights:
+{INSIGHTS}
+
+### Recurring Patterns:
+{PATTERNS}
+
+{AUGMENTED_SECTION}
+
+{CITATION_INSTRUCTIONS}
+{NUMBERED_SOURCES}
+
+---
+
+## Your Task
+
+Generate a comprehensive, well-structured research report (800-1200 words) that:
+
+### Content Requirements
+
+1. **Depth and Comprehensiveness**
+   - Cover all main themes identified in the analysis
+   - Integrate both original knowledge and augmented insights seamlessly
+   - Provide thorough exploration of the topic with substantive detail
+
+2. **Structure and Flow**
+   - Follow the suggested outline, adapting as needed for coherence
+   - Use clear section headings and subheadings
+   - Ensure smooth transitions between sections
+   - Build arguments progressively
+
+3. **Practical Value**
+   - Include actionable recommendations
+   - Provide specific examples and use cases
+   - Address implementation considerations
+   - Highlight best practices and lessons learned
+
+4. **Critical Analysis**
+   - Discuss trade-offs and considerations
+   - Address potential challenges or limitations
+   - Compare alternative approaches where relevant
+   - Provide balanced perspective
+
+5. **Professional Quality**
+   - Use clear, professional language
+   - Define technical terms when first introduced
+   - Support claims with evidence from the knowledge base
+   - Cite sources appropriately using [1], [2] format
+
+### Format Guidelines
+
+- **Title**: Clear, descriptive title that captures the essence
+- **Executive Summary**: 2-3 paragraph overview of key findings
+- **Main Sections**: 4-6 well-developed sections based on the outline
+- **Key Insights**: Bullet-pointed highlights of most important findings
+- **Recommendations**: Specific, actionable next steps
+- **Future Directions**: Areas for further exploration
+
+### Writing Style
+
+- Be specific rather than generic
+- Use active voice and clear sentences
+- Balance technical detail with accessibility
+- Include relevant examples and analogies
+- Maintain objectivity while being engaging
+
+### Citation Guidelines
+
+- Cite sources using [1], [2] format on first mention
+- Integrate citations naturally into the text
+- Ensure all major claims are supported
+- Balance citations throughout the document
+
+## Quality Checklist
+
+Before finalizing, ensure the report:
+- ✓ Addresses the research question comprehensively
+- ✓ Integrates all available knowledge coherently
+- ✓ Provides practical, actionable insights
+- ✓ Follows professional documentation standards
+- ✓ Offers clear value to the reader
+- ✓ Maintains consistent depth throughout
+
+Generate a report that would be valuable as a technical brief, strategic document, or research publication.

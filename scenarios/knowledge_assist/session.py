@@ -17,11 +17,28 @@ class SessionInfo(BaseModel):
     question: str | None = Field(default=None, description="Optional question")
     output_path: Path = Field(description="Path to output file")
     stats: dict = Field(default_factory=dict, description="Session statistics")
+    stage_results: dict = Field(default_factory=dict, description="Results from each pipeline stage")
+    knowledge: object | None = Field(default=None, description="Retrieved knowledge (for resume)")
+    web_results: list | None = Field(default=None, description="Web results (for resume)")
+    citation_context: object | None = Field(default=None, description="Citation context (for resume)")
 
     class Config:
         """Pydantic configuration."""
 
         arbitrary_types_allowed = True
+
+    def save_stage_result(self, stage: str, result: dict) -> None:
+        """Save intermediate result from a pipeline stage.
+
+        Args:
+            stage: Stage name (e.g., 'stage1', 'stage2')
+            result: Result data from the stage
+        """
+        self.stage_results[stage] = result
+        # Save to disk immediately for resume capability
+        stage_file = self.output_path.parent / f"{self.id}_{stage}.json"
+        with open(stage_file, "w") as f:
+            json.dump(result, f, indent=2)
 
 
 class SessionManager:
@@ -106,6 +123,49 @@ class SessionManager:
                 f,
                 indent=2,
             )
+
+    def load_session(self, session_id: str) -> SessionInfo | None:
+        """Load an existing session for resume.
+
+        Args:
+            session_id: Session ID to load
+
+        Returns:
+            Session info if found, None otherwise
+        """
+        # Search for session info file
+        for date_dir in self.output_dir.iterdir():
+            if not date_dir.is_dir():
+                continue
+            info_path = date_dir / f"{session_id}_info.json"
+            if info_path.exists():
+                with open(info_path) as f:
+                    data = json.load(f)
+
+                # Create SessionInfo from saved data
+                session = SessionInfo(
+                    id=data["id"],
+                    timestamp=datetime.fromisoformat(data["timestamp"]),
+                    topic=data["topic"],
+                    question=data.get("question"),
+                    output_path=Path(data["output_path"]),
+                    stats=data.get("stats", {}),
+                )
+
+                # Load stage results if they exist
+                for stage in ["stage1", "stage2"]:
+                    stage_file = date_dir / f"{session_id}_{stage}.json"
+                    if stage_file.exists():
+                        with open(stage_file) as f:
+                            session.stage_results[stage] = json.load(f)
+
+                # Note: knowledge, web_results, and citation_context would need to be
+                # serialized/deserialized properly for full resume support
+                # For now, they'll be regenerated if needed
+
+                return session
+
+        return None
 
     def _update_index(self, session: SessionInfo) -> None:
         """Update the index.md file with new session entry.

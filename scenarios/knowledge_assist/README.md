@@ -41,21 +41,34 @@ make knowledge-assist TOPIC="authentication" QUESTION="best practices for mobile
 make knowledge-assist TOPIC="latest OAuth 2025 updates"
 ```
 
+### Deep Mode (Higher Quality, Longer Processing)
+
+```bash
+# Run 3-stage deep synthesis pipeline (2-3 minutes)
+make knowledge-assist TOPIC="authentication patterns" DEPTH=deep
+
+# Resume interrupted deep session
+make knowledge-assist RESUME=20250103_143022
+```
+
 ## Usage
 
 ### Command Syntax
 
 ```bash
-make knowledge-assist TOPIC="subject" [QUESTION="specific aspect"] [OUTPUT=path]
+make knowledge-assist TOPIC="subject" [QUESTION="specific aspect"] [DEPTH=quick|deep] [RESUME=session_id]
 ```
 
 ### Parameters
 
 | Parameter  | Required | Description                                             | Example                       |
 | ---------- | -------- | ------------------------------------------------------- | ----------------------------- |
-| `TOPIC`    | Yes      | Subject/domain to research                              | "microservices patterns"      |
+| `TOPIC`    | Yes*     | Subject/domain to research                              | "microservices patterns"      |
 | `QUESTION` | No       | Specific question or aspect of interest                 | "best for high availability?" |
-| `OUTPUT`   | No       | Output directory path (default: auto-generated session) | "research/microservices"      |
+| `DEPTH`    | No       | Synthesis depth: quick (~30s) or deep (~2-3min)        | "deep"                        |
+| `RESUME`   | Yes*     | Resume interrupted session by ID                        | "20250103_143022"             |
+
+*Either `TOPIC` or `RESUME` is required
 
 ### Examples
 
@@ -94,6 +107,57 @@ make knowledge-assist TOPIC="authentication patterns" QUESTION="what are the lat
 ```
 
 Automatically enables web search due to temporal terms ("latest", "2025") and combines with local knowledge.
+
+#### 5. Deep Mode Research
+
+```bash
+# Comprehensive 3-stage analysis (2-3 minutes)
+make knowledge-assist TOPIC="distributed systems" QUESTION="how to achieve consistency?" DEPTH=deep
+```
+
+Generates publication-quality report with deeper analysis, gap filling, and comprehensive coverage.
+
+## Synthesis Modes
+
+### Quick Mode (Default)
+
+- **Duration**: ~30 seconds
+- **Process**: Single-pass synthesis
+- **Output**: 1-2 page concise report
+- **Best for**: Quick answers, daily research, exploration
+
+```bash
+make knowledge-assist TOPIC="your topic"  # Quick is default
+```
+
+### Deep Mode
+
+- **Duration**: 2-3 minutes
+- **Process**: 3-stage pipeline
+  1. **Analysis Stage**: Identify themes and knowledge gaps
+  2. **Augmentation Stage**: Fill gaps with web research (if needed)
+  3. **Generation Stage**: Create comprehensive report
+- **Output**: 2-3 page detailed report with deeper insights
+- **Best for**: Important research, documentation, strategic decisions
+
+```bash
+make knowledge-assist TOPIC="your topic" DEPTH=deep
+```
+
+### Resume Capability
+
+Deep mode sessions can be resumed if interrupted:
+
+```bash
+# Start deep session
+make knowledge-assist TOPIC="complex topic" DEPTH=deep
+# ... if interrupted ...
+
+# Resume from where it left off
+make knowledge-assist RESUME=20250103_143022
+```
+
+Stage results are saved incrementally, so you won't lose progress.
 
 ## Output Format
 

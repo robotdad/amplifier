@@ -56,6 +56,9 @@ class KnowledgeAssistConfig(BaseSettings):
     )
     max_web_results: int = Field(default=5, description="Maximum web search results to include")
 
+    # Synthesis depth
+    depth: str = Field(default="quick", description="Synthesis depth: quick or deep")
+
     @field_validator("api_key", mode="before")
     @classmethod
     def get_api_key(cls, v):

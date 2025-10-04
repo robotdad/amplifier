@@ -529,19 +529,21 @@ blog-write-example: ## Run blog writer with example data
 		--writings-dir scenarios/blog_writer/tests/sample_writings/
 
 # Knowledge Assistant
-knowledge-assist: ## Generate research report from knowledge base. Usage: make knowledge-assist TOPIC="subject" [QUESTION="specific aspect"] [OUTPUT=path]
-	@if [ -z "$(TOPIC)" ]; then \
-		echo "Error: Please provide a topic. Usage: make knowledge-assist TOPIC=\"authentication patterns\" [QUESTION=\"best for mobile?\"]"; \
+knowledge-assist: ## Generate research report from knowledge base. Usage: make knowledge-assist TOPIC="subject" [QUESTION="specific aspect"] [DEPTH=quick|deep] [RESUME=session_id]
+	@if [ -z "$(TOPIC)" ] && [ -z "$(RESUME)" ]; then \
+		echo "Error: Please provide a topic or resume a session."; \
+		echo "Usage: make knowledge-assist TOPIC=\"authentication patterns\" [QUESTION=\"best for mobile?\"] [DEPTH=quick|deep]"; \
+		echo "   Or: make knowledge-assist RESUME=session_id"; \
 		exit 1; \
 	fi
 	@echo "🔍 Starting knowledge assistant..."; \
-	echo "  Topic: $(TOPIC)"; \
+	if [ -n "$(TOPIC)" ]; then echo "  Topic: $(TOPIC)"; fi; \
 	if [ -n "$(QUESTION)" ]; then echo "  Question: $(QUESTION)"; fi; \
+	if [ -n "$(DEPTH)" ]; then echo "  Depth: $(DEPTH)"; else echo "  Depth: quick (default)"; fi; \
+	if [ -n "$(RESUME)" ]; then echo "  Resuming session: $(RESUME)"; fi; \
 	echo "  Output: Auto-generated in session directory"; \
-	CMD="uv run python -m scenarios.knowledge_assist --topic \"$(TOPIC)\""; \
-	if [ -n "$(QUESTION)" ]; then CMD="$$CMD --question \"$(QUESTION)\""; fi; \
-	if [ -n "$(OUTPUT)" ]; then CMD="$$CMD --output \"$(OUTPUT)\""; fi; \
-	eval $$CMD
+	TOPIC="$(TOPIC)" QUESTION="$(QUESTION)" DEPTH="$(DEPTH)" RESUME="$(RESUME)" \
+	uv run python -m scenarios.knowledge_assist
 
 # Article Illustration
 illustrate: ## Generate AI illustrations for markdown article. Usage: make illustrate INPUT=article.md [OUTPUT=path] [STYLE="..."] [APIS="..."] [RESUME=true]

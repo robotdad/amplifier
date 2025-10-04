@@ -28,15 +28,26 @@ def main():
     # Get topic and question from environment
     topic = os.getenv("TOPIC")
     question = os.getenv("QUESTION")
+    depth = os.getenv("DEPTH", "quick")
+    resume_session_id = os.getenv("RESUME")
 
-    if not topic:
-        logger.error("TOPIC environment variable is required")
-        logger.info("Usage: TOPIC='your topic' [QUESTION='optional question'] amplifier knowledge-assist")
+    # Handle resume case
+    if resume_session_id:
+        logger.info(f"Resuming session: {resume_session_id}")
+        # Topic/question will be loaded from session
+    elif not topic:
+        logger.error("TOPIC environment variable is required (unless RESUME is specified)")
+        logger.info(
+            "Usage: TOPIC='your topic' [QUESTION='optional question'] [DEPTH=quick|deep] amplifier knowledge-assist"
+        )
+        logger.info("   Or: RESUME='session_id' amplifier knowledge-assist")
         sys.exit(1)
 
-    logger.info(f"Research topic: {topic}")
-    if question:
-        logger.info(f"Research question: {question}")
+    if topic:
+        logger.info(f"Research topic: {topic}")
+        if question:
+            logger.info(f"Research question: {question}")
+        logger.info(f"Synthesis depth: {depth}")
 
     try:
         # Load configuration
@@ -47,51 +58,92 @@ def main():
         retriever = KnowledgeRetriever(config.knowledge_path, config)
         engine = SynthesisEngine(config, config.prompts_dir)
         generator = OutputGenerator()
-
-        # Retrieve knowledge FIRST
-        logger.info("Retrieving knowledge from extractions...")
-        knowledge = retriever.retrieve(topic, question)
-
-        # Validate knowledge was retrieved SECOND
-        total_knowledge = (
-            len(knowledge.concepts) + len(knowledge.relationships) + len(knowledge.insights) + len(knowledge.patterns)
-        )
-
-        if total_knowledge == 0:
-            logger.error("No knowledge found in knowledge base for this topic!")
-            logger.info("\nSuggestions:")
-            logger.info("  1. If knowledge base is empty, run: make knowledge-sync")
-            logger.info("  2. Try broader search terms if your topic is too specific")
-            logger.info(f"  3. Check knowledge file exists at: {config.knowledge_path}")
-            logger.info("  4. Verify ~/.amplifier/ directory structure is intact")
-            sys.exit(1)
-
-        if total_knowledge < 3:
-            logger.warning(f"Only found {total_knowledge} knowledge items - results may be limited")
-            logger.info("Consider using broader search terms for better results")
-
-        # Create session THIRD (only after successful knowledge validation)
         session_manager = SessionManager(config.output_dir)
-        session = session_manager.create_session(topic, question)
-        logger.info(f"Session created: {session.id}")
 
-        # Check if web search is needed
-        web_results = None
-        if engine.needs_web_search(topic, question):
-            logger.info("Temporal terms detected - web search will be performed...")
-            # Pass empty list to indicate web search is requested
-            # OpenAI's built-in web search will handle the actual search
-            web_results = []
+        # Handle resume case
+        if resume_session_id:
+            session = session_manager.load_session(resume_session_id)
+            if not session:
+                logger.error(f"Session {resume_session_id} not found")
+                sys.exit(1)
+            topic = session.topic
+            question = session.question
+            logger.info(f"Restored topic: {topic}")
+            if question:
+                logger.info(f"Restored question: {question}")
 
-        # Prepare citation context
-        logger.info("Preparing citations...")
-        content_loader = ContentLoader()  # Use the real ContentLoader - it reads from .env
-        citation_context = prepare_citations(knowledge.sources, content_loader)
-        logger.info(f"Prepared {len(citation_context.numbered_sources)} source citations")
+            # For resume, we need to regenerate knowledge and citations
+            # (session state management for these is complex and not implemented yet)
+            logger.info("Retrieving knowledge from extractions...")
+            knowledge = retriever.retrieve(topic, question)
+
+            # Check if web search is needed
+            web_results = None
+            if engine.needs_web_search(topic, question):
+                logger.info("Temporal terms detected - web search will be performed...")
+                web_results = []
+
+            # Prepare citation context
+            logger.info("Preparing citations...")
+            content_loader = ContentLoader()
+            citation_context = prepare_citations(knowledge.sources, content_loader)
+            logger.info(f"Prepared {len(citation_context.numbered_sources)} source citations")
+        else:
+            # Retrieve knowledge FIRST
+            logger.info("Retrieving knowledge from extractions...")
+            if not topic:  # This should never happen due to earlier check, but helps type checker
+                logger.error("Topic is required")
+                sys.exit(1)
+            knowledge = retriever.retrieve(topic, question)
+
+            # Validate knowledge was retrieved SECOND
+            total_knowledge = (
+                len(knowledge.concepts)
+                + len(knowledge.relationships)
+                + len(knowledge.insights)
+                + len(knowledge.patterns)
+            )
+
+            if total_knowledge == 0:
+                logger.error("No knowledge found in knowledge base for this topic!")
+                logger.info("\nSuggestions:")
+                logger.info("  1. If knowledge base is empty, run: make knowledge-sync")
+                logger.info("  2. Try broader search terms if your topic is too specific")
+                logger.info(f"  3. Check knowledge file exists at: {config.knowledge_path}")
+                logger.info("  4. Verify ~/.amplifier/ directory structure is intact")
+                sys.exit(1)
+
+            if total_knowledge < 3:
+                logger.warning(f"Only found {total_knowledge} knowledge items - results may be limited")
+                logger.info("Consider using broader search terms for better results")
+
+            # Create session THIRD (only after successful knowledge validation)
+            session = session_manager.create_session(topic, question)
+            logger.info(f"Session created: {session.id}")
+
+            # Check if web search is needed
+            web_results = None
+            if engine.needs_web_search(topic, question):
+                logger.info("Temporal terms detected - web search will be performed...")
+                # Pass empty list to indicate web search is requested
+                # OpenAI's built-in web search will handle the actual search
+                web_results = []
+
+            # Prepare citation context
+            logger.info("Preparing citations...")
+            content_loader = ContentLoader()  # Use the real ContentLoader - it reads from .env
+            citation_context = prepare_citations(knowledge.sources, content_loader)
+            logger.info(f"Prepared {len(citation_context.numbered_sources)} source citations")
 
         # Synthesize knowledge
-        logger.info(f"Synthesizing with {config.model}...")
-        synthesis_result = engine.synthesize(topic, question, knowledge, web_results, citation_context)
+        if depth == "deep":
+            logger.info(f"Starting deep synthesis with {config.model} (3-stage pipeline)...")
+            synthesis_result = engine.synthesize_deep(
+                topic, question, knowledge, web_results, citation_context, session
+            )
+        else:
+            logger.info(f"Synthesizing with {config.model} (quick mode)...")
+            synthesis_result = engine.synthesize(topic, question, knowledge, web_results, citation_context)
 
         # Update session stats
         session.stats = {
