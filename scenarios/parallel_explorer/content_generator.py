@@ -48,7 +48,20 @@ async def generate_file_content(
     try:
         async with ClaudeSession(options) as session:
             response = await session.query(prompt)
-            return response.content.strip()
+            content = response.content.strip()
+
+            # Strip markdown code block wrappers if present
+            if content.startswith("```"):
+                # Remove opening ``` or ```python/```markdown
+                lines = content.split("\n")
+                if lines[0].startswith("```"):
+                    lines = lines[1:]
+                # Remove closing ```
+                if lines and lines[-1].strip() == "```":
+                    lines = lines[:-1]
+                content = "\n".join(lines)
+
+            return content.strip()
     except Exception as e:
         raise RuntimeError(f"Failed to generate {file_type} content: {e}")
 
@@ -74,8 +87,25 @@ You are creating a file for an amplifier scenario tool named '{tool_name}'.
 Requirements:
 {json.dumps(requirements, indent=2)}
 
-Common import patterns from exemplars:
-{json.dumps(patterns.get("import_patterns", [])[:10], indent=2)}
+CRITICAL: Use ONLY these verified CCSDK imports (from blog_writer/article_illustrator):
+```python
+from amplifier.ccsdk_toolkit import ClaudeSession
+from amplifier.ccsdk_toolkit import SessionOptions
+from amplifier.ccsdk_toolkit.defensive import parse_llm_json
+from amplifier.ccsdk_toolkit.defensive import retry_with_feedback
+from amplifier.utils.logger import get_logger
+```
+
+Standard CCSDK pattern:
+```python
+options = SessionOptions(system_prompt="...", retry_attempts=2)
+async with ClaudeSession(options) as session:
+    response = await session.query(prompt)
+    return response.content.strip()
+```
+
+DO NOT use: CCSDKFactory, agent_client, async_client, or any other invented APIs.
+ONLY use the imports shown above.
 """
 
     # File-specific prompts
@@ -157,7 +187,27 @@ The file should:
 5. Integrate with CCSDK for AI operations
 6. Follow the single responsibility principle
 
-Return ONLY the Python code, no explanations."""
+Return ONLY the Python code, no explanations.""",
+
+        "HOW_TO_CREATE": f"""{base_context}
+
+Generate a HOW_TO_CREATE_YOUR_OWN.md file for this scenario tool.
+
+This document teaches others HOW THE TOOL WAS CREATED, not how to use it.
+
+Follow the EXACT pattern from scenarios/blog_writer/HOW_TO_CREATE_YOUR_OWN.md:
+1. Start with: "You don't need to be a programmer. You just need to describe what you want."
+2. Section: "What the Creator Did" - describe the thinking process
+3. Section: "How You Can Create Your Own Tool" - 6-step process
+4. Section: "Real Examples" - beginner/intermediate/advanced tool ideas
+5. Section: "Key Principles" - metacognitive recipe
+6. Emphasize the collaborative creation process
+7. Focus on the thinking/approach, not implementation details
+
+Study scenarios/blog_writer/HOW_TO_CREATE_YOUR_OWN.md and scenarios/article_illustrator/HOW_TO_CREATE_YOUR_OWN.md
+before generating to match their style and structure exactly.
+
+Return ONLY the Markdown content, no explanations."""
     }
 
     # Return the appropriate prompt or a generic one

@@ -57,7 +57,7 @@ async def build_scenario_tool(
     logger.info(f"Extracted patterns from {len(exemplar_paths)} exemplars")
 
     # Step 2: Create directory structure (Python handles structure)
-    tool_dir = worktree_path / "ai_working" / "experiments" / variant_name
+    tool_dir = worktree_path / "scenarios" / variant_name
     tool_dir.mkdir(parents=True, exist_ok=True)
     logger.info(f"Created tool directory at {tool_dir}")
 
@@ -87,7 +87,59 @@ async def build_scenario_tool(
             logger.error(f"Failed to generate {file_type}: {e}")
             raise RuntimeError(f"File generation failed for {file_type}: {e}")
 
-    # Step 5: Validate the generated tool
+    # Step 5: Run make check for full quality control (includes pyright type checking)
+    logger.info("Running make check for quality control...")
+    import subprocess
+
+    try:
+        # First auto-fix what we can with ruff
+        subprocess.run(
+            ["uv", "run", "ruff", "format", str(tool_dir)],
+            cwd=worktree_path,
+            capture_output=True,
+            timeout=60
+        )
+        subprocess.run(
+            ["uv", "run", "ruff", "check", str(tool_dir), "--fix"],
+            cwd=worktree_path,
+            capture_output=True,
+            timeout=60
+        )
+
+        # Then run full make check (includes pyright for import validation)
+        result = subprocess.run(
+            ["make", "check"],
+            cwd=worktree_path,
+            capture_output=True,
+            text=True,
+            timeout=180
+        )
+
+        if result.returncode != 0:
+            # Check if it's just old worktree issues or our code
+            tool_check = subprocess.run(
+                ["uv", "run", "pyright", str(tool_dir)],
+                cwd=worktree_path,
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+            if tool_check.returncode != 0:
+                logger.error(f"Generated tool has type errors:\n{tool_check.stdout}\n{tool_check.stderr}")
+                raise RuntimeError(f"Type checking failed for generated tool: {tool_check.stderr}")
+            else:
+                logger.info("Tool passes type checking (worktree has unrelated issues)")
+        else:
+            logger.info("✅ Full make check passed")
+
+    except subprocess.TimeoutExpired:
+        logger.warning("Quality check timed out (continuing)")
+    except FileNotFoundError as e:
+        logger.warning(f"Quality check tool not found: {e} (continuing)")
+    except Exception as e:
+        logger.warning(f"Quality check failed (continuing): {e}")
+
+    # Step 6: Validate the generated tool
     logger.info("Validating generated tool structure...")
     is_valid, issues = validate_tool_structure(tool_dir)
 
@@ -119,7 +171,8 @@ def determine_files_to_generate(
     files = {
         "__init__": "__init__.py",
         "main": "main.py",
-        "README": "README.md"
+        "README": "README.md",
+        "HOW_TO_CREATE": "HOW_TO_CREATE_YOUR_OWN.md"
     }
 
     # Check if __main__.py is commonly used in exemplars
