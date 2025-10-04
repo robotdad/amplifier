@@ -64,7 +64,7 @@ def identify_key_files(tool_path: Path) -> dict[str, Path | None]:
     Returns:
         Dictionary mapping file types to their paths
     """
-    structure = {
+    structure: dict[str, Path | None] = {
         "__init__": None,
         "__main__": None,
         "main": None,
