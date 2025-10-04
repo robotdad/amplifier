@@ -145,29 +145,49 @@ def list_experiments() -> list[str]:
     return [d.name for d in experiments_dir.iterdir() if d.is_dir() and not d.name.startswith(".")]
 
 
-def cleanup_experiment(name: str, remove_data: bool = True) -> None:
+def cleanup_experiment(name: str, remove_data: bool = True, delete_branches: bool = False) -> None:
     """
     Remove worktrees and optionally data for an experiment.
 
     Args:
         name: Experiment name to clean up
         remove_data: If True, also remove data directory (default: True)
+        delete_branches: If True, delete associated git branches (default: False)
 
     Example:
-        >>> cleanup_experiment("old-experiment")  # Remove everything
-        >>> cleanup_experiment("keep-data", remove_data=False)  # Keep results
+        >>> cleanup_experiment("old-experiment")  # Remove worktrees and data
+        >>> cleanup_experiment("old", delete_branches=True)  # Also delete git branches
 
     Note:
         This removes git worktrees and optionally the data directory.
         Use with caution - operation cannot be undone.
     """
     import shutil
+    import subprocess
 
     from amplifier.config.paths import paths
+
+    # Get list of branches before cleanup (for reporting)
+    result = subprocess.run(["git", "branch", "--list", f"{name}-*"], capture_output=True, text=True)
+    branches = [b.strip().replace("* ", "") for b in result.stdout.strip().split("\n") if b.strip()]
 
     # Clean up worktrees
     manager = WorktreeManager(name)
     manager.cleanup_worktrees()
+
+    # Report on branches
+    if branches:
+        print(f"\nAssociated git branches: {', '.join(branches)}")
+        if delete_branches:
+            for branch in branches:
+                try:
+                    subprocess.run(["git", "branch", "-D", branch], check=True, capture_output=True)
+                    print(f"  Deleted branch: {branch}")
+                except subprocess.CalledProcessError:
+                    print(f"  ⚠️  Could not delete branch: {branch} (may be in use)")
+        else:
+            print(f"  To delete: git branch -D {' '.join(branches)}")
+            print(f'  Or re-run: make parallel-explore-cleanup NAME="{name}" DELETE_BRANCHES=true')
 
     # Optionally remove data directory
     if remove_data:

@@ -621,9 +621,11 @@ parallel-explore-results: ## Show results for an experiment. Usage: make paralle
 	@echo "📊 Results for: $(NAME)"
 	@cat .data/parallel_explorer/$(NAME)/results/*.json 2>/dev/null || echo "No results found"
 
-parallel-explore-cleanup: ## Clean up an experiment. Usage: make parallel-explore-cleanup NAME="exp-name"
+parallel-explore-cleanup: ## Clean up an experiment. Usage: make parallel-explore-cleanup NAME="exp-name" [DELETE_BRANCHES=true]
 	@if [ -z "$(NAME)" ]; then \
 		echo "Error: NAME required. Usage: make parallel-explore-cleanup NAME=\"my-experiment\""; \
 		exit 1; \
 	fi
-	@uv run python -c "from scenarios.parallel_explorer import cleanup_experiment; cleanup_experiment('$(NAME)'); print('✅ Cleaned up experiment: $(NAME)')"
+	@delete_branches="False"; \
+	if [ "$(DELETE_BRANCHES)" = "true" ]; then delete_branches="True"; fi; \
+	uv run python -c "from scenarios.parallel_explorer import cleanup_experiment; cleanup_experiment('$(NAME)', delete_branches=$$delete_branches); print('✅ Cleaned up experiment: $(NAME)')"
