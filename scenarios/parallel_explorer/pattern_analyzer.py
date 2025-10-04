@@ -97,9 +97,8 @@ def identify_key_files(tool_path: Path) -> dict[str, Path | None]:
             structure["cli_entry"] = file_path
 
         # Identify core logic files (those with main functions/classes)
-        if "async def main" in content or "def main" in content or "class" in content:
-            if not structure["core_logic"]:
-                structure["core_logic"] = file_path
+        if ("async def main" in content or "def main" in content or "class" in content) and not structure["core_logic"]:
+            structure["core_logic"] = file_path
 
     return structure
 
