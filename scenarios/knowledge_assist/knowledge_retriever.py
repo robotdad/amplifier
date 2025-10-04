@@ -75,7 +75,8 @@ class KnowledgeRetriever:
                         if "concepts" in entry:
                             for concept in entry["concepts"]:
                                 if isinstance(concept, dict):
-                                    concept_text = concept.get("text", "")
+                                    # Use "name" field for concepts, not "text"
+                                    concept_text = concept.get("name", "")
                                 else:
                                     concept_text = str(concept)
 
@@ -89,7 +90,14 @@ class KnowledgeRetriever:
                         if "relationships" in entry:
                             for rel in entry["relationships"]:
                                 if isinstance(rel, dict):
-                                    rel_text = rel.get("text", "")
+                                    # Build relationship text from subject/predicate/object
+                                    subject = rel.get("subject", "")
+                                    predicate = rel.get("predicate", "")
+                                    obj = rel.get("object", "")
+                                    if subject and predicate and obj:
+                                        rel_text = f"{subject} {predicate} {obj}"
+                                    else:
+                                        rel_text = ""
                                 else:
                                     rel_text = str(rel)
 
@@ -117,7 +125,8 @@ class KnowledgeRetriever:
                         if "patterns" in entry:
                             for pattern in entry["patterns"]:
                                 if isinstance(pattern, dict):
-                                    pattern_text = pattern.get("text", "")
+                                    # Use "name" field for patterns, not "text"
+                                    pattern_text = pattern.get("name", "")
                                 else:
                                     pattern_text = str(pattern)
 
@@ -180,11 +189,13 @@ class KnowledgeRetriever:
                         if isinstance(item, str):
                             if any(term in item.lower() for term in search_text.split()):
                                 return True
-                        elif (
-                            isinstance(item, dict)
-                            and "text" in item
-                            and any(term in item["text"].lower() for term in search_text.split())
-                        ):
-                            return True
+                        elif isinstance(item, dict):
+                            # Check various possible field names for text content
+                            text_fields = ["text", "name", "description", "subject", "predicate", "object"]
+                            for text_field in text_fields:
+                                if text_field in item:
+                                    field_content = str(item[text_field])
+                                    if any(term in field_content.lower() for term in search_text.split()):
+                                        return True
 
         return False

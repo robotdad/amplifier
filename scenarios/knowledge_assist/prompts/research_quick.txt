@@ -28,7 +28,9 @@
 
 ## Instructions
 
-Synthesize the above knowledge into a comprehensive research document that addresses the topic and research focus. Your response should:
+Synthesize the above knowledge into a comprehensive research document that thoroughly addresses the topic and research focus with detailed analysis and practical insights.
+
+Your response should:
 
 1. **Title**: Create a clear, informative title that captures the essence of the research
 

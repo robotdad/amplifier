@@ -41,7 +41,7 @@ class KnowledgeAssistConfig(BaseSettings):
         description="Model to use when web search is needed - consider gpt-4o-search-preview if available",
     )
     temperature: float = Field(default=0.7, description="Temperature for synthesis")
-    max_tokens: int = Field(default=2000, description="Maximum tokens for response")
+    max_tokens: int = Field(default=16000, description="Maximum tokens for response - allows comprehensive reports")
 
     # Retrieval settings
     max_concepts: int = Field(default=10, description="Maximum concepts to retrieve")

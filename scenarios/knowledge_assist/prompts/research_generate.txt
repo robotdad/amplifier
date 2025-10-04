@@ -36,7 +36,7 @@ Question: {QUESTION}
 
 ## Your Task
 
-Generate a comprehensive, well-structured research report (800-1200 words) that:
+Generate a comprehensive, detailed research report that thoroughly addresses the topic with substantive analysis and practical insights.
 
 ### Content Requirements
 

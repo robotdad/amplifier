@@ -79,6 +79,8 @@ class SynthesisEngine:
                 logger.info("Web search enabled - using Responses API with web_search tool")
 
             # Call the Responses API with the correct parameters
+            # Note: Responses API doesn't support max_tokens parameter
+            # The model will generate as much as needed based on the prompt
             response = self.client.responses.create(
                 model="gpt-4o",  # Use gpt-4o model
                 input=prompt,  # Single string input, NOT messages array
