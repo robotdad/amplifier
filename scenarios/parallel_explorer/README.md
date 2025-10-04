@@ -1,245 +1,543 @@
-# Parallel Explorer: Compare Implementation Approaches in Parallel
+# Parallel Explorer: Explore Alternative Scenario Tool Implementations
 
-**Find the best solution by exploring multiple approaches simultaneously.**
+**Compare different approaches to building amplifier scenario tools by implementing them in parallel.**
 
 ## The Problem
 
-You have implementation choices to make, but:
-- **Choosing is hard** - Functional vs OOP vs reactive - which is best for your use case?
-- **Serial exploration is slow** - Try one approach, wait for results, then try another...
+You want to build an amplifier scenario tool, but:
+- **Choosing an approach is hard** - Should it be simple or feature-rich? Which features matter most?
+- **Serial exploration is slow** - Build one approach, test it, then maybe try another...
 - **Theory vs reality** - What sounds good on paper may not work in practice
-- **No empirical comparison** - Hard to compare approaches objectively without building them all
+- **No empirical comparison** - Hard to compare approaches objectively without building them
 
 ## The Solution
 
-Parallel Explorer is a tool that:
+Parallel Explorer creates multiple complete scenario tools (like blog_writer, article_illustrator) using different approaches simultaneously, so you can compare real implementations and choose the best fit.
 
-1. **Creates isolated worktrees** - Each approach gets its own clean git workspace
-2. **Runs parallel Claude sessions** - Multiple implementations happen simultaneously
-3. **Applies ultrathink methodology** - Each session gets full ultrathink instructions for quality
-4. **Compares real results** - See actual implementations, not theoretical discussions
-5. **Generates comparison reports** - Understand trade-offs empirically
+## What It Generates
 
-**The result**: Empirical comparison of real implementations in a fraction of the time.
+**Input**: A tool idea with requirements and 2-3 variant approaches
+
+**Output**: Complete, working scenario tools at `scenarios/{tool}_{variant}/` including:
+- Python package structure (`__init__.py`, `__main__.py`, `main.py`)
+- CLI interface with click
+- Core implementation modules
+- Comprehensive documentation (README.md, HOW_TO_CREATE_YOUR_OWN.md)
+- Following blog_writer/article_illustrator patterns
 
 ## Quick Start
 
 **Prerequisites**: Complete the [Amplifier setup instructions](../../README.md#-step-by-step-setup) first.
 
-### Basic Usage
+### Recommended Workflow: Using /explore-variants
 
-```bash
-make parallel-explore \
-  NAME=rate-limiter \
-  VARIANTS='{"functional":"pure functions","oop":"classes with SOLID"}'
+**Step 1**: Start an interactive session to capture your idea:
+
+```
+/explore-variants
 ```
 
-The tool will:
-1. Create isolated worktrees for each variant
-2. Spawn parallel Claude sessions with ultrathink
-3. Monitor progress and save results
-4. Generate comparison report
-5. Leave implementations ready to review
+Claude Code will guide you through defining:
+- Tool name and purpose
+- Key requirements
+- Common context (shared across variants)
+- Variant approaches with their unique focuses
 
-### Your First Exploration
+This creates `.data/parallel_explorer/{name}/context.json`
 
-1. **Define your task**:
-```bash
-TASK="Implement a rate limiter for API requests"
-```
-
-2. **Choose approaches to compare**:
-```bash
-VARIANTS='{
-  "token-bucket":"Token bucket algorithm with refill rate",
-  "sliding-window":"Sliding window with Redis backend",
-  "fixed-window":"Fixed window counters (simple)"
-}'
-```
-
-3. **Run the exploration**:
-```bash
-make parallel-explore \
-  NAME=rate-limiter \
-  VARIANTS='{"token-bucket":"Token bucket algorithm","sliding-window":"Sliding window with Redis","fixed-window":"Simple fixed window"}'
-```
-
-4. **Review results** in `.data/parallel_explorer/rate-limiter/`
-
-## Usage Examples
-
-### Basic: Comparing Paradigms
+**Step 2**: Run the parallel exploration:
 
 ```bash
-make parallel-explore \
-  NAME=auth-system \
-  VARIANTS='{
-    "functional":"Pure functions with immutable state",
-    "oop":"Classes with SOLID principles",
-    "procedural":"Simple procedural approach"
-  }'
+make parallel-explore NAME="your-tool-name"
 ```
 
-**What happens**:
-- Creates 3 worktrees for isolated development
-- Spawns 3 Claude sessions in parallel
-- Each implements the auth system differently
-- Generates comparison showing trade-offs
-- All implementations saved for review
+The system loads your context and generates multiple complete scenario tools in parallel.
 
-### Advanced: Architecture Trade-offs
+### Manual Workflow: Create context.json
+
+For full control, create `.data/parallel_explorer/{name}/context.json` manually:
+
+```json
+{
+  "experiment_name": "content-analyzer",
+  "task": "Build a tool that analyzes content for readability and engagement",
+  "tool_prefix": "analyze",
+  "requirements": [
+    "Accept markdown files as input",
+    "Generate readability scores",
+    "Identify engagement patterns",
+    "Provide actionable feedback"
+  ],
+  "common_context": {
+    "input_format": "Markdown files",
+    "output_format": "JSON report with recommendations",
+    "target_users": "Content creators and bloggers"
+  },
+  "variants": {
+    "metrics-focused": {
+      "description": "Quantitative analysis with readability metrics",
+      "approach": "Calculate Flesch-Kincaid, sentiment scores, and engagement metrics. Provide numerical ratings and statistical analysis.",
+      "cli_command": "analyze-metrics",
+      "main_features": [
+        "readability_scoring",
+        "sentiment_analysis",
+        "engagement_metrics"
+      ],
+      "focus_areas": [
+        "statistical accuracy",
+        "comprehensive metrics",
+        "data visualization"
+      ]
+    },
+    "narrative-focused": {
+      "description": "Qualitative analysis of story structure and flow",
+      "approach": "Analyze narrative arc, pacing, and emotional journey. Provide storytelling feedback and structural recommendations.",
+      "cli_command": "analyze-narrative",
+      "main_features": [
+        "story_arc_analysis",
+        "pacing_evaluation",
+        "emotional_flow"
+      ],
+      "focus_areas": [
+        "narrative structure",
+        "reader engagement",
+        "storytelling quality"
+      ]
+    }
+  },
+  "success_criteria": [
+    "Provides actionable, specific feedback",
+    "Identifies concrete improvement opportunities",
+    "Output is clear and easy to understand"
+  ]
+}
+```
+
+Then run:
+```bash
+make parallel-explore NAME="content-analyzer"
+```
+
+## Understanding context.json Structure
+
+### Required Fields
+
+**`experiment_name`**: Used for directory and tool naming
+- Example: `"meeting-summarizer"` → creates `meeting_summarizer_executive`, `meeting_summarizer_technical`
+
+**`task`**: High-level description of what the tool should do
+- Be specific and clear
+- Example: `"Build a meeting notes summarizer tool that extracts decisions and actions"`
+
+**`tool_prefix`**: Prefix for make commands (future use)
+- Example: `"meeting"` → suggests `make meeting-exec`, `make meeting-tech`
+
+**`requirements`**: List of specific capabilities the tool must have
+- Be concrete and testable
+- Example: `["Take markdown input", "Extract decisions", "Generate summary"]`
+
+**`common_context`**: Information shared across all variants
+- Input/output formats
+- Target users
+- Constraints or assumptions
+- Example:
+  ```json
+  {
+    "input_format": "Markdown file with meeting notes",
+    "output_format": "Structured markdown summary",
+    "target_audience": "Team members reviewing meeting outcomes"
+  }
+  ```
+
+**`variants`**: Dictionary of approaches to explore (2-3 recommended)
+
+Each variant needs:
+- **`description`**: One-line summary of this approach
+- **`approach`**: Detailed explanation of how this variant differs
+- **`cli_command`**: Suggested command name
+- **`main_features`**: List of 2-4 key features (guides module structure)
+- **`focus_areas`**: What this variant prioritizes
+
+Optional per variant:
+- **`context`**: Additional variant-specific guidance
+- **`constraints`**: Specific limitations for this variant
+
+### Optional Fields
+
+**`success_criteria`**: List of what makes a good implementation
+- Helps guide the quality of generated tools
+- Example: `["Clear output", "Accurate extraction", "Easy to use"]`
+
+**`technical_requirements`**: Specific technical constraints
+- Example: `["Python 3.11+", "Use click for CLI", "Async/await patterns"]`
+
+## Complete Realistic Example
+
+### Scenario: Build a Code Review Assistant
+
+**Goal**: Create a tool that helps review pull requests, but explore two different approaches - one focused on code quality, one focused on architecture patterns.
+
+**Step 1**: Create `.data/parallel_explorer/code-reviewer/context.json`:
+
+```json
+{
+  "experiment_name": "code-reviewer",
+  "task": "Build a code review assistant that analyzes pull requests and provides feedback",
+  "tool_prefix": "review",
+  "requirements": [
+    "Accept git diff or file paths as input",
+    "Analyze code for issues and improvements",
+    "Generate structured feedback",
+    "Prioritize findings by importance",
+    "Provide specific, actionable recommendations"
+  ],
+  "common_context": {
+    "input_format": "Git diff, file paths, or directory",
+    "output_format": "Markdown report with prioritized findings",
+    "target_users": "Developers reviewing or submitting PRs",
+    "review_scope": "Focus on Python code in amplifier projects"
+  },
+  "variants": {
+    "quality-focused": {
+      "description": "Code quality reviewer emphasizing maintainability and best practices",
+      "approach": "Analyze code for readability, naming conventions, complexity, test coverage, and maintainability. Prioritize issues that affect long-term code health. Flag technical debt and suggest refactorings.",
+      "cli_command": "review-quality",
+      "main_features": [
+        "complexity_analysis",
+        "naming_review",
+        "test_coverage_check",
+        "maintainability_scoring"
+      ],
+      "focus_areas": [
+        "code readability",
+        "maintainability",
+        "best practices compliance",
+        "technical debt identification"
+      ],
+      "context": "Best for teams prioritizing long-term maintainability over short-term velocity"
+    },
+    "architecture-focused": {
+      "description": "Architecture reviewer emphasizing design patterns and system structure",
+      "approach": "Analyze code for architectural patterns, modularity, dependency management, and design principles. Evaluate how changes fit into overall system design. Identify pattern violations or improvement opportunities.",
+      "cli_command": "review-arch",
+      "main_features": [
+        "pattern_detection",
+        "modularity_analysis",
+        "dependency_review",
+        "design_principles_check"
+      ],
+      "focus_areas": [
+        "architectural consistency",
+        "modularity",
+        "design patterns",
+        "system-level impacts"
+      ],
+      "context": "Best for teams with established architecture wanting to maintain design coherence"
+    }
+  },
+  "success_criteria": [
+    "Identifies real, actionable issues (not theoretical)",
+    "Prioritizes findings by actual impact",
+    "Feedback is specific with examples",
+    "Recommendations are concrete and achievable",
+    "Output helps developers improve code"
+  ],
+  "technical_requirements": [
+    "Python 3.11+",
+    "Use click for CLI interface",
+    "Integrate with git for diff parsing",
+    "Use CCSDK for AI-powered analysis"
+  ]
+}
+```
+
+**Step 2**: Run the exploration:
 
 ```bash
-make parallel-explore \
-  NAME=caching \
-  VARIANTS='{
-    "simple":"In-memory dictionary with no eviction",
-    "lru":"LRU eviction with configurable size limits",
-    "redis":"Distributed Redis cache with TTL"
-  }'
+make parallel-explore NAME="code-reviewer"
 ```
 
-**What happens**:
-- Same parallel workflow
-- Each variant explores different complexity levels
-- Results show performance vs complexity trade-offs
-- Real code to evaluate, not just theory
-
-### Algorithm Comparison
+**Step 3**: Review the results:
 
 ```bash
-make parallel-explore \
-  NAME=search \
-  VARIANTS='{
-    "binary-tree":"Binary search tree implementation",
-    "hash-table":"Hash table with collision handling",
-    "trie":"Prefix tree for string searching"
-  }'
+# Two complete scenario tools created
+ls .data/parallel_explorer/code-reviewer/worktrees/quality-focused/scenarios/code_reviewer_quality_focused/
+ls .data/parallel_explorer/code-reviewer/worktrees/architecture-focused/scenarios/code_reviewer_architecture_focused/
+
+# Each has full structure:
+# - __init__.py, __main__.py, main.py
+# - CLI with click
+# - Core analysis modules
+# - README.md
+# - HOW_TO_CREATE_YOUR_OWN.md
 ```
 
-**What happens**:
-- Three different data structures implemented
-- Each optimized for different use cases
-- Compare actual code complexity and performance
-- Understand when to use each approach
+**Step 4**: Test both tools with a real PR:
+
+```bash
+cd .data/parallel_explorer/code-reviewer/worktrees/quality-focused
+python -m scenarios.code_reviewer_quality_focused --diff ../../../sample.diff
+
+cd ../architecture-focused
+python -m scenarios.code_reviewer_architecture_focused --diff ../../../sample.diff
+```
+
+**Step 5**: Compare the outputs and choose your preferred approach (or combine best aspects of both).
+
+## Why Rich Context Matters
+
+**Simple approach (doesn't work well)**:
+```bash
+VARIANTS='{"simple":"basic implementation","advanced":"full features"}'
+```
+
+This gives Claude almost no guidance about:
+- What the tool actually does
+- What features matter
+- How variants should differ
+- What success looks like
+
+**Rich context (works well)**:
+```json
+{
+  "task": "Specific tool description",
+  "requirements": ["Concrete requirement 1", "Concrete requirement 2"],
+  "variants": {
+    "variant1": {
+      "description": "Clear one-liner",
+      "approach": "Detailed explanation of this variant's unique angle",
+      "main_features": ["feature1", "feature2"],
+      "focus_areas": ["what matters most for this variant"]
+    }
+  }
+}
+```
+
+This provides:
+- Clear goal and boundaries
+- Specific requirements to implement
+- Guidance on how variants should differ
+- Context for making implementation decisions
+
+**Result**: Better quality tools that actually implement what you intended.
 
 ## How It Works
 
-### The Pipeline
+### The Flow
 
 ```
-Your Task + Variations
+1. Define Context
+   ├─> Use /explore-variants (interactive)
+   └─> Or create context.json (manual)
          ↓
-[Create Worktrees]
+2. Run Exploration
+   └─> make parallel-explore NAME="tool-name"
          ↓
-[Load Ultrathink Instructions]
+3. For Each Variant (in parallel):
+   ├─> Create git worktree
+   ├─> Analyze blog_writer & article_illustrator patterns
+   ├─> Generate scenario tool files (Python orchestrates, CCSDK generates content)
+   ├─> Run make check for quality control
+   └─> Validate structure and imports
          ↓
-[Spawn Parallel Claude Sessions]
-         ↓
-[Monitor & Save Progress]
-         ↓
-[Generate Comparison Report]
-         ↓
-    Results
+4. Review Results
+   └─> Compare implementations in worktrees
 ```
 
-### Key Components
+### Key Architecture
 
-- **WorktreeManager**: Creates isolated git worktrees for each variant
-- **ParallelOrchestrator**: Coordinates parallel Claude sessions with real CCSDK
-- **ExperimentPaths**: Manages file locations in `.data/` directory
-- **Defensive Utilities**: Handles LLM failures gracefully with retry logic
+**Code for Structure** (Python):
+- Creates worktrees
+- Orchestrates file generation
+- Runs quality checks
+- Validates completeness
 
-### Why It Works
+**AI for Intelligence** (CCSDK):
+- Generates file content
+- Implements business logic
+- Writes documentation
+- Adapts patterns from exemplars
 
-**Code handles the structure**:
-- Worktree creation and management
-- Parallel session orchestration
-- Progress tracking and state management
-- Result aggregation and reporting
+This separation ensures reliability (structured orchestration) while enabling creativity (AI-generated implementations).
 
-**AI handles the intelligence**:
-- Understanding task requirements
-- Implementing different approaches
-- Making design decisions
-- Evaluating trade-offs
+## Results & Comparison
 
-This separation means the tool is both reliable (structured code) and creative (AI implementation).
+### What Gets Created
 
-## Results Location
-
-All experiment data goes to:
 ```
-.data/parallel_explorer/{experiment-name}/
-├── progress.json               # Overall progress tracking
-├── summary.md                  # Comparison report
-└── variants/
-    ├── functional.json         # Variant-specific results
-    ├── oop.json
-    └── reactive.json
+.data/parallel_explorer/{experiment}/
+├── context.json                    # Your requirements
+├── results/
+│   ├── {variant1}_progress.json   # Build progress
+│   └── {variant2}_progress.json
+└── worktrees/
+    ├── {variant1}/                # Full git worktree
+    │   └── scenarios/{tool}_{variant1}/  # Complete scenario tool
+    └── {variant2}/
+        └── scenarios/{tool}_{variant2}/  # Complete scenario tool
 ```
 
-Worktrees with actual code:
-```
-.data/parallel_explorer/{experiment-name}/worktrees/
-├── functional/                 # Full git worktree
-├── oop/
-└── reactive/
-```
+Each scenario tool is a complete, working implementation you can:
+- Import and use immediately
+- Copy to main project scenarios/
+- Study to understand the approach
+- Extend or modify as needed
+
+### Comparing Variants
+
+**What to Compare**:
+1. **Code complexity** - Which is easier to understand and maintain?
+2. **Feature completeness** - Which better implements the requirements?
+3. **Documentation quality** - Which is better explained?
+4. **CLI usability** - Which has better command-line interface?
+5. **Actual functionality** - Run both with real inputs, compare outputs
+
+**How to Choose**:
+- Not about "best" - about "best for your needs"
+- Consider your team's skills and preferences
+- Think about maintenance burden
+- Match to actual use case requirements
+- You can combine best aspects from multiple variants
 
 ## Cleanup
 
-```bash
-# Remove experiment data and worktrees
-make parallel-explore-cleanup NAME=rate-limiter
+### List Experiments
 
-# Or use Python
-from scenarios.parallel_explorer import cleanup_experiment
-cleanup_experiment("rate-limiter")
+```bash
+make parallel-explore-list
 ```
 
-## Configuration
+### View Results
 
-### Command-Line Options
+```bash
+make parallel-explore-results NAME="experiment-name"
+```
+
+### Clean Up
+
+```bash
+# Remove worktrees and data (keeps git branches)
+make parallel-explore-cleanup NAME="experiment-name"
+
+# Also delete git branches
+make parallel-explore-cleanup NAME="experiment-name" DELETE_BRANCHES=true
+```
+
+The cleanup command will show you which branches exist and how to delete them.
+
+## Advanced Usage
+
+### From Python
 
 ```python
-# From Python with custom options
 from scenarios.parallel_explorer import run_parallel_experiment
 
-await run_parallel_experiment(
-    name="my-experiment",
-    variants={"v1": "approach 1", "v2": "approach 2"},
-    max_parallel=3,  # Limit concurrent sessions
-    base_branch="main"  # Branch to create worktrees from
+# With saved context
+results = run_from_saved_context("tool-name")
+
+# Or programmatically
+results = await run_parallel_experiment(
+    name="tool-name",
+    variants={
+        "variant1": "description1",
+        "variant2": "description2"
+    },
+    max_parallel=2,
+    timeout_minutes=15
 )
 ```
 
-### Make Options
+### Customizing Context
 
-```bash
-# All options
-make parallel-explore \
-  NAME=experiment \
-  VARIANTS='{"v1":"desc1","v2":"desc2"}' \
-  MAX_PARALLEL=3 \
-  BASE_BRANCH=main
+You can edit `.data/parallel_explorer/{name}/context.json` before running to:
+- Add more requirements
+- Refine variant approaches
+- Add success criteria
+- Specify technical constraints
+
+## Tips for Success
+
+### 1. Be Specific in Requirements
+
+❌ **Vague**: `["Process files", "Generate output"]`
+
+✅ **Specific**: `["Accept markdown files as input", "Extract key concepts using AI", "Generate structured JSON with findings", "Provide confidence scores for each finding"]`
+
+### 2. Make Variants Meaningfully Different
+
+❌ **Too similar**:
+```json
+{
+  "fast": "Optimize for speed",
+  "faster": "Optimize even more for speed"
+}
 ```
+
+✅ **Orthogonal approaches**:
+```json
+{
+  "speed-optimized": "Prioritize performance, use caching and async processing",
+  "accuracy-focused": "Prioritize correctness, use multiple validation passes"
+}
+```
+
+### 3. Provide Rich Context
+
+The more context you provide, the better the generated tools:
+- What problem does this solve?
+- Who will use it?
+- What's the expected workflow?
+- What makes a good vs poor implementation?
+
+### 4. Start with 2 Variants
+
+Don't try to explore 5 approaches at once:
+- 2 variants: Compare clear alternatives
+- 3 variants: Add a middle-ground option
+- 4+ variants: Only if approaches are truly distinct
+
+## Example: Meeting Summarizer
+
+See `.data/parallel_explorer/meeting-summarizer/context.json` for a complete real example showing:
+- Clear task definition
+- Specific requirements list
+- Rich common context
+- Two well-differentiated variants (executive vs technical)
+- Concrete success criteria
+
+This example demonstrates the level of detail needed for high-quality tool generation.
 
 ## Learn More
 
-- **[HOW_TO_CREATE_YOUR_OWN.md](./HOW_TO_CREATE_YOUR_OWN.md)** - Create your own parallel explorations
-- **[Amplifier](https://github.com/microsoft/amplifier)** - The framework powering this
-- **[Scenario Tools](../)** - More tools like this
+- **[HOW_TO_CREATE_YOUR_OWN.md](./HOW_TO_CREATE_YOUR_OWN.md)** - Learn how parallel_explorer was created
+- **[blog_writer](../blog_writer/)** - Example scenario tool this generates
+- **[article_illustrator](../article_illustrator/)** - Another scenario tool pattern
 
-## What's Next?
+## Troubleshooting
 
-This tool demonstrates parallel exploration with Amplifier:
+### "VARIANTS required" error
 
-1. **Use it** - Compare implementation approaches empirically
-2. **Learn from it** - See how parallel exploration accelerates learning
-3. **Build your own** - Apply this pattern to other exploration tasks
-4. **Share back** - Let others learn from your experiments!
+You need to either:
+1. Create context.json first using /explore-variants
+2. Or provide VARIANTS directly: `make parallel-explore NAME="test" VARIANTS='{"v1":"desc"}'`
+
+### "Branch already exists" error
+
+Previous run left git branches. Clean them up:
+```bash
+make parallel-explore-cleanup NAME="experiment" DELETE_BRANCHES=true
+```
+
+### Generated tools have import errors
+
+The quality control now catches these during generation. If you see import errors:
+1. Check the error message for which import failed
+2. File an issue - this shouldn't happen with current validation
+
+### Tools created but don't match requirements
+
+The variant `approach` field is critical - be very specific about what makes each variant unique and what it should prioritize.
 
 ---
 
-**Built with minimal input using Amplifier** - Parallel exploration through structured orchestration and real CCSDK integration.
+**Built with amplifier** - Exploring scenario tool approaches through parallel implementation and empirical comparison.
