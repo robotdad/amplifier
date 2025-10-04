@@ -44,6 +44,9 @@ default: ## Show essential commands
 	@echo "Blog Writing:"
 	@echo "  make blog-write      Create a blog post from your ideas"
 	@echo ""
+	@echo "Knowledge Assistant:"
+	@echo "  make knowledge-assist  Generate research from knowledge base"
+	@echo ""
 	@echo "Article Illustration:"
 	@echo "  make illustrate      Generate AI illustrations for article"
 	@echo ""
@@ -116,6 +119,9 @@ help: ## Show ALL available commands
 	@echo "BLOG WRITING:"
 	@echo "  make blog-write IDEA=<file> WRITINGS=<dir> [INSTRUCTIONS=\"...\"]  Create blog"
 	@echo "  make blog-resume       Resume most recent blog writing session"
+	@echo ""
+	@echo "KNOWLEDGE ASSISTANT:"
+	@echo "  make knowledge-assist TOPIC=\"subject\" [QUESTION=\"specific aspect\"] [OUTPUT=<path>]  Generate research report"
 	@echo ""
 	@echo "ARTICLE ILLUSTRATION:"
 	@echo "  make illustrate INPUT=<file> [OUTPUT=<path>] [STYLE=\"...\"] [APIS=\"...\"] [RESUME=true]  Generate illustrations"
@@ -521,6 +527,21 @@ blog-write-example: ## Run blog writer with example data
 	@uv run python -m scenarios.blog_writer \
 		--idea scenarios/blog_writer/tests/sample_brain_dump.md \
 		--writings-dir scenarios/blog_writer/tests/sample_writings/
+
+# Knowledge Assistant
+knowledge-assist: ## Generate research report from knowledge base. Usage: make knowledge-assist TOPIC="subject" [QUESTION="specific aspect"] [OUTPUT=path]
+	@if [ -z "$(TOPIC)" ]; then \
+		echo "Error: Please provide a topic. Usage: make knowledge-assist TOPIC=\"authentication patterns\" [QUESTION=\"best for mobile?\"]"; \
+		exit 1; \
+	fi
+	@echo "🔍 Starting knowledge assistant..."; \
+	echo "  Topic: $(TOPIC)"; \
+	if [ -n "$(QUESTION)" ]; then echo "  Question: $(QUESTION)"; fi; \
+	echo "  Output: Auto-generated in session directory"; \
+	CMD="uv run python -m scenarios.knowledge_assist --topic \"$(TOPIC)\""; \
+	if [ -n "$(QUESTION)" ]; then CMD="$$CMD --question \"$(QUESTION)\""; fi; \
+	if [ -n "$(OUTPUT)" ]; then CMD="$$CMD --output \"$(OUTPUT)\""; fi; \
+	eval $$CMD
 
 # Article Illustration
 illustrate: ## Generate AI illustrations for markdown article. Usage: make illustrate INPUT=article.md [OUTPUT=path] [STYLE="..."] [APIS="..."] [RESUME=true]
