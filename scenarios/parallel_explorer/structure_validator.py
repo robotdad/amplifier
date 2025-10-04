@@ -111,10 +111,7 @@ def validate_imports(tool_path: Path) -> bool:
 
     try:
         # Try to import the module
-        spec = importlib.util.spec_from_file_location(
-            module_name,
-            tool_path / "__init__.py"
-        )
+        spec = importlib.util.spec_from_file_location(module_name, tool_path / "__init__.py")
 
         if spec and spec.loader:
             module = importlib.util.module_from_spec(spec)
@@ -148,7 +145,7 @@ def check_cli_interface(tool_path: Path) -> bool:
             cwd=tool_path.parent,
             capture_output=True,
             text=True,
-            timeout=5
+            timeout=5,
         )
 
         # Check if help text was displayed
@@ -159,10 +156,7 @@ def check_cli_interface(tool_path: Path) -> bool:
         main_file = tool_path / "main.py"
         if main_file.exists():
             result = subprocess.run(
-                [sys.executable, str(main_file), "--help"],
-                capture_output=True,
-                text=True,
-                timeout=5
+                [sys.executable, str(main_file), "--help"], capture_output=True, text=True, timeout=5
             )
             if result.returncode == 0:
                 return True
@@ -236,10 +230,9 @@ def check_dependencies(tool_path: Path) -> list[str]:
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
                     for alias in node.names:
-                        imports_to_check.add(alias.name.split('.')[0])
-                elif isinstance(node, ast.ImportFrom):
-                    if node.module:
-                        imports_to_check.add(node.module.split('.')[0])
+                        imports_to_check.add(alias.name.split(".")[0])
+                elif isinstance(node, ast.ImportFrom) and node.module:
+                    imports_to_check.add(node.module.split(".")[0])
         except Exception:
             continue
 

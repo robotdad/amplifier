@@ -26,7 +26,7 @@ def analyze_exemplars(exemplar_paths: list[Path]) -> dict[str, Any]:
         "cli_patterns": [],
         "class_patterns": [],
         "logging_patterns": [],
-        "config_patterns": []
+        "config_patterns": [],
     }
 
     for path in exemplar_paths:
@@ -71,7 +71,7 @@ def identify_key_files(tool_path: Path) -> dict[str, Path | None]:
         "config": None,
         "README": None,
         "cli_entry": None,
-        "core_logic": None
+        "core_logic": None,
     }
 
     # Check for standard files
@@ -113,31 +113,24 @@ def extract_coding_patterns(file_path: Path) -> dict[str, Any]:
     Returns:
         Dictionary containing extracted patterns
     """
-    patterns = {
-        "imports": [],
-        "cli_patterns": [],
-        "classes": [],
-        "logging": [],
-        "config": [],
-        "async_patterns": []
-    }
+    patterns = {"imports": [], "cli_patterns": [], "classes": [], "logging": [], "config": [], "async_patterns": []}
 
     try:
         content = file_path.read_text()
 
         # Extract imports using regex (more reliable than AST for partial files)
-        import_pattern = r'^(from\s+[\w\.]+\s+import\s+.+|import\s+[\w\.]+.*)$'
+        import_pattern = r"^(from\s+[\w\.]+\s+import\s+.+|import\s+[\w\.]+.*)$"
         imports = re.findall(import_pattern, content, re.MULTILINE)
         patterns["imports"] = imports
 
         # Extract CLI patterns
         if "@click" in content:
-            cli_patterns = re.findall(r'@click\.\w+\([^)]*\)', content)
+            cli_patterns = re.findall(r"@click\.\w+\([^)]*\)", content)
             patterns["cli_patterns"] = cli_patterns
 
         # Extract logging patterns
         if "logger" in content or "logging" in content:
-            log_patterns = re.findall(r'logger\.\w+\([^)]*\)', content)[:3]  # Sample
+            log_patterns = re.findall(r"logger\.\w+\([^)]*\)", content)[:3]  # Sample
             patterns["logging"] = log_patterns
 
         # Check for async patterns
@@ -154,7 +147,7 @@ def extract_coding_patterns(file_path: Path) -> dict[str, Any]:
                     class_info = {
                         "name": node.name,
                         "methods": [m.name for m in node.body if isinstance(m, ast.FunctionDef)],
-                        "has_init": any(m.name == "__init__" for m in node.body if isinstance(m, ast.FunctionDef))
+                        "has_init": any(m.name == "__init__" for m in node.body if isinstance(m, ast.FunctionDef)),
                     }
                     patterns["classes"].append(class_info)
         except SyntaxError:
@@ -163,7 +156,7 @@ def extract_coding_patterns(file_path: Path) -> dict[str, Any]:
 
         # Extract configuration patterns
         if "Config" in content or "config" in content.lower():
-            config_patterns = re.findall(r'(class\s+\w*Config.*:|config\s*=\s*{)', content)
+            config_patterns = re.findall(r"(class\s+\w*Config.*:|config\s*=\s*{)", content)
             patterns["config"] = config_patterns[:3]  # Sample
 
     except Exception:
@@ -189,7 +182,7 @@ def extract_tool_metadata(tool_path: Path) -> dict[str, Any]:
         "file_count": len(list(tool_path.glob("*.py"))),
         "is_async": False,
         "uses_click": False,
-        "uses_ccsdk": False
+        "uses_ccsdk": False,
     }
 
     # Check for async and library usage

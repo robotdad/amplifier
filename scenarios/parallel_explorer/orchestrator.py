@@ -280,7 +280,7 @@ class ParallelOrchestrator:
             # Identify exemplars to learn from
             exemplars = [
                 worktree_path / "scenarios" / "blog_writer",
-                worktree_path / "scenarios" / "article_illustrator"
+                worktree_path / "scenarios" / "article_illustrator",
             ]
 
             # Prepare requirements from context or task variation
@@ -297,7 +297,7 @@ class ParallelOrchestrator:
                     "task_variation": task_variation,
                     "experiment_name": self.experiment_name,
                     "variant_name": variant_name,
-                    "description": f"Variant {variant_name} of {self.experiment_name}"
+                    "description": f"Variant {variant_name} of {self.experiment_name}",
                 }
 
             # Build the scenario tool with Python orchestration
@@ -305,7 +305,7 @@ class ParallelOrchestrator:
                 variant_name=f"{self.experiment_name}_{variant_name}",
                 requirements=requirements,
                 worktree_path=worktree_path,
-                exemplar_paths=exemplars
+                exemplar_paths=exemplars,
             )
 
             # Validate the generated tool
@@ -320,16 +320,17 @@ class ParallelOrchestrator:
                 self.results[variant_name].end_time = datetime.now()
 
                 # Save progress
-                self.save_progress(variant_name, "completed", {
-                    "tool_path": str(tool_path),
-                    "duration": (datetime.now() - start_time).total_seconds()
-                })
+                self.save_progress(
+                    variant_name,
+                    "completed",
+                    {"tool_path": str(tool_path), "duration": (datetime.now() - start_time).total_seconds()},
+                )
 
                 return {
                     "status": "completed",
                     "tool_path": str(tool_path),
                     "output": f"Created scenario tool at {tool_path}",
-                    "session_id": session_id
+                    "session_id": session_id,
                 }
             error_msg = f"Validation failed: {', '.join(issues)}"
             logger.error(f"Tool validation failed for {variant_name}: {error_msg}")
@@ -342,11 +343,7 @@ class ParallelOrchestrator:
             # Save progress
             self.save_progress(variant_name, "failed", {"error": error_msg})
 
-            return {
-                "status": "failed",
-                "error": error_msg,
-                "session_id": session_id
-            }
+            return {"status": "failed", "error": error_msg, "session_id": session_id}
 
         except Exception as e:
             logger.error(f"Failed to build variant {variant_name}: {e}")
@@ -359,11 +356,7 @@ class ParallelOrchestrator:
             # Save progress
             self.save_progress(variant_name, "failed", {"error": str(e)})
 
-            return {
-                "status": "failed",
-                "error": str(e),
-                "session_id": session_id
-            }
+            return {"status": "failed", "error": str(e), "session_id": session_id}
 
     def _validate_implementation(self, worktree_path: Path, variant_name: str) -> bool:
         """Validate that actual implementation files were created.

@@ -18,10 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 async def build_scenario_tool(
-    variant_name: str,
-    requirements: dict[str, Any],
-    worktree_path: Path,
-    exemplar_paths: list[Path] | None = None
+    variant_name: str, requirements: dict[str, Any], worktree_path: Path, exemplar_paths: list[Path] | None = None
 ) -> Path:
     """Build complete scenario tool following amplifier patterns.
 
@@ -49,7 +46,7 @@ async def build_scenario_tool(
         # Default exemplars if none provided
         exemplar_paths = [
             worktree_path / "scenarios" / "blog_writer",
-            worktree_path / "scenarios" / "article_illustrator"
+            worktree_path / "scenarios" / "article_illustrator",
         ]
 
     logger.info("Analyzing exemplar scenarios for patterns...")
@@ -72,10 +69,7 @@ async def build_scenario_tool(
         try:
             # Generate content using CCSDK
             content = await generate_file_content(
-                file_type=file_type,
-                tool_name=variant_name,
-                requirements=requirements,
-                patterns=patterns
+                file_type=file_type, tool_name=variant_name, requirements=requirements, patterns=patterns
             )
 
             # Write the generated content (Python handles I/O)
@@ -94,41 +88,24 @@ async def build_scenario_tool(
     try:
         # First auto-fix what we can with ruff
         subprocess.run(
-            ["uv", "run", "ruff", "format", str(tool_dir)],
-            cwd=worktree_path,
-            capture_output=True,
-            timeout=60
+            ["uv", "run", "ruff", "format", str(tool_dir)], cwd=worktree_path, capture_output=True, timeout=60
         )
         subprocess.run(
-            ["uv", "run", "ruff", "check", str(tool_dir), "--fix"],
-            cwd=worktree_path,
-            capture_output=True,
-            timeout=60
+            ["uv", "run", "ruff", "check", str(tool_dir), "--fix"], cwd=worktree_path, capture_output=True, timeout=60
         )
 
         # Then run full make check (includes pyright for import validation)
-        result = subprocess.run(
-            ["make", "check"],
-            cwd=worktree_path,
-            capture_output=True,
-            text=True,
-            timeout=180
-        )
+        result = subprocess.run(["make", "check"], cwd=worktree_path, capture_output=True, text=True, timeout=180)
 
         if result.returncode != 0:
             # Check if it's just old worktree issues or our code
             tool_check = subprocess.run(
-                ["uv", "run", "pyright", str(tool_dir)],
-                cwd=worktree_path,
-                capture_output=True,
-                text=True,
-                timeout=60
+                ["uv", "run", "pyright", str(tool_dir)], cwd=worktree_path, capture_output=True, text=True, timeout=60
             )
             if tool_check.returncode != 0:
                 logger.error(f"Generated tool has type errors:\n{tool_check.stdout}\n{tool_check.stderr}")
                 raise RuntimeError(f"Type checking failed for generated tool: {tool_check.stderr}")
-            else:
-                logger.info("Tool passes type checking (worktree has unrelated issues)")
+            logger.info("Tool passes type checking (worktree has unrelated issues)")
         else:
             logger.info("✅ Full make check passed")
 
@@ -155,10 +132,7 @@ async def build_scenario_tool(
     return tool_dir
 
 
-def determine_files_to_generate(
-    patterns: dict[str, Any],
-    requirements: dict[str, Any]
-) -> dict[str, str]:
+def determine_files_to_generate(patterns: dict[str, Any], requirements: dict[str, Any]) -> dict[str, str]:
     """Determine which files need to be generated based on patterns and requirements.
 
     Args:
@@ -172,7 +146,7 @@ def determine_files_to_generate(
         "__init__": "__init__.py",
         "main": "main.py",
         "README": "README.md",
-        "HOW_TO_CREATE": "HOW_TO_CREATE_YOUR_OWN.md"
+        "HOW_TO_CREATE": "HOW_TO_CREATE_YOUR_OWN.md",
     }
 
     # Check if __main__.py is commonly used in exemplars
@@ -195,11 +169,7 @@ def determine_files_to_generate(
     return files
 
 
-async def build_minimal_tool(
-    tool_name: str,
-    tool_dir: Path,
-    requirements: dict[str, Any]
-) -> None:
+async def build_minimal_tool(tool_name: str, tool_dir: Path, requirements: dict[str, Any]) -> None:
     """Build a minimal working scenario tool.
 
     This creates the absolute minimum files needed for a functioning tool.
@@ -271,10 +241,7 @@ python -m {tool_name} --input "test"
 
 
 async def build_from_template(
-    tool_name: str,
-    tool_dir: Path,
-    template_path: Path,
-    requirements: dict[str, Any]
+    tool_name: str, tool_dir: Path, template_path: Path, requirements: dict[str, Any]
 ) -> None:
     """Build a tool by copying and adapting a template.
 

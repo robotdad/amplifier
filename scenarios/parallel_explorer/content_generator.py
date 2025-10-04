@@ -13,10 +13,7 @@ from amplifier.ccsdk_toolkit import SessionOptions
 
 
 async def generate_file_content(
-    file_type: str,
-    tool_name: str,
-    requirements: dict[str, Any],
-    patterns: dict[str, Any]
+    file_type: str, tool_name: str, requirements: dict[str, Any], patterns: dict[str, Any]
 ) -> str:
     """Generate complete content for one file using CCSDK.
 
@@ -31,18 +28,12 @@ async def generate_file_content(
     """
     # Build focused prompt for this specific file
     prompt = build_generation_prompt(
-        file_type=file_type,
-        context={
-            "tool_name": tool_name,
-            "requirements": requirements,
-            "patterns": patterns
-        }
+        file_type=file_type, context={"tool_name": tool_name, "requirements": requirements, "patterns": patterns}
     )
 
     # Use ClaudeSession to generate content
     options = SessionOptions(
-        system_prompt="You are an expert Python developer creating amplifier scenario tools.",
-        retry_attempts=2
+        system_prompt="You are an expert Python developer creating amplifier scenario tools.", retry_attempts=2
     )
 
     try:
@@ -120,7 +111,6 @@ The file should:
 4. Follow the amplifier pattern seen in scenarios like blog_writer
 
 Return ONLY the Python code, no explanations.""",
-
         "__main__": f"""{base_context}
 
 Generate a complete __main__.py file for this scenario tool.
@@ -131,7 +121,6 @@ The file should:
 4. Follow Click CLI patterns if appropriate
 
 Return ONLY the Python code, no explanations.""",
-
         "main": f"""{base_context}
 
 Generate the main implementation file for this scenario tool.
@@ -147,7 +136,6 @@ CLI patterns from exemplars:
 {json.dumps(patterns.get("cli_patterns", [])[:5], indent=2)}
 
 Return ONLY the Python code, no explanations.""",
-
         "config": f"""{base_context}
 
 Generate a config.py file for this scenario tool.
@@ -159,7 +147,6 @@ The file should:
 5. Use Pydantic models if appropriate for configuration
 
 Return ONLY the Python code, no explanations.""",
-
         "README": f"""{base_context}
 
 Generate a comprehensive README.md file for this scenario tool.
@@ -175,7 +162,6 @@ The file should include:
 Follow the structure of successful amplifier scenario tools like blog_writer.
 
 Return ONLY the Markdown content, no explanations.""",
-
         "core_logic": f"""{base_context}
 
 Generate the core logic implementation for this scenario tool.
@@ -188,7 +174,6 @@ The file should:
 6. Follow the single responsibility principle
 
 Return ONLY the Python code, no explanations.""",
-
         "HOW_TO_CREATE": f"""{base_context}
 
 Generate a HOW_TO_CREATE_YOUR_OWN.md file for this scenario tool.
@@ -207,7 +192,7 @@ Follow the EXACT pattern from scenarios/blog_writer/HOW_TO_CREATE_YOUR_OWN.md:
 Study scenarios/blog_writer/HOW_TO_CREATE_YOUR_OWN.md and scenarios/article_illustrator/HOW_TO_CREATE_YOUR_OWN.md
 before generating to match their style and structure exactly.
 
-Return ONLY the Markdown content, no explanations."""
+Return ONLY the Markdown content, no explanations.""",
     }
 
     # Return the appropriate prompt or a generic one
@@ -250,9 +235,7 @@ Generate a complete, working implementation."""
 
 
 async def generate_variant_implementation(
-    variant_name: str,
-    task_variation: str,
-    base_requirements: dict[str, Any]
+    variant_name: str, task_variation: str, base_requirements: dict[str, Any]
 ) -> str:
     """Generate implementation for a specific variant.
 
@@ -282,8 +265,7 @@ Generate the complete implementation code.
 """
 
     options = SessionOptions(
-        system_prompt="You are an expert Python developer creating amplifier scenario tools.",
-        retry_attempts=2
+        system_prompt="You are an expert Python developer creating amplifier scenario tools.", retry_attempts=2
     )
 
     try:
