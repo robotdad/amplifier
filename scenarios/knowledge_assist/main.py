@@ -77,6 +77,18 @@ def main():
             logger.info("Retrieving knowledge from extractions...")
             knowledge = retriever.retrieve(topic, question)
 
+            # Check retrieval quality for resume case
+            total_knowledge = (
+                len(knowledge.concepts)
+                + len(knowledge.relationships)
+                + len(knowledge.insights)
+                + len(knowledge.patterns)
+            )
+            if hasattr(knowledge, "match_quality") and knowledge.match_quality == "poor":
+                logger.warning("\n⚠️  WARNING: Retrieved knowledge has LOW RELEVANCE to your query!")
+                logger.warning(f"Retrieved {total_knowledge} items but relevance scores are weak")
+                logger.info("\n🔍 Proceeding with low-quality matches - results may be off-topic")
+
             # Check if web search is needed
             web_results = None
             if engine.needs_web_search(topic, question):
@@ -113,7 +125,22 @@ def main():
                 logger.info("  4. Verify ~/.amplifier/ directory structure is intact")
                 sys.exit(1)
 
-            if total_knowledge < 3:
+            # Check if retrieval quality is acceptable (escape hatch)
+            if hasattr(knowledge, "match_quality") and knowledge.match_quality == "poor":
+                logger.warning("\n⚠️  WARNING: Retrieved knowledge has LOW RELEVANCE to your query!")
+                logger.warning(f"Retrieved {total_knowledge} items but relevance scores are weak")
+                logger.info("\nThis typically means:")
+                logger.info("  - Your knowledge base may not contain relevant content for this topic")
+                logger.info("  - The search terms might be too specific or use different terminology")
+                logger.info("  - Consider running 'make knowledge-sync' to update your knowledge base")
+                logger.info("\nSuggestions:")
+                logger.info("  - Try more general or alternative terms")
+                logger.info("  - Use different phrasing for your question")
+                logger.info("  - Check if your topic uses specialized terminology")
+                logger.info("\n🔍 Proceeding with low-quality matches - results may be off-topic or hallucinated")
+                logger.info("━" * 60 + "\n")
+
+            elif total_knowledge < 3:
                 logger.warning(f"Only found {total_knowledge} knowledge items - results may be limited")
                 logger.info("Consider using broader search terms for better results")
 

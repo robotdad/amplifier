@@ -44,10 +44,10 @@ class KnowledgeAssistConfig(BaseSettings):
     max_tokens: int = Field(default=16000, description="Maximum tokens for response - allows comprehensive reports")
 
     # Retrieval settings
-    max_concepts: int = Field(default=10, description="Maximum concepts to retrieve")
-    max_relationships: int = Field(default=8, description="Maximum relationships to retrieve")
-    max_insights: int = Field(default=5, description="Maximum insights to retrieve")
-    max_patterns: int = Field(default=5, description="Maximum patterns to retrieve")
+    max_concepts: int = Field(default=50, description="Maximum concepts to retrieve")
+    max_relationships: int = Field(default=50, description="Maximum relationships to retrieve")
+    max_insights: int = Field(default=30, description="Maximum insights to retrieve")
+    max_patterns: int = Field(default=30, description="Maximum patterns to retrieve")
 
     # Web search settings
     temporal_terms: list[str] = Field(

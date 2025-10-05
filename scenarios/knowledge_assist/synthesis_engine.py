@@ -365,7 +365,7 @@ Focus on creating a coherent narrative that connects the various pieces of knowl
 
             # Create citation_context if it doesn't exist
             if not citation_context:
-                citation_context = CitationContext(numbered_sources=[], source_map={}, citations_per_source={})
+                citation_context = CitationContext(numbered_sources=[], reference_map={})
 
             # Extract web sources from Stage 2 and add as numbered citations
             web_citation_num = len(citation_context.numbered_sources) + 1 if citation_context else 1
@@ -599,7 +599,18 @@ Return augmented insights as JSON:
             if previous_response_id:
                 kwargs["previous_response_id"] = previous_response_id
 
-            response = self.client.responses.create(**kwargs)
+            # Add timeout to prevent hanging on Stage 2
+            # Since OpenAI client is synchronous, we use the timeout parameter
+            # Note: This sets a maximum request duration of 60 seconds
+            try:
+                response = self.client.with_options(timeout=60.0).responses.create(**kwargs)
+            except Exception as timeout_error:
+                # Check if it's a timeout error
+                if "timeout" in str(timeout_error).lower():
+                    logger.error("Stage 2 web search timed out after 60 seconds")
+                    return {"augmented_insights": [], "response_id": None}
+                # Re-raise non-timeout errors
+                raise
 
             # Extract JSON from response
             content = ""
