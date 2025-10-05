@@ -355,6 +355,55 @@ Focus on creating a coherent narrative that connects the various pieces of knowl
                 logger.info("Stage 2: Skipped (no knowledge gaps identified)")
             stage2_result = None
 
+        # Update citation_context with Stage 2 web discoveries
+        if stage2_result and stage2_result.get("augmented_insights"):
+            logger.info("Adding Stage 2 web sources to citation context...")
+
+            # Import models needed for citations
+            from .citation_system import CitationContext
+            from .citation_system import SourceInfo
+
+            # Create citation_context if it doesn't exist
+            if not citation_context:
+                citation_context = CitationContext(numbered_sources=[], source_map={}, citations_per_source={})
+
+            # Extract web sources from Stage 2 and add as numbered citations
+            web_citation_num = len(citation_context.numbered_sources) + 1 if citation_context else 1
+            web_sources_added = set()  # Track unique sources
+
+            for insight in stage2_result["augmented_insights"]:
+                # Extract sources from the insight
+                for source_text in insight.get("sources", []):
+                    # Avoid duplicates
+                    if source_text not in web_sources_added:
+                        web_sources_added.add(source_text)
+
+                        # Extract URL if present in the source text
+                        import re
+
+                        url_match = re.search(r"https?://[^\s\)]+", source_text)
+                        url = url_match.group(0) if url_match else ""
+
+                        # Clean source text (remove URLs for title)
+                        title = re.sub(r"\s*\(?https?://[^\s\)]+\)?", "", source_text).strip()
+                        if not title:
+                            title = source_text
+
+                        # Add as numbered citation
+                        if citation_context:
+                            citation_context.numbered_sources.append(
+                                SourceInfo(
+                                    number=web_citation_num,
+                                    title=f"[Web] {title}",
+                                    source_id=f"web_{web_citation_num}",
+                                    url=url,
+                                    source_type="web",
+                                )
+                            )
+                        web_citation_num += 1
+
+            logger.info(f"Added {len(web_sources_added)} web sources to citations")
+
         # Stage 3: Generate comprehensive report
         logger.info("Stage 3: Generating comprehensive report...")
         synthesis_result = self._stage3_generate(
@@ -742,8 +791,20 @@ Only cite on first mention of concepts from these sources."""
 
             tokens_used = response.usage.total_tokens if hasattr(response, "usage") and response.usage else None
 
+            # Collect web citations from Stage 2
+            web_citations = []
+            if stage2_result and stage2_result.get("augmented_insights"):
+                # Add a single entry indicating web search was performed
+                web_citations.append(
+                    {
+                        "title": "Web Search Performed",
+                        "url": "",
+                        "snippet": f"Stage 2 web search augmented {len(stage2_result['augmented_insights'])} knowledge gaps",
+                    }
+                )
+
             return SynthesisResult(
-                content=content, web_citations=[], model_used=self.config.model, tokens_used=tokens_used
+                content=content, web_citations=web_citations, model_used=self.config.model, tokens_used=tokens_used
             )
 
         except Exception as e:
