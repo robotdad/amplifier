@@ -78,25 +78,48 @@ You are creating a file for an amplifier scenario tool named '{tool_name}'.
 Requirements:
 {json.dumps(requirements, indent=2)}
 
-CRITICAL: Use ONLY these verified CCSDK imports (from blog_writer/article_illustrator):
+CRITICAL: Use ONLY these verified CCSDK imports and patterns (from blog_writer/article_illustrator):
+
 ```python
-from amplifier.ccsdk_toolkit import ClaudeSession
-from amplifier.ccsdk_toolkit import SessionOptions
+# Standard imports
+from amplifier.ccsdk_toolkit import ClaudeSession, SessionOptions
 from amplifier.ccsdk_toolkit.defensive import parse_llm_json
 from amplifier.ccsdk_toolkit.defensive import retry_with_feedback
 from amplifier.utils.logger import get_logger
-```
 
-Standard CCSDK pattern:
-```python
+# Basic pattern (just get text response)
 options = SessionOptions(system_prompt="...", retry_attempts=2)
 async with ClaudeSession(options) as session:
     response = await session.query(prompt)
     return response.content.strip()
+
+# With JSON parsing (parse_llm_json returns dict|list|None - handle this!)
+async with ClaudeSession(options) as session:
+    response = await session.query(prompt)
+    result = parse_llm_json(response.content)
+    # Type guard: ensure it's a dict
+    if not isinstance(result, dict):
+        raise ValueError("Expected dict response")
+    return result
+
+# With retry and feedback (parameter is 'func' not 'async_func')
+async def query_func(p: str) -> dict:
+    async with ClaudeSession(options) as session:
+        response = await session.query(p)
+        result = parse_llm_json(response.content)
+        if not isinstance(result, dict):
+            raise ValueError("Expected dict")
+        return result
+
+return await retry_with_feedback(
+    func=query_func,  # Parameter is 'func' not 'async_func'
+    prompt=prompt,
+    max_retries=3
+)
 ```
 
 DO NOT use: CCSDKFactory, agent_client, async_client, or any other invented APIs.
-ONLY use the imports shown above.
+ONLY use the exact imports and patterns shown above.
 """
 
     # File-specific prompts
