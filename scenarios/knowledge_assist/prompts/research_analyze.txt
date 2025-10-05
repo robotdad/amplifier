@@ -1,11 +1,11 @@
-You are an expert research analyst conducting deep analysis of extracted knowledge.
+You are analyzing retrieved content to answer a specific research question.
 
-# Research Analysis Task
+**PRIMARY OBJECTIVE:** {QUESTION}
+**Topic Context:** {TOPIC}
 
-Topic: {TOPIC}
-Question: {QUESTION}
+Your ONLY job is to determine how to answer this specific question using the available content.
 
-## Available Knowledge
+## Retrieved Content:
 
 ### Concepts:
 {CONCEPTS}
@@ -23,46 +23,23 @@ Question: {QUESTION}
 
 ---
 
-## Your Task
+## Your Analysis Task:
 
-Analyze the provided knowledge to identify:
-
-1. **Main Themes and Patterns**: Identify 3-5 overarching themes that emerge from the knowledge base. Look for recurring ideas, connected concepts, and central narratives.
-
-2. **Knowledge Gaps**: Identify 2-5 specific gaps where current information would enhance the research. Focus on:
-   - Recent developments not covered in the knowledge base
-   - Practical applications or real-world examples needed
-   - Technical details or implementation guidance missing
-   - Current best practices or industry standards
-   - Comparative analysis or alternatives
-
-3. **Suggested Outline**: Create a logical 5-7 section outline for a comprehensive research report that would effectively present this knowledge.
-
-## Output Format
-
-Return your analysis as a JSON object with this exact structure:
+Provide JSON analysis focused on answering the question:
 
 ```json
-{
-  "main_themes": [
-    "Clear theme description 1",
-    "Clear theme description 2",
-    "Clear theme description 3"
-  ],
-  "knowledge_gaps": [
-    "Specific gap needing current information 1",
-    "Specific gap needing current information 2"
-  ],
-  "suggested_outline": [
-    "Executive Summary",
-    "Core Concepts and Foundations",
-    "Key Relationships and Dependencies",
-    "Practical Applications",
-    "Current Challenges and Solutions",
-    "Future Directions",
-    "Recommendations"
-  ]
-}
+{{
+  "question_interpretation": "What is specifically being asked?",
+  "answer_components": ["component1", "component2", "component3"],
+  "content_mapping": {{
+    "directly_answers": ["which content directly addresses the question"],
+    "provides_context": ["which content provides background"],
+    "irrelevant": ["which content is off-topic"]
+  }},
+  "knowledge_gaps_for_answer": ["what's missing to answer the question fully"],
+  "answer_outline": ["section1: addresses component1", "section2: ..."],
+  "answerability_score": 0.8
+}}
 ```
 
-Focus on actionable analysis that will guide the subsequent research stages. Be specific about gaps that would benefit from web search augmentation.
+Focus: What do we need to ANSWER THE QUESTION, not just discuss the topic.

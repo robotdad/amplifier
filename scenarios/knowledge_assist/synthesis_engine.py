@@ -337,21 +337,37 @@ Focus on creating a coherent narrative that connects the various pieces of knowl
             stage1_result = self._stage1_analyze(topic, question, knowledge, citation_context)
             if session:
                 session.save_stage_result("stage1", stage1_result)
-            logger.info(
-                f"Stage 1 complete: {len(stage1_result.get('main_themes', []))} themes, {len(stage1_result.get('knowledge_gaps', []))} gaps identified"
-            )
+
+            # Validate question focus if question was provided
+            if question and stage1_result.get("answerability_score", 0) < 0.3:
+                logger.warning(f"Low answerability score: {stage1_result.get('answerability_score', 0)}")
+                logger.warning("Retrieved content may not be sufficient to answer your question")
+
+            # Log results using new or old structure
+            if "answer_components" in stage1_result:
+                # New question-focused structure
+                logger.info(
+                    f"Stage 1 complete: {len(stage1_result.get('answer_components', []))} answer components, "
+                    f"{len(stage1_result.get('knowledge_gaps_for_answer', []))} gaps identified, "
+                    f"answerability: {stage1_result.get('answerability_score', 0):.1f}"
+                )
+            else:
+                # Fallback to old structure
+                logger.info(
+                    f"Stage 1 complete: {len(stage1_result.get('main_themes', []))} themes, {len(stage1_result.get('knowledge_gaps', []))} gaps identified"
+                )
 
         # Stage 2: Augment with web search (conditional)
-        if not stage2_result and stage1_result.get("knowledge_gaps"):
-            logger.info(f"Stage 2: Augmenting {len(stage1_result['knowledge_gaps'])} knowledge gaps...")
-            stage2_result = self._stage2_augment(
-                topic, question, stage1_result["knowledge_gaps"], stage1_result.get("response_id")
-            )
+        # Try new field name first, fallback to old
+        gaps = stage1_result.get("knowledge_gaps_for_answer") or stage1_result.get("knowledge_gaps")
+        if not stage2_result and gaps:
+            logger.info(f"Stage 2: Augmenting {len(gaps)} knowledge gaps...")
+            stage2_result = self._stage2_augment(topic, question, gaps, stage1_result.get("response_id"))
             if session:
                 session.save_stage_result("stage2", stage2_result)
             logger.info(f"Stage 2 complete: {len(stage2_result.get('augmented_insights', []))} insights added")
         else:
-            if not stage1_result.get("knowledge_gaps"):
+            if not gaps:
                 logger.info("Stage 2: Skipped (no knowledge gaps identified)")
             stage2_result = None
 
@@ -713,9 +729,15 @@ Generate a comprehensive, well-structured markdown report that:
 
 The report should be 2-3 pages (800-1200 words) with clear sections and practical insights."""
 
-        # Format all inputs
-        themes_text = "\n".join(f"- {t}" for t in stage1_result.get("main_themes", []))
-        outline_text = "\n".join(f"{i + 1}. {s}" for i, s in enumerate(stage1_result.get("suggested_outline", [])))
+        # Format all inputs - support both new and old structure
+        if "answer_outline" in stage1_result:
+            # New question-focused structure
+            outline_text = "\n".join(f"- {s}" for s in stage1_result.get("answer_outline", []))
+            themes_text = ""  # Not used in new structure, but needed for template replacement
+        else:
+            # Old structure fallback
+            themes_text = "\n".join(f"- {t}" for t in stage1_result.get("main_themes", []))
+            outline_text = "\n".join(f"{i + 1}. {s}" for i, s in enumerate(stage1_result.get("suggested_outline", [])))
 
         concepts_text = "\n".join(f"- {c}" for c in knowledge.concepts) if knowledge.concepts else "None found"
         relationships_text = (
@@ -756,8 +778,9 @@ Only cite on first mention of concepts from these sources."""
 
         prompt = template.replace("{TOPIC}", topic)
         prompt = prompt.replace("{QUESTION}", question if question else "General research on this topic")
-        prompt = prompt.replace("{THEMES}", themes_text)
-        prompt = prompt.replace("{OUTLINE}", outline_text)
+        prompt = prompt.replace("{THEMES}", themes_text)  # Old structure
+        prompt = prompt.replace("{OUTLINE}", outline_text)  # Old structure
+        prompt = prompt.replace("{ANSWER_OUTLINE}", outline_text)  # New structure
         prompt = prompt.replace("{CONCEPTS}", concepts_text)
         prompt = prompt.replace("{RELATIONSHIPS}", relationships_text)
         prompt = prompt.replace("{INSIGHTS}", insights_text)
