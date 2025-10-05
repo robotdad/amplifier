@@ -58,7 +58,15 @@ Amplifier helped think through the design using specialized agents:
 - Second refactor: Enhanced with richer context system
 - Third refactor: Bug fixes and stability improvements
 
-**Total time:** Initial design and implementation in one deep conversation session, followed by three refinement cycles over two days.
+**Phase 5: Architectural Redesign** (The Big Learning)
+- Discovered fundamental flaw: CCSDK was being misused for autonomous building
+- zen-architect assessment: "Philosophy alignment 3/10, current path NOT viable"
+- Complete rebuild following "code for structure, AI for intelligence"
+- Added 4 new modules (**+1,150 lines**): pattern_analyzer, content_generator, tool_builder, structure_validator
+- Fixed to use proper amplifier CLI patterns (Python orchestrates, CCSDK generates content)
+- Added full quality control (make check + pyright type validation)
+
+**Total time:** Initial design and implementation in one session, three refinement cycles, then one complete architectural redesign when testing revealed the original approach fundamentally didn't work.
 
 **The creator didn't need to know:**
 - How to manage git worktrees programmatically
@@ -158,9 +166,10 @@ The tool will evolve through refinement cycles:
 - Initial: 700 lines, working but complex
 - Refactor 1: -70 lines, simplified significantly
 - Refactor 2: Enhanced with richer context
-- Refactor 3: Bug fixes and production stability
+- Refactor 3: Bug fixes and stability
+- **Refactor 4: Complete redesign** - Discovered it didn't actually work, rebuilt from scratch following proper amplifier patterns (+1,150 lines but correct architecture)
 
-Each cycle made it **simpler** and **more aligned** with principles.
+Each cycle made it **better aligned** with principles. Sometimes that means getting simpler (refactor 1), sometimes it means rebuilding from scratch when you discover a fundamental flaw (refactor 4).
 
 ### 6. Let Philosophy Guide You
 
