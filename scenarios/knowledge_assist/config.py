@@ -59,6 +59,9 @@ class KnowledgeAssistConfig(BaseSettings):
     # Synthesis depth
     depth: str = Field(default="quick", description="Synthesis depth: quick or deep")
 
+    # Synthesis mode
+    mode: str = Field(default="research", description="Mode: research or code")
+
     @field_validator("api_key", mode="before")
     @classmethod
     def get_api_key(cls, v):

@@ -29,7 +29,13 @@ def main():
     topic = os.getenv("TOPIC")
     question = os.getenv("QUESTION")
     depth = os.getenv("DEPTH", "quick")
+    mode = os.getenv("MODE", "research")
     resume_session_id = os.getenv("RESUME")
+
+    # Validate mode
+    if mode not in ["research", "code"]:
+        logger.error(f"Invalid MODE: {mode}. Must be 'research' or 'code'")
+        sys.exit(1)
 
     # Handle resume case
     if resume_session_id:
@@ -48,10 +54,13 @@ def main():
         if question:
             logger.info(f"Research question: {question}")
         logger.info(f"Synthesis depth: {depth}")
+        logger.info(f"Synthesis mode: {mode}")
 
     try:
         # Load configuration
         config = KnowledgeAssistConfig()
+        config.depth = depth  # Override with command-line value
+        config.mode = mode  # Override with command-line value
         config.ensure_output_dir()
 
         # Initialize components (before session creation)

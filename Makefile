@@ -529,10 +529,10 @@ blog-write-example: ## Run blog writer with example data
 		--writings-dir scenarios/blog_writer/tests/sample_writings/
 
 # Knowledge Assistant
-knowledge-assist: ## Generate research report from knowledge base. Usage: make knowledge-assist TOPIC="subject" [QUESTION="specific aspect"] [DEPTH=quick|deep] [RESUME=session_id]
+knowledge-assist: ## Generate research report from knowledge base. Usage: make knowledge-assist TOPIC="subject" [QUESTION="specific aspect"] [DEPTH=quick|deep] [MODE=research|code] [RESUME=session_id]
 	@if [ -z "$(TOPIC)" ] && [ -z "$(RESUME)" ]; then \
 		echo "Error: Please provide a topic or resume a session."; \
-		echo "Usage: make knowledge-assist TOPIC=\"authentication patterns\" [QUESTION=\"best for mobile?\"] [DEPTH=quick|deep]"; \
+		echo "Usage: make knowledge-assist TOPIC=\"authentication patterns\" [QUESTION=\"best for mobile?\"] [DEPTH=quick|deep] [MODE=research|code]"; \
 		echo "   Or: make knowledge-assist RESUME=session_id"; \
 		exit 1; \
 	fi
@@ -540,10 +540,16 @@ knowledge-assist: ## Generate research report from knowledge base. Usage: make k
 	if [ -n "$(TOPIC)" ]; then echo "  Topic: $(TOPIC)"; fi; \
 	if [ -n "$(QUESTION)" ]; then echo "  Question: $(QUESTION)"; fi; \
 	if [ -n "$(DEPTH)" ]; then echo "  Depth: $(DEPTH)"; else echo "  Depth: quick (default)"; fi; \
+	if [ -n "$(MODE)" ]; then echo "  Mode: $(MODE)"; else echo "  Mode: research (default)"; fi; \
 	if [ -n "$(RESUME)" ]; then echo "  Resuming session: $(RESUME)"; fi; \
 	echo "  Output: Auto-generated in session directory"; \
-	TOPIC="$(TOPIC)" QUESTION="$(QUESTION)" DEPTH="$(DEPTH)" RESUME="$(RESUME)" \
-	uv run python -m scenarios.knowledge_assist
+	CMD="uv run python -m scenarios.knowledge_assist"; \
+	if [ -n "$(TOPIC)" ]; then export TOPIC="$(TOPIC)"; fi; \
+	if [ -n "$(QUESTION)" ]; then export QUESTION="$(QUESTION)"; fi; \
+	if [ -n "$(DEPTH)" ]; then export DEPTH="$(DEPTH)"; fi; \
+	if [ -n "$(MODE)" ]; then export MODE="$(MODE)"; fi; \
+	if [ -n "$(RESUME)" ]; then export RESUME="$(RESUME)"; fi; \
+	$$CMD
 
 # Article Illustration
 illustrate: ## Generate AI illustrations for markdown article. Usage: make illustrate INPUT=article.md [OUTPUT=path] [STYLE="..."] [APIS="..."] [RESUME=true]

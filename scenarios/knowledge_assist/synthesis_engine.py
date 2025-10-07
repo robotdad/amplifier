@@ -179,8 +179,9 @@ class SynthesisEngine:
         Returns:
             Formatted prompt
         """
-        # Load prompt template
-        prompt_path = self.prompts_dir / "research_quick.txt"
+        # Load prompt template based on mode
+        mode = getattr(self.config, "mode", "research")  # Default to research if not set
+        prompt_path = self.prompts_dir / f"{mode}_quick.txt"
         if prompt_path.exists():
             with open(prompt_path) as f:
                 template = f.read()
@@ -447,8 +448,9 @@ Focus on creating a coherent narrative that connects the various pieces of knowl
         Returns:
             JSON analysis with main_themes, knowledge_gaps, suggested_outline
         """
-        # Load analyze prompt template
-        prompt_path = self.prompts_dir / "research_analyze.txt"
+        # Load analyze prompt template based on mode
+        mode = getattr(self.config, "mode", "research")  # Default to research if not set
+        prompt_path = self.prompts_dir / f"{mode}_analyze.txt"
         if prompt_path.exists():
             with open(prompt_path) as f:
                 template = f.read()
@@ -567,8 +569,9 @@ Return your analysis as JSON with the structure:
         Returns:
             JSON with augmented insights
         """
-        # Load augment prompt template
-        prompt_path = self.prompts_dir / "research_augment.txt"
+        # Load augment prompt template based on mode
+        mode = getattr(self.config, "mode", "research")  # Default to research if not set
+        prompt_path = self.prompts_dir / f"{mode}_augment.txt"
         if prompt_path.exists():
             with open(prompt_path) as f:
                 template = f.read()
@@ -683,8 +686,9 @@ Return augmented insights as JSON:
         Returns:
             Final synthesis result
         """
-        # Load generate prompt template
-        prompt_path = self.prompts_dir / "research_generate.txt"
+        # Load generate prompt template based on mode
+        mode = getattr(self.config, "mode", "research")  # Default to research if not set
+        prompt_path = self.prompts_dir / f"{mode}_generate.txt"
         if prompt_path.exists():
             with open(prompt_path) as f:
                 template = f.read()

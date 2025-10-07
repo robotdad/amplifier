@@ -1,0 +1,97 @@
+You are creating a comprehensive, implementation-ready pattern catalog for software developers.
+
+Topic: {topic}
+{question_section}
+
+Using the analysis from Stage 1 and current best practices from Stage 2, create a practical pattern catalog.
+
+# Pattern Catalog: {topic}
+
+## Executive Summary
+Brief overview of the key patterns and when to use them.
+
+## Pattern Library
+
+For each significant pattern, provide:
+
+### Pattern: [Name]
+
+**Purpose**: What problem does this solve?
+
+**Context**: When should you consider this pattern?
+
+**Implementation Approach**:
+- Step-by-step implementation guide
+- Key components and their roles
+- Integration points
+
+**Code Example**:
+```[language]
+// Concrete, working example
+// Include comments explaining key decisions
+```
+
+**Trade-offs**:
+- ✅ Benefits: [List benefits]
+- ⚠️ Costs: [List drawbacks]
+- 📊 Complexity: [Low/Medium/High]
+
+**When to Use**:
+- Specific scenarios where this pattern excels
+- Prerequisites and dependencies
+
+**When NOT to Use**:
+- Scenarios where this pattern is overkill
+- Better alternatives for simple cases
+
+## Decision Matrix
+
+| Pattern/Approach | Performance | Complexity | Scalability | Maintainability | Use When |
+|-----------------|-------------|------------|-------------|-----------------|----------|
+| [Pattern 1] | [Rating] | [Rating] | [Rating] | [Rating] | [Scenario] |
+| [Pattern 2] | [Rating] | [Rating] | [Rating] | [Rating] | [Scenario] |
+
+## Implementation Roadmap
+
+### Phase 1: Foundation (Quick Wins)
+Patterns to implement immediately:
+1. [Pattern] - [Why first]
+2. [Pattern] - [Why first]
+
+### Phase 2: Core Architecture
+Essential patterns for robust system:
+1. [Pattern] - [Value provided]
+2. [Pattern] - [Value provided]
+
+### Phase 3: Advanced Optimization
+Patterns for mature systems:
+1. [Pattern] - [When needed]
+2. [Pattern] - [When needed]
+
+## Common Pitfalls
+
+### Anti-Pattern: [Name]
+- **Problem**: What goes wrong
+- **Better Approach**: Use [Pattern] instead
+- **Migration Path**: How to refactor
+
+## Integration Guide
+
+How these patterns work together:
+- [Pattern A] + [Pattern B] = [Synergy]
+- [Pattern C] complements [Pattern D] for [Benefit]
+
+## Testing Strategy
+
+How to test implementations:
+- Unit testing approaches for each pattern
+- Integration testing considerations
+- Performance benchmarking
+
+## References
+
+[List numbered citations from the knowledge base]
+
+---
+
+Make this catalog immediately actionable - developers should be able to pick a pattern and start implementing within minutes.

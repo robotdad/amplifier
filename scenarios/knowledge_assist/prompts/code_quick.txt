@@ -1,0 +1,47 @@
+You are an expert software architect creating an implementation-ready pattern catalog.
+
+Topic: {topic}
+{question_section}
+
+Based on the retrieved knowledge, create a focused pattern catalog that provides actionable implementation guidance.
+
+## Pattern Catalog Structure
+
+For each relevant pattern, provide:
+
+**[Pattern Name]**
+- **Purpose**: What problem this pattern solves
+- **Approach**: How to implement this pattern
+- **When to Use**: Specific scenarios where this applies
+- **Trade-offs**: Benefits vs costs/complexity
+- **Example**: Concrete code example (if applicable)
+
+## Decision Matrix
+
+Create a decision table comparing key approaches:
+| Approach | Pros | Cons | Best For |
+|----------|------|------|----------|
+| [Name] | [Benefits] | [Drawbacks] | [Use Case] |
+
+## Recommendations
+
+1. **Quick Wins**: Patterns to implement first for immediate value
+2. **Core Patterns**: Essential patterns for long-term success
+3. **Advanced Patterns**: Patterns to consider as the system matures
+
+## Code Examples
+
+For critical patterns, provide implementation-ready code snippets:
+
+```[language]
+// Example implementation
+```
+
+Focus on:
+- Practical, implementable patterns
+- Clear decision criteria
+- Working code examples where helpful
+- Trade-off analysis for architects
+- Progression from simple to advanced
+
+Make this a reference guide that developers can immediately use for implementation decisions.

@@ -56,7 +56,7 @@ make knowledge-assist RESUME=20250103_143022
 ### Command Syntax
 
 ```bash
-make knowledge-assist TOPIC="subject" [QUESTION="specific aspect"] [DEPTH=quick|deep] [RESUME=session_id]
+make knowledge-assist TOPIC="subject" [QUESTION="specific aspect"] [DEPTH=quick|deep] [MODE=research|code] [RESUME=session_id]
 ```
 
 ### Parameters
@@ -66,6 +66,7 @@ make knowledge-assist TOPIC="subject" [QUESTION="specific aspect"] [DEPTH=quick|
 | `TOPIC`    | Yes*     | Subject/domain to research                              | "microservices patterns"      |
 | `QUESTION` | No       | Specific question or aspect of interest                 | "best for high availability?" |
 | `DEPTH`    | No       | Synthesis depth: quick (~30s) or deep (~2-3min)        | "deep"                        |
+| `MODE`     | No       | Output mode: research (default) or code                 | "code"                        |
 | `RESUME`   | Yes*     | Resume interrupted session by ID                        | "20250103_143022"             |
 
 *Either `TOPIC` or `RESUME` is required
@@ -114,6 +115,26 @@ Automatically enables web search due to temporal terms ("latest", "2025") and co
 # Comprehensive 3-stage analysis (2-3 minutes)
 make knowledge-assist TOPIC="distributed systems" QUESTION="how to achieve consistency?" DEPTH=deep
 ```
+
+#### 6. Code Mode - Pattern Catalog
+
+```bash
+# Generate implementation-ready pattern catalog
+make knowledge-assist MODE=code TOPIC="authentication patterns"
+
+# Code mode with specific question
+make knowledge-assist MODE=code TOPIC="error handling" QUESTION="retry vs circuit breaker?"
+
+# Code mode with deep analysis
+make knowledge-assist MODE=code TOPIC="caching strategies" DEPTH=deep
+```
+
+The code mode generates:
+- **Pattern Library**: Named patterns with purpose, implementation approach, and trade-offs
+- **Decision Matrix**: Comparison table for choosing between approaches
+- **Code Examples**: Implementation-ready snippets with language-specific syntax
+- **Implementation Roadmap**: Phased approach from quick wins to advanced patterns
+- **Anti-Patterns**: Common mistakes and better alternatives
 
 Generates publication-quality report with deeper analysis, gap filling, and comprehensive coverage.
 

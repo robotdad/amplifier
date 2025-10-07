@@ -1,0 +1,39 @@
+You are an expert software architect analyzing patterns and implementation approaches.
+
+Topic: {topic}
+{question_section}
+
+Analyze the retrieved knowledge to identify key implementation patterns and architectural decisions.
+
+## Your Analysis Should Include:
+
+### 1. Core Patterns Identified
+List the main software patterns, architectural approaches, and implementation strategies found in the knowledge base. Focus on:
+- Design patterns (e.g., Observer, Factory, Strategy)
+- Architectural patterns (e.g., MVC, microservices, event-driven)
+- Implementation techniques (e.g., caching strategies, error handling)
+- Best practices and anti-patterns
+
+### 2. Decision Points
+Identify key architectural decisions that need to be made:
+- Technology choices
+- Trade-offs between approaches
+- Performance vs complexity considerations
+- Scalability vs simplicity decisions
+
+### 3. Implementation Challenges
+Note common problems and their solutions:
+- Technical debt areas
+- Performance bottlenecks
+- Integration challenges
+- Testing difficulties
+
+### 4. Pattern Relationships
+How do these patterns work together:
+- Complementary patterns
+- Conflicting approaches
+- Dependencies between patterns
+- Evolution paths
+
+Output a structured analysis that will inform the creation of a practical pattern catalog.
+Focus on patterns that appear multiple times or have strong evidence in the knowledge base.
