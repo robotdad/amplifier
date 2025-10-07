@@ -43,6 +43,7 @@ default: ## Show essential commands
 	@echo ""
 	@echo "Blog Writing:"
 	@echo "  make blog-write      Create a blog post from your ideas"
+	@echo "  make style-blend     Blend writing styles from multiple authors"
 	@echo ""
 	@echo "Transcription:"
 	@echo "  make transcribe      Transcribe audio/video files or YouTube URLs"
@@ -123,6 +124,8 @@ help: ## Show ALL available commands
 	@echo "BLOG WRITING:"
 	@echo "  make blog-write IDEA=<file> WRITINGS=<dir> [INSTRUCTIONS=\"...\"]  Create blog"
 	@echo "  make blog-resume       Resume most recent blog writing session"
+	@echo "  make style-blend INPUT=<dir> [OUTPUT=<dir>] [NUM_SAMPLES=N]  Blend writing styles"
+	@echo "  make style-blend-example  Run style blender with example data"
 	@echo ""
 	@echo "ARTICLE ILLUSTRATION:"
 	@echo "  make illustrate INPUT=<file> [OUTPUT=<path>] [STYLE=\"...\"] [APIS=\"...\"] [RESUME=true]  Generate illustrations"
@@ -523,6 +526,41 @@ blog-write-example: ## Run blog writer with example data
 	@uv run python -m scenarios.blog_writer \
 		--idea scenarios/blog_writer/tests/sample_brain_dump.md \
 		--writings-dir scenarios/blog_writer/tests/sample_writings/
+
+# Style Blender
+style-blend: ## Blend writing styles from multiple authors. Usage: make style-blend INPUT=writers/ OUTPUT=blended/ [NUM_SAMPLES=5] [RESUME=true]
+	@if [ -z "$(INPUT)" ]; then \
+		echo "Error: Please provide input directories. Usage: make style-blend INPUT=writers/ OUTPUT=blended/"; \
+		exit 1; \
+	fi
+	@if [ -z "$(OUTPUT)" ]; then \
+		OUTPUT="blended_samples"; \
+	fi
+	@NUM=$${NUM_SAMPLES:-3}; \
+	echo "🎨 Starting style blender..."; \
+	echo "  Input: $(INPUT)"; \
+	echo "  Output: $${OUTPUT:-blended_samples}"; \
+	echo "  Samples: $${NUM}"; \
+	if [ "$(RESUME)" = "true" ]; then \
+		echo "  Resuming from saved state..."; \
+		uv run python -m scenarios.style_blender \
+			--input-dirs "$(INPUT)" \
+			--output-dir "$${OUTPUT}" \
+			--num-samples "$${NUM}" \
+			--resume; \
+	else \
+		uv run python -m scenarios.style_blender \
+			--input-dirs "$(INPUT)" \
+			--output-dir "$${OUTPUT}" \
+			--num-samples "$${NUM}"; \
+	fi
+
+style-blend-example: ## Run style blender with example data
+	@echo "🎨 Running style blender with example data..."
+	@uv run python -m scenarios.style_blender \
+		--input-dirs scenarios/style_blender/tests/sample_writers/ \
+		--output-dir tmp/blended_example/ \
+		--num-samples 2
 
 # Transcription
 transcribe: ## Transcribe audio/video files or YouTube URLs. Usage: make transcribe SOURCE="url or file" [NO_ENHANCE=true]
