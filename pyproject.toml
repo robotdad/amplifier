@@ -6,7 +6,7 @@ authors = ["Microsoft"]
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/microsoft/amplifier"
-documentation = "https://github.com/microsoft/amplifier/blob/main/README.md"
+documentation = "https://github.com/microsoft/amplifier/blob/next/README.md"
 keywords = ["ai", "development", "modular", "assistant", "coding"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -23,16 +23,16 @@ amplifier = "amplifier_app_cli.main:main"
 [tool.poetry.dependencies]
 python = "^3.11"
 # Core and CLI
-amplifier-core = { git = "https://github.com/microsoft/amplifier-core.git", branch = "main" }
-amplifier-app-cli = { git = "https://github.com/microsoft/amplifier-app-cli.git", branch = "main" }
+amplifier-core = { git = "https://github.com/microsoft/amplifier-core.git", branch = "next" }
+amplifier-app-cli = { git = "https://github.com/microsoft/amplifier-app-cli.git", branch = "next" }
 
 # Default module set - the reference implementations
-amplifier-module-loop-basic = { git = "https://github.com/microsoft/amplifier-module-loop-basic.git", branch = "main", optional = true }
-amplifier-module-context-simple = { git = "https://github.com/microsoft/amplifier-module-context-simple.git", branch = "main", optional = true }
-amplifier-module-provider-anthropic = { git = "https://github.com/microsoft/amplifier-module-provider-anthropic.git", branch = "main", optional = true }
-amplifier-module-provider-openai = { git = "https://github.com/microsoft/amplifier-module-provider-openai.git", branch = "main", optional = true }
-amplifier-module-tool-filesystem = { git = "https://github.com/microsoft/amplifier-module-tool-filesystem.git", branch = "main", optional = true }
-amplifier-module-tool-bash = { git = "https://github.com/microsoft/amplifier-module-tool-bash.git", branch = "main", optional = true }
+amplifier-module-loop-basic = { git = "https://github.com/microsoft/amplifier-module-loop-basic.git", branch = "next", optional = true }
+amplifier-module-context-simple = { git = "https://github.com/microsoft/amplifier-module-context-simple.git", branch = "next", optional = true }
+amplifier-module-provider-anthropic = { git = "https://github.com/microsoft/amplifier-module-provider-anthropic.git", branch = "next", optional = true }
+amplifier-module-provider-openai = { git = "https://github.com/microsoft/amplifier-module-provider-openai.git", branch = "next", optional = true }
+amplifier-module-tool-filesystem = { git = "https://github.com/microsoft/amplifier-module-tool-filesystem.git", branch = "next", optional = true }
+amplifier-module-tool-bash = { git = "https://github.com/microsoft/amplifier-module-tool-bash.git", branch = "next", optional = true }
 
 [tool.poetry.extras]
 # Module bundles for different use cases
