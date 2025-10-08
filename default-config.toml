@@ -1,0 +1,59 @@
+# Default Amplifier Configuration
+# This configuration is used when no custom config is specified
+
+[provider]
+# Default to mock provider for testing
+# Change to "anthropic" or "openai" and set API keys to use real providers
+name = "mock"
+model = "mock-model"
+
+[modules]
+# Core modules - these are the reference implementations
+orchestrator = "loop-basic"
+context = "context-simple"
+
+# Available tools (will be auto-discovered if installed)
+tools = [
+    "filesystem",
+    "bash"
+]
+
+[session]
+# Maximum tokens before automatic compaction
+max_tokens = 100000
+
+# Enable automatic context compaction
+auto_compact = true
+
+# Threshold (0.0-1.0) of max_tokens before compaction triggers
+compact_threshold = 0.9
+
+# Session timeout in seconds
+timeout = 3600
+
+[logging]
+# Logging level: DEBUG, INFO, WARNING, ERROR
+level = "INFO"
+
+# Log file location (optional)
+# file = "~/.amplifier/logs/amplifier.log"
+
+[hooks]
+# Enabled hooks
+enabled = [
+    # "backup",  # Backup transcripts
+    # "formatter",  # Auto-format code
+]
+
+[paths]
+# Module discovery paths (in addition to installed packages)
+modules = [
+    "~/.amplifier/modules",
+    "./.amplifier/modules"
+]
+
+# Memory file locations
+memory = [
+    "./CLAUDE.md",
+    "./.amplifier/MEMORY.md"
+]
