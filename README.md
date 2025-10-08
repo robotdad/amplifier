@@ -25,6 +25,8 @@ Amplifier is a modular AI development assistant that helps you:
 - Extend functionality through a rich module ecosystem
 - Maintain context across long development sessions
 
+> **Note**: This package is a **reference distribution** that bundles [amplifier-core](https://github.com/microsoft/amplifier-core) (the official kernel) with reference implementations of CLI and modules. The core is stable and official; the CLI and modules serve as working examples that you can use, fork, or replace with your own implementations.
+
 ## 📦 Installation Options
 
 ### Quick Try (No Installation)

@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "amplifier"
 version = "0.1.0"
-description = "Amplifier - AI-powered modular development platform"
+description = "Amplifier reference distribution - bundles core with reference CLI and modules"
 authors = ["Microsoft"]
 readme = "README.md"
 license = "MIT"
