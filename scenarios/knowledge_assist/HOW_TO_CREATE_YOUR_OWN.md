@@ -2,19 +2,19 @@
 
 **You don't need to code. You just need to describe your thinking process.**
 
-This document tells the story of how Knowledge Assistant was created through iterative conversations, showing you can build powerful tools the same way.
+This document shows how Knowledge Assistant was created through simple conversations, so you can build powerful tools the same way.
 
-## The Creation Story
+## What the Creator Did
 
-The Knowledge Assistant wasn't built in one go. It evolved through multiple phases as we discovered what worked and what didn't. Here's the real story.
+The person who created this tool didn't write code. Here's what they actually did:
 
-### Phase 1: The Initial Need (October 3, 2025)
+### Step 1: Described What They Wanted
 
-It started with a simple desire:
+They started a conversation with Amplifier and described their goal:
 
-> *"I want to generate research papers from my knowledge base. I have 376 articles saved, and I want to be able to query them and get comprehensive reports with citations."*
+> *"I want to generate research papers from my knowledge base. I have hundreds of articles saved, and I want to query them and get comprehensive reports with proper citations."*
 
-The thinking process described was straightforward:
+The thinking process was straightforward:
 1. "Search the knowledge base for relevant content"
 2. "Synthesize the findings into a cohesive report"
 3. "Include citations to source materials"
@@ -22,7 +22,7 @@ The thinking process described was straightforward:
 
 That's it. No technical specifications, no architecture diagrams, just a clear description of the desired workflow.
 
-### Phase 2: The MVP Build (October 3, Afternoon)
+### Step 2: Let Amplifier Build the MVP
 
 Amplifier took this description and:
 - Created the core retrieval system
@@ -31,70 +31,37 @@ Amplifier took this description and:
 - Implemented session management
 - Built the CLI interface
 
-**First working version in 2 hours.**
+**First working version ready to test.**
 
-But it wasn't perfect. Several issues emerged:
+### Step 3: Iterated Through Real Use
 
-#### Issue 1: Zero Knowledge Validation
-**Problem**: Tool would crash if no knowledge was retrieved
-**Fix**: Added fail-fast validation with clear error messages
+The tool evolved as issues were discovered:
 
-#### Issue 2: Missing .env Support
-**Problem**: API keys only worked from environment variables
-**Fix**: Added BaseSettings with dotenv support
+**Example: Citations weren't clear**
+- Problem: Citations were just dumped at the end
+- Described fix: "Add inline [1], [2] markers like academic papers"
+- Amplifier implemented it
 
-#### Issue 3: Poor Citation Format
-**Problem**: Citations were just dumped at the end
-**Fix**: Added inline [1], [2] markers with reference list
+**Example: Needed deeper analysis**
+- Described: "For important research, run three stages: analyze themes, augment with web search, then generate"
+- Amplifier built the 3-stage pipeline
 
-### Phase 3: Deep Mode Addition (October 4, 2025)
+**Example: Results weren't relevant**
+- Described: "Phrase matches should score higher than individual words"
+- Amplifier implemented phrase-based relevance scoring
 
-Users wanted more comprehensive research, so we described a multi-stage process:
+**Example: Wanted technical patterns**
+- Described: "Generate pattern catalogs with code examples and decision matrices"
+- Amplifier created code mode
 
-> *"For important research, run three stages: first analyze themes and gaps, then augment with web search, then generate the final report."*
+### Step 4: Refined Until It Worked
 
-This simple description led to:
-- Three-stage pipeline implementation
-- Stage checkpoint saving
-- Resume capability for interrupted sessions
-- Progress tracking with detailed logging
-
-**Time to implement**: One conversation session.
-
-### Phase 4: Web Search Integration (October 7, 2025)
-
-The need for current information prompted:
-
-> *"When queries mention 'latest' or '2025' or 'current', automatically search the web to augment local knowledge."*
-
-Implementation included:
-- Temporal term detection
-- OpenAI Responses API integration
-- Citation merging from multiple sources
-- Seamless blending of local and web content
-
-### Phase 5: Code Mode for Patterns (October 7, Evening)
-
-Technical users needed implementation guidance:
-
-> *"Create a mode that generates pattern catalogs with code examples, decision matrices, and anti-patterns."*
-
-This resulted in:
-- New prompt templates for technical output
-- Pattern extraction and categorization
-- Code example generation
-- Decision matrix formatting
-
-### Phase 6: Relevance Scoring Improvements (October 8, 2025)
-
-Users reported poor result quality:
-
-> *"Results aren't relevant enough. We need better matching that considers phrases, not just individual words."*
-
-The fix involved:
-- Phrase-based matching algorithm
-- Weighted scoring for different match types
-- Context-aware relevance calculation
+Each iteration followed the same pattern:
+1. Use the tool
+2. Notice something that could be better
+3. Describe what you want
+4. Amplifier implements it
+5. Test again
 
 ## What Actually Happened
 
@@ -196,7 +163,7 @@ Each iteration came from describing what was missing.
 
 ### Example 1: Adding Resume Capability
 
-**Human said**: "Deep mode takes 3 minutes. If it fails partway through, we lose everything. Can we make it resumable?"
+**Human said**: "Deep mode takes a while. If it fails partway through, we lose everything. Can we make it resumable?"
 
 **Amplifier implemented**:
 ```python
@@ -213,7 +180,7 @@ if resume_session:
 
 ### Example 2: Web Search Integration
 
-**Human said**: "When someone asks about 'latest OAuth 2025 updates', we should search the web since local knowledge might be outdated."
+**Human said**: "When someone asks about 'latest updates', we should search the web since local knowledge might be outdated."
 
 **Amplifier implemented**:
 - Temporal term detection regex
@@ -267,10 +234,10 @@ You handle:
 
 ### 4. Iteration Is Power
 
-Knowledge Assistant improved through ~20 iterations:
+Knowledge Assistant improved through multiple iterations:
 - Each added a small improvement
 - Each was driven by actual usage
-- Each took minutes to implement
+- Each built on previous work
 
 ## Your Turn
 
