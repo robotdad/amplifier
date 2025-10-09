@@ -31,6 +31,7 @@ amplifier-module-loop-basic = { git = "https://github.com/microsoft/amplifier-mo
 amplifier-module-context-simple = { git = "https://github.com/microsoft/amplifier-module-context-simple.git", branch = "next", optional = true }
 amplifier-module-provider-anthropic = { git = "https://github.com/microsoft/amplifier-module-provider-anthropic.git", branch = "next", optional = true }
 amplifier-module-provider-openai = { git = "https://github.com/microsoft/amplifier-module-provider-openai.git", branch = "next", optional = true }
+amplifier-module-provider-mock = { git = "https://github.com/microsoft/amplifier-module-provider-mock.git", branch = "next", optional = true }
 amplifier-module-tool-filesystem = { git = "https://github.com/microsoft/amplifier-module-tool-filesystem.git", branch = "next", optional = true }
 amplifier-module-tool-bash = { git = "https://github.com/microsoft/amplifier-module-tool-bash.git", branch = "next", optional = true }
 
@@ -48,11 +49,15 @@ anthropic = [
 openai = [
     "amplifier-module-provider-openai"
 ]
+dev = [
+    "amplifier-module-provider-mock"
+]
 all = [
     "amplifier-module-loop-basic",
-    "amplifier-module-context-simple", 
+    "amplifier-module-context-simple",
     "amplifier-module-provider-anthropic",
     "amplifier-module-provider-openai",
+    "amplifier-module-provider-mock",
     "amplifier-module-tool-filesystem",
     "amplifier-module-tool-bash"
 ]
