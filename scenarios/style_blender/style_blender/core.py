@@ -20,14 +20,14 @@ class StyleBlender:
         """Initialize the style blender."""
         pass  # Session will be created when needed
 
-    async def blend_styles(self, profiles: list[StyleProfile]) -> BlendedStyleProfile:
+    async def blend_styles(self, profiles: list[StyleProfile]) -> tuple[BlendedStyleProfile, str]:
         """Blend multiple style profiles into one.
 
         Args:
             profiles: List of style profiles to blend
 
         Returns:
-            BlendedStyleProfile combining all inputs
+            Tuple of (BlendedStyleProfile combining all inputs, prompt used)
         """
         if len(profiles) < 2:
             raise ValueError(f"Need at least 2 profiles to blend, got {len(profiles)}")
@@ -66,10 +66,25 @@ class StyleBlender:
             session_opts = SessionOptions()
             async with ClaudeSession(session_opts) as session:
                 response = await session.query(prompt)
+
+                # Log response for debugging
+                if not response.content:
+                    raise ValueError("Empty response from AI service")
+
+                logger.debug(f"AI response (first 500 chars): {response.content[:500]}")
+
+                # Parse JSON response
                 data = parse_llm_json(response.content)
 
-            if not isinstance(data, dict):
-                raise ValueError("Invalid response format")
+                if not data:
+                    # Show actual response to help debug
+                    logger.error("❌ Failed to parse JSON from AI response")
+                    logger.error(f"Response (first 1000 chars):\n{response.content[:1000]}")
+                    raise ValueError("Could not extract JSON from AI response - see above")
+
+                if not isinstance(data, dict):
+                    logger.error(f"❌ AI returned {type(data)} instead of dict: {data}")
+                    raise ValueError(f"Expected dict, got {type(data)}")
 
             # Apply AI-generated blend
             blended.tone = data.get("blended_tone", "balanced")
@@ -89,11 +104,15 @@ class StyleBlender:
             logger.info(f"  ✓ Blending strategy: {blended.blending_strategy}")
 
         except Exception as e:
-            logger.warning(f"  AI blending failed, using statistical blend: {e}")
-            # Fallback to pure statistical blending
-            blended = self._statistical_blend(profiles, blended, all_phrases, all_patterns, all_examples)
+            logger.error(f"❌ Style blending failed: {e}")
+            logger.error("")
+            logger.error("This usually means:")
+            logger.error("  1. Missing or invalid ANTHROPIC_API_KEY")
+            logger.error("  2. Network connection issues")
+            logger.error("  3. AI service temporarily unavailable")
+            raise
 
-        return blended
+        return blended, prompt
 
     def _build_blending_prompt(self, profiles: list[StyleProfile]) -> str:
         """Build prompt for AI-powered style blending."""
@@ -115,52 +134,16 @@ class StyleBlender:
 STYLE PROFILES:
 {combined}
 
-Create a blended style that:
-1. Combines the best elements from each writer
-2. Creates a coherent, unified voice
-3. Maintains readability and flow
+Create a blended style combining the best elements from each writer. Extract:
 
-Return a JSON object with:
-- blended_tone: A tone that combines elements from all writers
-- blended_vocabulary: Appropriate vocabulary level
-- blended_sentence_structure: Sentence pattern approach
-- blended_voice: Voice preference (active/passive balance)
-- selected_phrases: List of 5 phrases that work well together
-- selected_patterns: List of 5 writing patterns to use
-- synthesized_examples: List of 3 example sentences in the blended style
-- strategy: Brief description of the blending approach (1 sentence)
-- attribution: Object mapping writer names to their main contributions
+1. blended_tone: Combined tone (e.g., "technical yet conversational", "formal with humor", "academic but accessible")
+2. blended_vocabulary: Overall vocabulary level (simple, moderate, advanced, mixed)
+3. blended_sentence_structure: Combined sentence patterns (e.g., "varied - mix of short punchy and complex flowing")
+4. blended_voice: Voice preference (mostly active, mostly passive, balanced)
+5. selected_phrases: List of 5 phrases from the writers that work well together
+6. selected_patterns: List of 5 writing patterns to combine (e.g., "uses examples", "asks questions", "tells stories")
+7. synthesized_examples: List of 3 example sentences demonstrating the blended style
+8. strategy: One sentence describing how you blended these styles
+9. attribution: Object with writer names as keys, each listing 2-3 main contributions from that writer
 
-Focus on creating a natural, coherent blend rather than awkward combinations."""
-
-    def _statistical_blend(
-        self,
-        profiles: list[StyleProfile],
-        blended: BlendedStyleProfile,
-        all_phrases: list[str],
-        all_patterns: list[str],
-        all_examples: list[str],
-    ) -> BlendedStyleProfile:
-        """Fallback statistical blending when AI fails."""
-        # Most common values
-        tones = [p.tone for p in profiles]
-        vocabs = [p.vocabulary_level for p in profiles]
-        structures = [p.sentence_structure for p in profiles]
-        voices = [p.voice for p in profiles]
-
-        blended.tone = Counter(tones).most_common(1)[0][0] if tones else "conversational"
-        blended.vocabulary_level = Counter(vocabs).most_common(1)[0][0] if vocabs else "moderate"
-        blended.sentence_structure = Counter(structures).most_common(1)[0][0] if structures else "varied"
-        blended.voice = Counter(voices).most_common(1)[0][0] if voices else "mostly active"
-
-        # Select diverse phrases and patterns
-        blended.common_phrases = list(dict.fromkeys(all_phrases))[:5]
-        blended.writing_patterns = list(dict.fromkeys(all_patterns))[:5]
-        blended.examples = all_examples[:3]
-
-        blended.blending_strategy = "statistical averaging of common elements"
-
-        # Simple attribution
-        blended.attribution = {p.writer_name: [p.tone] for p in profiles}
-
-        return blended
+Return ONLY a JSON object with these exact fields. Do not include any other text or explanation."""

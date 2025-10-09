@@ -19,24 +19,29 @@ class StyleAnalyzer:
         """Initialize the style analyzer."""
         pass  # Session will be created when needed
 
-    async def extract_style(self, writer_dir: Path) -> StyleProfile:
+    async def extract_style(self, writer_path: Path) -> StyleProfile:
         """Extract style profile from a writer's samples.
 
         Args:
-            writer_dir: Directory containing writer's samples
+            writer_path: File or directory containing writer's samples
 
         Returns:
             StyleProfile for the writer
         """
-        # Discover files recursively
-        files = list(writer_dir.glob("**/*.md"))
-        files.extend(list(writer_dir.glob("**/*.txt")))
+        # Handle single file vs directory
+        if writer_path.is_file():
+            files = [writer_path]
+            logger.info("  📄 Processing single file")
+        else:
+            # Discover files recursively
+            files = list(writer_path.glob("**/*.md"))
+            files.extend(list(writer_path.glob("**/*.txt")))
 
-        if not files:
-            logger.warning(f"No text files found in {writer_dir}")
-            return self._default_profile()
+            if not files:
+                logger.warning(f"  ⚠️  No .txt or .md files found in {writer_path}")
+                return self._default_profile()
 
-        logger.info(f"  Found {len(files)} samples")
+            logger.info(f"  📄 Found {len(files)} text files")
 
         # Read samples (limit to prevent context overflow)
         samples = []
@@ -51,7 +56,7 @@ class StyleAnalyzer:
                 logger.warning(f"  Could not read {file.name}: {e}")
 
         if not samples:
-            logger.warning(f"  Could not read any samples from {writer_dir}")
+            logger.warning(f"  Could not read any samples from {writer_path}")
             return self._default_profile()
 
         # Extract style with AI
@@ -85,7 +90,7 @@ Return ONLY a JSON object with these fields. Do not include any other text or ex
                 raise ValueError("Invalid response format")
 
             return StyleProfile(
-                writer_name=writer_dir.name,
+                writer_name=writer_path.stem if writer_path.is_file() else writer_path.name,
                 tone=data.get("tone", "conversational"),
                 vocabulary_level=data.get("vocabulary_level", "moderate"),
                 sentence_structure=data.get("sentence_structure", "varied"),

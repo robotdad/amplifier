@@ -13,21 +13,35 @@ Style Blender analyzes writing samples from multiple authors, extracts their ind
 ## Quick Start
 
 ```bash
-# Blend styles from two specific writers
-make style-blend INPUT=writers/ OUTPUT=blended_samples/
+# Blend styles from writer directories (saves to .data/style_blender/<timestamp>/)
+make style-blend INPUT=writers/
+
+# Or blend styles from specific files (useful for mixed collections)
+make style-blend INPUT="lovecraft.txt,poe.txt,king.txt"
+
+# Mix files and directories
+make style-blend INPUT="hemingway_dir/,woolf.txt,faulkner_dir/"
+
+# Or specify custom output directory
+make style-blend INPUT=writers/ OUTPUT=my_custom_output/
 
 # Or use Python directly with multiple sources
 python -m scenarios.style_blender \
-    --input-dirs writer1/ writer2/ writer3/ \
-    --output-dir my_blended_style/ \
+    --input-dirs writer1/ writer2/ writer3.txt \
     --num-samples 5
 ```
 
 Then use the blended samples with blog_writer:
 
 ```bash
+# Using default .data/ location
 python -m scenarios.blog_writer \
-    --writings-dir blended_samples/ \
+    --writings-dir .data/style_blender/20250107_143022/ \
+    --topic "Your topic here"
+
+# Or with custom output
+python -m scenarios.blog_writer \
+    --writings-dir my_custom_output/ \
     --topic "Your topic here"
 ```
 
@@ -67,10 +81,11 @@ Style Blender uses a 3-stage pipeline to create blended writing samples:
 - Applies the blended style naturally
 - Saves as markdown files ready for blog_writer
 
-## Directory Structure
+## Input Organization
 
-Your input directories should be organized like this:
+Style Blender is flexible - you can provide files or directories:
 
+**Option 1: Directory per writer** (multiple samples per writer)
 ```
 writers/
 ├── hemingway/
@@ -82,16 +97,35 @@ writers/
 └── orwell/
     ├── 1984.md
     └── animal_farm.txt
+
+make style-blend INPUT=writers/
 ```
 
-Or you can specify multiple separate directories:
-
-```bash
-python -m scenarios.style_blender \
-    -i ~/documents/writer1/ \
-    -i ~/samples/writer2/ \
-    -i ~/texts/writer3/
+**Option 2: One file per writer** (single sample per writer)
 ```
+collections/
+├── lovecraft_complete.txt
+├── poe_collected.txt
+└── king_excerpts.txt
+
+make style-blend INPUT="collections/lovecraft_complete.txt,collections/poe_collected.txt,collections/king_excerpts.txt"
+```
+
+**Option 3: Mix files and directories**
+```
+mixed/
+├── hemingway_dir/
+│   ├── sample1.txt
+│   └── sample2.txt
+├── woolf_complete.txt
+└── orwell.md
+
+make style-blend INPUT="mixed/hemingway_dir/,mixed/woolf_complete.txt,mixed/orwell.md"
+```
+
+**Key principle**: Each file or directory = one writer
+- Directory with multiple files = one writer with multiple samples
+- Single file = one writer with one sample
 
 ## Usage Examples
 
@@ -145,14 +179,13 @@ python -m scenarios.style_blender \
 The generated samples are specifically formatted for blog_writer:
 
 ```bash
-# Step 1: Blend styles
-make style-blend INPUT=favorite_writers/ OUTPUT=my_voice/
+# Step 1: Blend styles (saves to .data/style_blender/<timestamp>/)
+make style-blend INPUT=favorite_writers/
 
-# Step 2: Use blended style for blog generation
+# Step 2: Use blended style for blog generation (replace timestamp with actual)
 python -m scenarios.blog_writer \
-    --writings-dir my_voice/ \
-    --topic "The Future of AI" \
-    --output-dir blog_posts/
+    --writings-dir .data/style_blender/20250107_143022/ \
+    --idea your_idea.md
 ```
 
 ## Troubleshooting

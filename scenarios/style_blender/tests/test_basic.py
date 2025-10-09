@@ -87,9 +87,10 @@ class TestStyleBlender:
         blender = StyleBlender()
         profiles = [technical_profile, conversational_profile]
 
-        blended = await blender.blend_styles(profiles)
+        blended, prompt = await blender.blend_styles(profiles)
 
         assert blended is not None
+        assert prompt is not None
         assert len(blended.source_writers) == 2
         assert "writer_a" in blended.source_writers
         assert "writer_b" in blended.source_writers
@@ -164,16 +165,18 @@ class TestEndToEnd:
 
         # Blend styles
         blender = StyleBlender()
-        blended = await blender.blend_styles(profiles)
+        blended, blend_prompt = await blender.blend_styles(profiles)
 
         assert blended is not None
+        assert blend_prompt is not None
         assert blended.blending_strategy
 
         # Generate sample
         generator = ContentGenerator()
-        sample = await generator.generate_sample(blended)
+        sample, gen_prompt = await generator.generate_sample(blended)
 
         assert sample is not None
+        assert gen_prompt is not None
         assert len(sample) > 100
 
         # Save to file

@@ -124,7 +124,7 @@ help: ## Show ALL available commands
 	@echo "BLOG WRITING:"
 	@echo "  make blog-write IDEA=<file> WRITINGS=<dir> [INSTRUCTIONS=\"...\"]  Create blog"
 	@echo "  make blog-resume       Resume most recent blog writing session"
-	@echo "  make style-blend INPUT=<dir> [OUTPUT=<dir>] [NUM_SAMPLES=N]  Blend writing styles"
+	@echo "  make style-blend INPUT=<dir|file> or INPUT=\"dir1,file2.txt\" [OUTPUT=<dir>] [NUM_SAMPLES=N]  Blend writing styles (file or dir = writer)"
 	@echo "  make style-blend-example  Run style blender with example data"
 	@echo ""
 	@echo "ARTICLE ILLUSTRATION:"
@@ -528,31 +528,35 @@ blog-write-example: ## Run blog writer with example data
 		--writings-dir scenarios/blog_writer/tests/sample_writings/
 
 # Style Blender
-style-blend: ## Blend writing styles from multiple authors. Usage: make style-blend INPUT=writers/ OUTPUT=blended/ [NUM_SAMPLES=5] [RESUME=true]
+style-blend: ## Blend writing styles from multiple authors. Usage: make style-blend INPUT=writers/ or INPUT="file1.txt,file2.txt" or INPUT="dir1/,file2.txt" [OUTPUT=path/] [NUM_SAMPLES=5] [RESUME=true]
 	@if [ -z "$(INPUT)" ]; then \
-		echo "Error: Please provide input directories. Usage: make style-blend INPUT=writers/ OUTPUT=blended/"; \
+		echo "Error: Please provide input files or directories."; \
+		echo "Usage: make style-blend INPUT=writers/"; \
+		echo "   Or: make style-blend INPUT=\"writer1.txt,writer2.txt\""; \
+		echo "   Or: make style-blend INPUT=\"dir1/,writer2.txt,dir3/\""; \
+		echo "Note: Each file or directory = one writer"; \
+		echo "Output defaults to .data/style_blender/<timestamp>/"; \
 		exit 1; \
-	fi
-	@if [ -z "$(OUTPUT)" ]; then \
-		OUTPUT="blended_samples"; \
 	fi
 	@NUM=$${NUM_SAMPLES:-3}; \
 	echo "🎨 Starting style blender..."; \
 	echo "  Input: $(INPUT)"; \
-	echo "  Output: $${OUTPUT:-blended_samples}"; \
 	echo "  Samples: $${NUM}"; \
+	INPUT_DIRS=""; \
+	IFS=',' read -ra DIRS <<< "$(INPUT)"; \
+	for dir in "$${DIRS[@]}"; do \
+		expanded_dir=$$(eval echo "$${dir}"); \
+		INPUT_DIRS="$$INPUT_DIRS --input-dirs \"$${expanded_dir}\""; \
+	done; \
+	if [ -n "$(OUTPUT)" ]; then \
+		expanded_output=$$(eval echo "$(OUTPUT)"); \
+		INPUT_DIRS="$$INPUT_DIRS --output-dir \"$${expanded_output}\""; \
+	fi; \
 	if [ "$(RESUME)" = "true" ]; then \
 		echo "  Resuming from saved state..."; \
-		uv run python -m scenarios.style_blender \
-			--input-dirs "$(INPUT)" \
-			--output-dir "$${OUTPUT}" \
-			--num-samples "$${NUM}" \
-			--resume; \
+		eval "uv run python -m scenarios.style_blender $$INPUT_DIRS --num-samples \"$${NUM}\" --resume"; \
 	else \
-		uv run python -m scenarios.style_blender \
-			--input-dirs "$(INPUT)" \
-			--output-dir "$${OUTPUT}" \
-			--num-samples "$${NUM}"; \
+		eval "uv run python -m scenarios.style_blender $$INPUT_DIRS --num-samples \"$${NUM}\""; \
 	fi
 
 style-blend-example: ## Run style blender with example data

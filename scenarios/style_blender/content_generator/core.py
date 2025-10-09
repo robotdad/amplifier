@@ -36,7 +36,7 @@ class ContentGenerator:
         profile: BlendedStyleProfile,
         sample_number: int = 1,
         topic_hint: str | None = None,
-    ) -> str:
+    ) -> tuple[str, str]:
         """Generate a sample writing in the blended style.
 
         Args:
@@ -45,7 +45,7 @@ class ContentGenerator:
             topic_hint: Optional topic hint
 
         Returns:
-            Generated markdown content
+            Tuple of (generated markdown content, prompt used)
         """
         # Select topic category
         category = TOPIC_CATEGORIES[(sample_number - 1) % len(TOPIC_CATEGORIES)]
@@ -68,12 +68,12 @@ class ContentGenerator:
                     title = lines[0][:50].strip().title()
                     content = f"# {title}\n\n{content}"
 
-            return content
+            return content, prompt
 
         except Exception as e:
             logger.error(f"  Failed to generate sample: {e}")
             # Return a fallback sample
-            return self._generate_fallback(category, sample_number)
+            return self._generate_fallback(category, sample_number), prompt
 
     def _build_generation_prompt(
         self,
