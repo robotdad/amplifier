@@ -48,11 +48,6 @@ class KnowledgeRetriever:
             logger.warning(f"Knowledge file not found: {self.knowledge_path}")
             return RetrievedKnowledge()
 
-        # Combine topic and question for search
-        search_text = topic.lower()
-        if question:
-            search_text += " " + question.lower()
-
         # Collect all entries with relevance scores
         entries_with_scores = []
 
@@ -64,7 +59,7 @@ class KnowledgeRetriever:
 
                     try:
                         entry = json.loads(line)
-                        score = self._calculate_relevance_score(entry, search_text)
+                        score = self._calculate_relevance_score(entry, topic, question)
                         if score > 0:
                             entries_with_scores.append((entry, score))
                     except json.JSONDecodeError:
@@ -79,12 +74,11 @@ class KnowledgeRetriever:
         entries_with_scores.sort(key=lambda x: x[1], reverse=True)
 
         # Check match quality
-        if entries_with_scores and entries_with_scores[0][1] < 10.0:
-            # All matches are weak
-            logger.warning(f"Weak relevance matches (top score: {entries_with_scores[0][1]:.1f})")
-            # Still return results but with a warning - main.py will handle the escape hatch
-        elif entries_with_scores:
-            logger.info(f"Top relevance score: {entries_with_scores[0][1]:.1f}")
+        if entries_with_scores:
+            top_score = entries_with_scores[0][1]
+            logger.info(f"Top relevance score: {top_score:.1f}")
+            if top_score < 10.0:
+                logger.warning("Weak topic matches - results may be off-topic")
 
         # Build knowledge from top scored entries
         knowledge = RetrievedKnowledge()
@@ -185,96 +179,69 @@ class KnowledgeRetriever:
 
         return knowledge
 
-    def _calculate_relevance_score(self, entry: dict, search_text: str) -> float:
-        """Calculate relevance score for entry with phrase matching.
+    def _calculate_relevance_score(self, entry: dict, topic: str, question: str | None = None) -> float:
+        """Calculate relevance with topic-dominant scoring.
 
         Args:
             entry: Knowledge entry
-            search_text: Search text
+            topic: Research topic (primary, 80% weight)
+            question: Optional question (secondary, 20% weight)
 
         Returns:
             Relevance score (higher is better)
         """
-        score = 0.0
+        # Build searchable text from entry
         entry_json = json.dumps(entry).lower()
 
-        # Exact phrase match (highest weight)
-        if search_text in entry_json:
+        # Score topic relevance (primary driver)
+        topic_score = self._score_text_against_query(entry_json, topic.lower())
+
+        # Score question relevance (secondary refinement)
+        question_score = 0.0
+        if question:
+            question_score = self._score_text_against_query(entry_json, question.lower())
+
+        # Weighted combination: topic dominates (80/20 split)
+        final_score = (topic_score * 0.8) + (question_score * 0.2)
+
+        return final_score
+
+    def _score_text_against_query(self, text: str, query: str) -> float:
+        """Score text relevance against a single query string.
+
+        Uses phrase matching (highest), bigram matching (medium),
+        and individual word matching (lowest) with position weighting.
+
+        Args:
+            text: Text to score (should be lowercase)
+            query: Query string (should be lowercase)
+
+        Returns:
+            Relevance score
+        """
+        score = 0.0
+
+        # Exact phrase match (highest value)
+        if query in text:
             score += 100.0
 
-        # Check for phrase matches in key fields
-        for concept in entry.get("concepts", []):
-            concept_text = (concept.get("name", "") if isinstance(concept, dict) else str(concept)).lower()
-            if search_text in concept_text:
-                score += 50.0  # Phrase in concept name
-            else:
-                # Individual word matches in concepts
-                for word in search_text.split():
-                    if len(word) > 2 and word in concept_text:
-                        score += 5.0
+        # Split into words for further matching
+        query_words = [w for w in query.split() if len(w) > 2]  # Skip tiny words
 
-        for insight in entry.get("insights", []):
-            insight_text = (insight.get("text", "") if isinstance(insight, dict) else str(insight)).lower()
-            if search_text in insight_text:
-                score += 30.0  # Phrase in insight
-            else:
-                for word in search_text.split():
-                    if len(word) > 2 and word in insight_text:
-                        score += 3.0
+        # Bigram matching (adjacent word pairs)
+        for i in range(len(query_words) - 1):
+            bigram = f"{query_words[i]} {query_words[i + 1]}"
+            if bigram in text:
+                score += 30.0
 
-        for pattern in entry.get("patterns", []):
-            pattern_text = (pattern.get("name", "") if isinstance(pattern, dict) else str(pattern)).lower()
-            if search_text in pattern_text:
-                score += 30.0  # Phrase in pattern
-            else:
-                for word in search_text.split():
-                    if len(word) > 2 and word in pattern_text:
-                        score += 3.0
+        # Individual word matching with position weighting
+        for i, word in enumerate(query_words):
+            # Earlier words in query are more important (slight decay)
+            position_weight = max(0.5, 1.0 - (i * 0.05))
 
-        # Check relationships
-        for rel in entry.get("relationships", []):
-            if isinstance(rel, dict):
-                rel_text = f"{rel.get('subject', '')} {rel.get('predicate', '')} {rel.get('object', '')}".lower()
-            else:
-                rel_text = str(rel).lower()
-
-            if search_text in rel_text:
-                score += 20.0  # Phrase in relationship
-            else:
-                for word in search_text.split():
-                    if len(word) > 2 and word in rel_text:
-                        score += 2.0
-
-        # Check content field if it exists
-        if "content" in entry:
-            content_text = str(entry["content"]).lower()
-            if search_text in content_text:
-                score += 10.0
-            else:
-                for word in search_text.split():
-                    if len(word) > 2 and word in content_text:
-                        score += 1.0
-
-        # Individual word matches in full entry (lower weight)
-        # Only count substantive words (not common words like "the")
-        common_words = {
-            "the",
-            "and",
-            "for",
-            "with",
-            "from",
-            "about",
-            "this",
-            "that",
-            "what",
-            "how",
-            "why",
-            "when",
-            "where",
-            "who",
-        }
-        for word in search_text.split():
-            if len(word) > 3 and word not in common_words and word in entry_json:
-                score += 0.5
+            count = text.count(word)
+            if count > 0:
+                # Diminishing returns for multiple occurrences
+                score += min(count, 3) * position_weight
 
         return score
