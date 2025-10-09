@@ -46,10 +46,10 @@ export ANTHROPIC_API_KEY="your-key"
 amplifier run --provider anthropic --model claude-sonnet-4.5 "Your prompt"
 ```
 
-#### OpenAI GPT
+#### OpenAI GPT-5
 ```bash
 export OPENAI_API_KEY="your-key"
-amplifier run --provider openai --model gpt-4 "Your prompt"
+amplifier run --provider openai --model gpt-5-codex "Your prompt"
 ```
 
 ## Configuration
