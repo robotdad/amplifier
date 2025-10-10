@@ -34,6 +34,18 @@ pub use core::{
 
 // Re-export limiter implementations
 pub use limiters::{
-    ChainedRateLimiter, ConcurrencyLimiter, ConcurrencyLimiterOptions,
+    ChainedRateLimiter,
+    ConcurrencyLimiter, ConcurrencyLimiterOptions,
+    FixedWindowRateLimiter, FixedWindowRateLimiterOptions,
+    SlidingWindowRateLimiter, SlidingWindowRateLimiterOptions,
     TokenBucketRateLimiter, TokenBucketRateLimiterOptions,
+};
+
+// Re-export partitioned limiters
+pub use partitioned::{
+    PartitionedRateLimiter,
+    create_per_key_token_bucket,
+    create_per_key_concurrency,
+    create_per_key_fixed_window,
+    create_per_key_sliding_window,
 };

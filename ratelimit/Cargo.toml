@@ -1,13 +1,14 @@
 [package]
 name = "ratelimit"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
 authors = ["Brian Krabach"]
-description = "Rust port of .NET System.Threading.RateLimiting"
+description = "Rust port of .NET System.Threading.RateLimiting - complete rate limiting library with 6 algorithms"
 license = "MIT"
 repository = "https://github.com/robotdad/amplifier"
 keywords = ["ratelimit", "rate-limiting", "throttle", "concurrency", "async"]
 categories = ["asynchronous", "concurrency"]
+readme = "README.md"
 
 [dependencies]
 # Async runtime
