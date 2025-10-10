@@ -1,0 +1,54 @@
+[package]
+name = "ratelimit"
+version = "0.1.0"
+edition = "2021"
+authors = ["Brian Krabach"]
+description = "Rust port of .NET System.Threading.RateLimiting"
+license = "MIT"
+repository = "https://github.com/robotdad/amplifier"
+keywords = ["ratelimit", "rate-limiting", "throttle", "concurrency", "async"]
+categories = ["asynchronous", "concurrency"]
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.40", features = ["sync", "time", "rt-multi-thread", "macros"] }
+tokio-util = { version = "0.7", features = ["time"] }
+
+# Async trait support
+async-trait = "0.1"
+
+# Fast synchronization primitives
+parking_lot = "0.12"
+
+# Error handling
+thiserror = "1.0"
+
+# Async utilities
+futures = "0.3"
+
+[dev-dependencies]
+# Testing framework with async support
+tokio = { version = "1.40", features = ["macros", "test-util", "rt-multi-thread"] }
+
+# Parameterized testing
+rstest = "0.18"
+
+# Property-based testing (optional - for advanced testing)
+proptest = "1.4"
+
+# Benchmarking (optional)
+criterion = "0.5"
+
+[lib]
+name = "ratelimit"
+path = "src/lib.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+
+[profile.bench]
+opt-level = 3
+lto = true
+codegen-units = 1
