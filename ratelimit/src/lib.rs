@@ -34,6 +34,6 @@ pub use core::{
 
 // Re-export limiter implementations
 pub use limiters::{
-    ConcurrencyLimiter, ConcurrencyLimiterOptions,
+    ChainedRateLimiter, ConcurrencyLimiter, ConcurrencyLimiterOptions,
     TokenBucketRateLimiter, TokenBucketRateLimiterOptions,
 };
