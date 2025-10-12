@@ -6,7 +6,7 @@ This guide is for developers who want to build modules for Amplifier or contribu
 
 Amplifier follows a modular architecture inspired by the Linux kernel:
 - **Ultra-thin core**: Minimal coordination layer
-- **Everything is a module**: Even the agent loop is swappable  
+- **Everything is a module**: Even the agent loop is swappable
 - **Stable interfaces**: APIs never break, only extend
 - **Distributed development**: Teams work independently on modules
 
@@ -70,18 +70,18 @@ __module_type__ = "tool"  # or: orchestrator, provider, agent, context, hooks
 
 async def mount(coordinator: ModuleCoordinator, config: Optional[Dict[str, Any]] = None):
     """Mount function - called when module is loaded.
-    
+
     Args:
         coordinator: The module coordinator for registering components
         config: Module-specific configuration
     """
     config = config or {}
-    
+
     # Register your module's components
     # For tool module:
     tool = MyTool(config)
     await coordinator.mount('tools', tool, name=tool.name)
-    
+
     logger.info(f"Mounted {__module_type__} module: example")
     return None
 ```
@@ -95,7 +95,7 @@ async def mount(coordinator: ModuleCoordinator, config: Optional[Dict[str, Any]]
 class MyTool:
     name = "my_tool"
     description = "Does something useful"
-    
+
     async def execute(self, input: Dict[str, Any]) -> ToolResult:
         """Execute the tool."""
         # Your implementation
@@ -150,18 +150,18 @@ from amplifier_core.testing import TestCoordinator
 async def test_module_mount():
     coordinator = TestCoordinator()
     config = {'setting': 'value'}
-    
+
     # Test mounting
     await mount(coordinator, config)
-    
+
     # Verify registration
     assert 'my_tool' in coordinator.get_tools()
 
-@pytest.mark.asyncio 
+@pytest.mark.asyncio
 async def test_tool_execution():
     tool = MyTool({})
     result = await tool.execute({'input': 'test'})
-    
+
     assert result.success
     assert 'successfully' in result.output
 ```
@@ -242,9 +242,3 @@ Remember our guiding principles:
 - **Modular blocks** - Build like LEGO bricks
 - **Working code** - Ship early, iterate often
 - **User focus** - Solve real problems
-
-## Getting Help
-
-- GitHub Discussions: Technical questions
-- Module Showcase: Learn from examples
-- Core Team: API and architecture questions
