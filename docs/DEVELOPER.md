@@ -5,6 +5,7 @@ This guide is for developers who want to build modules for Amplifier or contribu
 ## Architecture Overview
 
 Amplifier follows a modular architecture inspired by the Linux kernel:
+
 - **Ultra-thin core**: Minimal coordination layer
 - **Everything is a module**: Even the agent loop is swappable
 - **Stable interfaces**: APIs never break, only extend
@@ -13,6 +14,7 @@ Amplifier follows a modular architecture inspired by the Linux kernel:
 ## Development Setup
 
 ### Prerequisites
+
 - Python 3.11+
 - Git
 - Poetry (recommended) or pip
@@ -46,7 +48,7 @@ pip install -e ".[all]"
 amplifier-module-{name}/
 ├── pyproject.toml          # Module metadata and dependencies
 ├── README.md               # Module documentation
-├── amplifier_mod_{name}/
+├── amplifier_module_{name}/
 │   ├── __init__.py        # Module entry point with mount()
 │   └── ...                # Implementation files
 └── tests/
@@ -56,7 +58,7 @@ amplifier-module-{name}/
 ### Basic Module Template
 
 ```python
-# amplifier_mod_example/__init__.py
+# amplifier_module_example/__init__.py
 from typing import Any, Dict, Optional
 import logging
 
@@ -197,20 +199,24 @@ For core API changes:
 ## Best Practices
 
 ### Module Naming
+
 - Use descriptive names: `amplifier-module-{type}-{name}`
 - Examples: `amplifier-module-tool-git`, `amplifier-module-agent-reviewer`
 
 ### Versioning
+
 - Follow semantic versioning
 - Module versions independent of core
 - Document breaking changes
 
 ### Documentation
+
 - Clear README with examples
 - Inline code documentation
 - Configuration examples
 
 ### Performance
+
 - Profile before optimizing
 - Async where beneficial
 - Minimize memory usage
@@ -218,12 +224,14 @@ For core API changes:
 ## Publishing Modules
 
 ### Official Modules
+
 1. High quality and well-tested
 2. Submit proposal via GitHub Discussions
 3. Core team review
 4. Coordinate with maintainers for inclusion
 
 ### Community Modules
+
 1. Publish to your own GitHub/PyPI
 2. Add to awesome-amplifier list
 3. Use `amplifier-module-` prefix
@@ -238,6 +246,7 @@ For core API changes:
 ## Philosophy
 
 Remember our guiding principles:
+
 - **Ruthless simplicity** - Start minimal, grow as needed
 - **Modular blocks** - Build like LEGO bricks
 - **Working code** - Ship early, iterate often
