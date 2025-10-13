@@ -1,67 +1,77 @@
-[tool.poetry]
+[project]
 name = "amplifier"
 version = "0.1.0"
 description = "Amplifier reference distribution - bundles core with reference CLI and modules"
-authors = ["Microsoft"]
-readme = "README.md"
 license = "MIT"
-repository = "https://github.com/microsoft/amplifier"
-documentation = "https://github.com/microsoft/amplifier/blob/next/README.md"
-keywords = ["ai", "development", "modular", "assistant", "coding"]
-classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: End Users/Desktop",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3.11",
-    "Topic :: Software Development :: Code Generators",
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "Microsoft MADE:Explorations Team" },
 ]
-
-[tool.poetry.scripts]
-amplifier = "amplifier_app_cli.main:main"
-
-[tool.poetry.dependencies]
-python = "^3.11"
-# Core and CLI
-amplifier-core = { git = "https://github.com/microsoft/amplifier-core.git", branch = "next" }
-amplifier-app-cli = { git = "https://github.com/microsoft/amplifier-app-cli.git", branch = "next" }
-
-# Default module set - the reference implementations
-amplifier-module-loop-basic = { git = "https://github.com/microsoft/amplifier-module-loop-basic.git", branch = "next", optional = true }
-amplifier-module-context-simple = { git = "https://github.com/microsoft/amplifier-module-context-simple.git", branch = "next", optional = true }
-amplifier-module-provider-anthropic = { git = "https://github.com/microsoft/amplifier-module-provider-anthropic.git", branch = "next", optional = true }
-amplifier-module-provider-openai = { git = "https://github.com/microsoft/amplifier-module-provider-openai.git", branch = "next", optional = true }
-amplifier-module-provider-mock = { git = "https://github.com/microsoft/amplifier-module-provider-mock.git", branch = "next", optional = true }
-amplifier-module-tool-filesystem = { git = "https://github.com/microsoft/amplifier-module-tool-filesystem.git", branch = "next", optional = true }
-amplifier-module-tool-bash = { git = "https://github.com/microsoft/amplifier-module-tool-bash.git", branch = "next", optional = true }
-
-[tool.poetry.extras]
-# Module bundles for different use cases
-default = [
-    "amplifier-module-loop-basic",
-    "amplifier-module-context-simple",
-    "amplifier-module-tool-filesystem",
-    "amplifier-module-tool-bash"
-]
-anthropic = [
-    "amplifier-module-provider-anthropic"
-]
-openai = [
-    "amplifier-module-provider-openai"
-]
-dev = [
-    "amplifier-module-provider-mock"
-]
-all = [
+dependencies = [
+    "amplifier-core",
+    "amplifier-app-cli",
     "amplifier-module-loop-basic",
     "amplifier-module-context-simple",
     "amplifier-module-provider-anthropic",
     "amplifier-module-provider-openai",
     "amplifier-module-provider-mock",
     "amplifier-module-tool-filesystem",
-    "amplifier-module-tool-bash"
+    "amplifier-module-tool-bash",
 ]
 
+[project.scripts]
+amplifier = "amplifier_app_cli.main:main"
+
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = [
+    "hatchling",
+]
+build-backend = "hatchling.build"
+
+[tool.uv]
+package = true
+
+[tool.uv.sources.amplifier-core]
+path = "../amplifier-core"
+editable = true
+
+[tool.uv.sources.amplifier-app-cli]
+path = "../amplifier-app-cli"
+editable = true
+
+[tool.uv.sources.amplifier-module-loop-basic]
+path = "../amplifier-module-loop-basic"
+editable = true
+
+[tool.uv.sources.amplifier-module-context-simple]
+path = "../amplifier-module-context-simple"
+editable = true
+
+[tool.uv.sources.amplifier-module-provider-anthropic]
+path = "../amplifier-module-provider-anthropic"
+editable = true
+
+[tool.uv.sources.amplifier-module-provider-openai]
+path = "../amplifier-module-provider-openai"
+editable = true
+
+[tool.uv.sources.amplifier-module-provider-mock]
+path = "../amplifier-module-provider-mock"
+editable = true
+
+[tool.uv.sources.amplifier-module-tool-filesystem]
+path = "../amplifier-module-tool-filesystem"
+editable = true
+
+[tool.uv.sources.amplifier-module-tool-bash]
+path = "../amplifier-module-tool-bash"
+editable = true
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "amplifier",
+]
+
+[tool.hatch.metadata]
+allow-direct-references = true
