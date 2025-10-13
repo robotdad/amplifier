@@ -69,6 +69,14 @@ class ContentAnalyzer:
             # Convert to IllustrationPoint objects
             points = []
             for point_data in analysis.get("illustration_points", [])[: self.max_images]:
+                # Defensive: normalize deprecated placement values that LLM might return
+                if point_data.get("suggested_placement") in ["before_section", "after_intro"]:
+                    logger.warning(
+                        f"LLM returned deprecated placement '{point_data.get('suggested_placement')}', "
+                        "converting to 'after_heading'"
+                    )
+                    point_data["suggested_placement"] = "after_heading"
+
                 points.append(IllustrationPoint(**point_data))
 
             logger.info(f"Identified {len(points)} illustration points")
@@ -88,22 +96,28 @@ class ContentAnalyzer:
         Returns:
             Analysis prompt
         """
-        return f"""Analyze this markdown article and identify the {self.max_images} best places to add illustrations.
+        return f"""Analyze this markdown article and identify UP TO {self.max_images} best places to add illustrations.
+
+DISTRIBUTION RULES:
+- Spread illustrations across different major sections (prefer one per section)
+- If a section needs multiple images, space them throughout (after subsections, between major paragraphs)
+- Prioritize sections with complex concepts, key transitions, or visual opportunities
+- Avoid clustering multiple images at the start of a section
 
 For each illustration point, provide:
-- section_title: The section heading
+- section_title: The section heading (or subsection if mid-section)
 - section_index: Index of the section (0-based)
-- line_number: Approximate line number
+- line_number: Approximate line number where image should appear
 - context_before: 100 chars of text before the point
 - context_after: 100 chars of text after the point
 - importance: "high", "medium", or "low"
-- suggested_placement: "before_section", "after_intro", or "mid_section"
+- suggested_placement: "after_heading", "after_paragraph", or "mid_section"
 
 Focus on:
-1. Key concepts that would benefit from visual explanation
-2. Section transitions that need visual breaks
-3. Complex ideas that images could clarify
-4. Opening sections that set the tone
+1. Distributing across major sections evenly
+2. Key concepts that would benefit from visual explanation
+3. Natural breaks between subsections or major paragraphs
+4. Complex ideas that images could clarify
 
 Article content:
 ```markdown
@@ -120,7 +134,7 @@ Return JSON with structure:
       "context_before": "...",
       "context_after": "...",
       "importance": "high",
-      "suggested_placement": "before_section"
+      "suggested_placement": "after_heading"
     }}
   ]
 }}"""
@@ -153,7 +167,7 @@ Return JSON with structure:
                     context_before=lines[max(0, line_num - 2)] if line_num > 0 else "",
                     context_after=lines[min(len(lines) - 1, line_num + 2)],
                     importance="medium",
-                    suggested_placement="before_section",
+                    suggested_placement="after_heading",
                 )
             )
 

@@ -125,7 +125,7 @@ help: ## Show ALL available commands
 	@echo "  make blog-resume       Resume most recent blog writing session"
 	@echo ""
 	@echo "ARTICLE ILLUSTRATION:"
-	@echo "  make illustrate INPUT=<file> [OUTPUT=<path>] [STYLE=\"...\"] [APIS=\"...\"] [RESUME=true]  Generate illustrations"
+	@echo "  make illustrate INPUT=<file> [OUTPUT=<path>] [STYLE=\"...\"] [APIS=\"...\"] [MAX_IMAGES=N] [RESUME=true]  Generate illustrations"
 	@echo "  make illustrate-example  Run illustrator with example article"
 	@echo "  make illustrate-prompts-only INPUT=<file>  Preview prompts without generating"
 	@echo ""
@@ -589,7 +589,7 @@ transcribe-index: ## Generate index of all transcripts
 	@uv run python -m scenarios.transcribe index
 
 # Article Illustration
-illustrate: ## Generate AI illustrations for markdown article. Usage: make illustrate INPUT=article.md [OUTPUT=path] [STYLE="..."] [APIS="..."] [RESUME=true]
+illustrate: ## Generate AI illustrations for markdown article. Usage: make illustrate INPUT=article.md [OUTPUT=path] [STYLE="..."] [APIS="..."] [MAX_IMAGES=N] [RESUME=true]
 	@if [ -z "$(INPUT)" ]; then \
 		echo "Error: Please provide an input file. Usage: make illustrate INPUT=article.md"; \
 		exit 1; \
@@ -599,6 +599,7 @@ illustrate: ## Generate AI illustrations for markdown article. Usage: make illus
 	@if [ -n "$(OUTPUT)" ]; then echo "  Output: $(OUTPUT)"; fi
 	@if [ -n "$(STYLE)" ]; then echo "  Style: $(STYLE)"; fi
 	@if [ -n "$(APIS)" ]; then echo "  APIs: $(APIS)"; fi
+	@if [ -n "$(MAX_IMAGES)" ]; then echo "  Max images: $(MAX_IMAGES)"; else echo "  Max images: 5 (default)"; fi
 	@if [ -n "$(RESUME)" ]; then echo "  Mode: Resume"; fi
 	@echo ""
 	@CMD="uv run python -m scenarios.article_illustrator \"$(INPUT)\""; \
@@ -609,6 +610,7 @@ illustrate: ## Generate AI illustrations for markdown article. Usage: make illus
 			CMD="$$CMD --apis $$api"; \
 		done; \
 	fi; \
+	if [ -n "$(MAX_IMAGES)" ]; then CMD="$$CMD --max-images $(MAX_IMAGES)"; fi; \
 	if [ -n "$(RESUME)" ]; then CMD="$$CMD --resume"; fi; \
 	eval $$CMD
 

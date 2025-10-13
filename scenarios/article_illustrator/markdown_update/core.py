@@ -117,16 +117,30 @@ class MarkdownUpdater:
         target = point.line_number
 
         # Adjust based on placement preference
-        if point.suggested_placement == "before_section":
-            # Find the section header and insert before it
+        if point.suggested_placement == "after_heading":
+            # Find the section header and insert AFTER it with blank line
             for i in range(max(0, target - 5), min(len(lines), target + 5)):
                 if lines[i].startswith("#") and point.section_title in lines[i]:
-                    return i
-        elif point.suggested_placement == "after_intro":
-            # Insert after first paragraph of section
-            for i in range(target, min(len(lines), target + 20)):
-                if not lines[i].strip() and i > target:
+                    # Insert after heading, ensuring blank line for spacing
+                    return i + 1
+        elif point.suggested_placement == "after_paragraph":
+            # Insert after the next paragraph break (blank line)
+            for i in range(target, min(len(lines), target + 30)):
+                # Look for blank line followed by content (paragraph break)
+                if i > target and not lines[i].strip() and i + 1 < len(lines) and lines[i + 1].strip():
+                    return i + 1
+        elif point.suggested_placement == "mid_section":
+            # Insert at a natural break point in the section
+            # Look for blank lines that aren't at the section start
+            for i in range(target, min(len(lines), target + 40)):
+                if (
+                    i > target + 5
+                    and not lines[i].strip()
+                    and i + 1 < len(lines)
+                    and lines[i + 1].strip()
+                    and not lines[i + 1].startswith("#")
+                ):
                     return i + 1
 
-        # Default: insert at the target line
+        # Default: insert at the target line with safety check
         return min(target, len(lines))

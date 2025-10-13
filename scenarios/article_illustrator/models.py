@@ -25,7 +25,7 @@ class IllustrationPoint(BaseModel):
     context_before: str
     context_after: str
     importance: Literal["high", "medium", "low"]
-    suggested_placement: Literal["before_section", "after_intro", "mid_section"]
+    suggested_placement: Literal["after_heading", "after_paragraph", "mid_section"]
 
 
 class ImagePrompt(BaseModel):
