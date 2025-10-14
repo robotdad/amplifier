@@ -51,6 +51,9 @@ default: ## Show essential commands
 	@echo "Article Illustration:"
 	@echo "  make illustrate      Generate AI illustrations for article"
 	@echo ""
+	@echo "PowerPoint Generation:"
+	@echo "  make ppt-gen         Generate presentations from content files"
+	@echo ""
 	@echo "Web to Markdown:"
 	@echo "  make web-to-md       Convert web pages to markdown"
 	@echo ""
@@ -625,6 +628,47 @@ illustrate-prompts-only: ## Preview prompts without generating images. Usage: ma
 	fi
 	@echo "🎨 Generating prompts (no images)..."
 	@uv run python -m scenarios.article_illustrator "$(INPUT)" --prompts-only
+
+# PPT Generation
+ppt-gen: ## Generate PowerPoint from context files. Usage: make ppt-gen CONTEXT="file1 file2" DIRECTION="..." [TEMPLATE=<file>] [SLIDES=10] [STYLE="..."]
+	@if [ -z "$(CONTEXT)" ]; then \
+		echo "Error: Please provide context files. Usage: make ppt-gen CONTEXT=\"file1.md file2.md\" DIRECTION=\"Create a technical overview\""; \
+		exit 1; \
+	fi
+	@if [ -z "$(DIRECTION)" ]; then \
+		echo "Error: Please provide direction. Usage: make ppt-gen CONTEXT=\"file1.md\" DIRECTION=\"Create a technical overview\""; \
+		exit 1; \
+	fi
+	@echo "📊 Generating PowerPoint presentation..."
+	@echo "  Context: $(CONTEXT)"
+	@echo "  Direction: $(DIRECTION)"
+	@if [ -n "$(TEMPLATE)" ]; then echo "  Template: $(TEMPLATE)"; fi
+	@if [ -n "$(SLIDES)" ]; then echo "  Target slides: $(SLIDES)"; fi
+	@if [ -n "$(STYLE)" ]; then echo "  Image style: $(STYLE)"; fi
+	@echo ""
+	@CMD="uv run python -m scenarios.ppt_generator $(CONTEXT) --direction \"$(DIRECTION)\""; \
+	if [ -n "$(TEMPLATE)" ]; then CMD="$$CMD --template \"$(TEMPLATE)\""; fi; \
+	if [ -n "$(SLIDES)" ]; then CMD="$$CMD --slides $(SLIDES)"; fi; \
+	if [ -n "$(STYLE)" ]; then CMD="$$CMD --style-images \"$(STYLE)\""; fi; \
+	if [ -n "$(OUTPUT)" ]; then CMD="$$CMD --output-dir \"$(OUTPUT)\""; fi; \
+	if [ -n "$(SKIP_IMAGES)" ]; then CMD="$$CMD --skip-images"; fi; \
+	if [ -n "$(SKIP_DIAGRAMS)" ]; then CMD="$$CMD --skip-diagrams"; fi; \
+	if [ -n "$(SKIP_REVIEW)" ]; then CMD="$$CMD --skip-review"; fi; \
+	if [ -n "$(RESUME)" ]; then CMD="$$CMD --resume"; fi; \
+	eval $$CMD
+
+ppt-gen-example: ## Run PPT generator with example files
+	@echo "📊 Running PPT generator with example..."
+	@uv run python -m scenarios.ppt_generator \
+		scenarios/ppt_generator/tests/sample_context.md \
+		--direction "Create a technical presentation about this topic" \
+		--slides 5
+
+ppt-gen-template: ## Generate customizable PPT template. Usage: make ppt-gen-template [OUTPUT=my_template.pptx]
+	@output="$${OUTPUT:-my_template.pptx}"; \
+	echo "📐 Generating PowerPoint template..."; \
+	uv run python -m scenarios.ppt_generator create-template --output "$$output"; \
+	echo "✅ Template ready to customize"
 
 # Web to Markdown
 web-to-md: ## Convert web pages to markdown. Usage: make web-to-md URL=https://example.com [URL2=https://another.com] [OUTPUT=path]
