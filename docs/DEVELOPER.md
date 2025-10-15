@@ -201,7 +201,7 @@ For core API changes:
 ### Module Naming
 
 - Use descriptive names: `amplifier-module-{type}-{name}`
-- Examples: `amplifier-module-tool-git`, `amplifier-module-agent-reviewer`
+- Examples: `amplifier-module-tool-git`, `amplifier-module-hooks-metrics`
 
 ### Versioning
 
