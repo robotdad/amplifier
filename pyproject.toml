@@ -1,7 +1,7 @@
 [project]
 name = "amplifier"
 version = "0.1.0"
-description = "Amplifier reference distribution - bundles core with reference CLI and modules"
+description = "Amplifier AI development platform - modular AI assistant with flexible module sourcing"
 license = "MIT"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -11,13 +11,6 @@ authors = [
 dependencies = [
     "amplifier-core",
     "amplifier-app-cli",
-    "amplifier-module-loop-basic",
-    "amplifier-module-context-simple",
-    "amplifier-module-provider-anthropic",
-    "amplifier-module-provider-openai",
-    "amplifier-module-provider-mock",
-    "amplifier-module-tool-filesystem",
-    "amplifier-module-tool-bash",
 ]
 
 [project.scripts]
@@ -32,41 +25,9 @@ build-backend = "hatchling.build"
 [tool.uv]
 package = true
 
-[tool.uv.sources.amplifier-core]
-path = "../amplifier-core"
-editable = true
-
-[tool.uv.sources.amplifier-app-cli]
-path = "../amplifier-app-cli"
-editable = true
-
-[tool.uv.sources.amplifier-module-loop-basic]
-path = "../amplifier-module-loop-basic"
-editable = true
-
-[tool.uv.sources.amplifier-module-context-simple]
-path = "../amplifier-module-context-simple"
-editable = true
-
-[tool.uv.sources.amplifier-module-provider-anthropic]
-path = "../amplifier-module-provider-anthropic"
-editable = true
-
-[tool.uv.sources.amplifier-module-provider-openai]
-path = "../amplifier-module-provider-openai"
-editable = true
-
-[tool.uv.sources.amplifier-module-provider-mock]
-path = "../amplifier-module-provider-mock"
-editable = true
-
-[tool.uv.sources.amplifier-module-tool-filesystem]
-path = "../amplifier-module-tool-filesystem"
-editable = true
-
-[tool.uv.sources.amplifier-module-tool-bash]
-path = "../amplifier-module-tool-bash"
-editable = true
+[tool.uv.sources]
+amplifier-core = { git = "https://github.com/microsoft/amplifier-core", branch = "main" }
+amplifier-app-cli = { git = "https://github.com/microsoft/amplifier-app-cli", branch = "main" }
 
 [tool.hatch.build.targets.wheel]
 packages = [
