@@ -86,22 +86,27 @@ amplifier module info loop-basic
 
 ## ⚙️ Configuration
 
-Create an `amplifier.toml` configuration file:
+Amplifier uses profiles for configuration. See what's available:
 
-```toml
-[provider]
-name = "anthropic"  # or "openai", "mock" for testing
-model = "claude-sonnet-4.5"
+```bash
+# List bundled profiles
+amplifier profile list
 
-[modules]
-orchestrator = "loop-basic"
-context = "context-simple"
+# Use a profile
+amplifier profile apply dev
 
-[session]
-max_tokens = 100000
-auto_compact = true
-compact_threshold = 0.9
+# Show profile details
+amplifier profile show dev
 ```
+
+### Bundled Profiles
+
+- **foundation** - Absolute minimum (orchestrator, context, provider only)
+- **base** - Essential tools (filesystem, bash, logging)
+- **dev** - Full development setup (adds web, search, agents, streaming UI)
+- **production** - Production-optimized (persistent context, enhanced security)
+- **test** - Testing environment (mock provider)
+- **full** - All features enabled
 
 ### Environment Variables
 
@@ -111,6 +116,57 @@ export ANTHROPIC_API_KEY="your-api-key"
 export OPENAI_API_KEY="your-api-key"
 ```
 
+### Custom Profiles
+
+Create custom profiles in `.amplifier/profiles/`:
+
+```bash
+# Create custom profile
+cat > ~/.amplifier/profiles/my-profile.md << 'EOF'
+---
+profile:
+  name: my-profile
+  version: 1.0.0
+  description: My custom configuration
+  extends: dev
+
+providers:
+  - module: provider-anthropic
+    config:
+      model: claude-opus-4
+
+tools:
+  - module: tool-custom
+---
+EOF
+
+# Apply it
+amplifier profile apply my-profile
+```
+
+See [Profile Authoring Guide](https://github.com/microsoft/amplifier-dev/blob/main/docs/PROFILE_AUTHORING.md) for details.
+
+## 🤖 Agents
+
+Amplifier includes specialized agents for focused tasks:
+
+```bash
+# List available agents
+amplifier agents list
+
+# Show agent details
+amplifier agents show zen-architect
+```
+
+### Bundled Agents
+
+- **zen-architect** - System design with ruthless simplicity
+- **bug-hunter** - Systematic debugging and issue resolution
+- **researcher** - Research and information synthesis
+- **modular-builder** - Implementation following modular principles
+
+Agents are loaded via profiles and can be customized at project or user level.
+
 ## 🧩 Modules
 
 Amplifier uses a modular architecture. Default modules include:
@@ -118,15 +174,17 @@ Amplifier uses a modular architecture. Default modules include:
 - **Orchestrators**: Control the AI agent loop
   - `loop-basic`: Standard sequential execution
   - `loop-streaming`: Real-time streaming responses
-  
+
 - **Providers**: Connect to AI models
   - `provider-anthropic`: Claude models
   - `provider-openai`: GPT models
-  
+
 - **Tools**: Extend capabilities
   - `tool-filesystem`: File operations
   - `tool-bash`: Command execution
   - `tool-web`: Web search and fetch
+  - `tool-search`: Web search capabilities
+  - `tool-task`: Agent delegation
 
 ## 📚 Documentation
 
