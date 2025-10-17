@@ -8,18 +8,19 @@ The fastest way to try Amplifier - no installation required:
 
 ```bash
 # Run directly with uvx (Python 3.11+ required)
-uvx --from git+https://github.com/microsoft/amplifier.git amplifier run "Create a Python web server"
+uvx --from git+https://github.com/microsoft/amplifier.git@next amplifier run --profile dev "Create a Python web server"
 
 # Or install globally
-pip install git+https://github.com/microsoft/amplifier.git
+uv tool install git+https://github.com/microsoft/amplifier.git@next
 
 # Then run
-amplifier run "Write a function to parse CSV files"
+amplifier run --profile dev "Write a function to parse CSV files"
 ```
 
 ## 🎯 What is Amplifier?
 
 Amplifier is a modular AI development assistant that helps you:
+
 - Generate code with AI assistance
 - Work with multiple AI providers (Anthropic Claude, OpenAI GPT, etc.)
 - Extend functionality through a rich module ecosystem
@@ -30,34 +31,39 @@ Amplifier is a modular AI development assistant that helps you:
 ## 📦 Installation Options
 
 ### Quick Try (No Installation)
+
 ```bash
 # Requires Python 3.11+ and uvx
-uvx --from git+https://github.com/microsoft/amplifier.git amplifier --help
+uvx --from git+https://github.com/microsoft/amplifier.git@next amplifier --help
 ```
 
 ### Standard Installation
+
 ```bash
 # Install with default modules
-pip install "amplifier[default] @ git+https://github.com/microsoft/amplifier.git"
+uv tool install "amplifier[default] @ git+https://github.com/microsoft/amplifier.git@next"
 
 # Install with Anthropic support
-pip install "amplifier[anthropic] @ git+https://github.com/microsoft/amplifier.git"
+uv tool install "amplifier[anthropic] @ git+https://github.com/microsoft/amplifier.git@next"
 
 # Install with all providers
-pip install "amplifier[all] @ git+https://github.com/microsoft/amplifier.git"
+uv tool install "amplifier[all] @ git+https://github.com/microsoft/amplifier.git@next"
 ```
 
 ### Development Installation
+
 ```bash
 # Clone and install for development
-git clone https://github.com/microsoft/amplifier.git
-cd amplifier
-pip install -e ".[all]"
+git clone https://github.com/microsoft/amplifier-dev.git
+cd amplifier-dev
 ```
+
+Read README.md in root of `amplifier-dev`
 
 ## 🎮 Usage Examples
 
 ### Interactive Chat Mode
+
 ```bash
 # Start an interactive session
 amplifier run --mode chat
@@ -67,6 +73,7 @@ amplifier run --mode chat --provider anthropic --model claude-sonnet-4.5
 ```
 
 ### Single Command Mode
+
 ```bash
 # Execute a single task
 amplifier run "Create a REST API with FastAPI"
@@ -76,6 +83,7 @@ amplifier run --config my-config.toml "Refactor this function"
 ```
 
 ### Module Management
+
 ```bash
 # List available modules
 amplifier module list
@@ -111,6 +119,7 @@ amplifier profile show dev
 ### Environment Variables
 
 Set API keys for providers:
+
 ```bash
 export ANTHROPIC_API_KEY="your-api-key"
 export OPENAI_API_KEY="your-api-key"
@@ -172,10 +181,12 @@ Agents are loaded via profiles and can be customized at project or user level.
 Amplifier uses a modular architecture. Default modules include:
 
 - **Orchestrators**: Control the AI agent loop
+
   - `loop-basic`: Standard sequential execution
   - `loop-streaming`: Real-time streaming responses
 
 - **Providers**: Connect to AI models
+
   - `provider-anthropic`: Claude models
   - `provider-openai`: GPT models
 
@@ -199,23 +210,13 @@ Want to build your own modules or contribute?
 - **Core Library**: [microsoft/amplifier-core](https://github.com/microsoft/amplifier-core)
 - **Module Development Guide**: [docs/DEVELOPER.md](./docs/DEVELOPER.md)
 
-## 🤝 Community
-
-- [Discussions](https://github.com/microsoft/amplifier/discussions) - Ask questions and share ideas
-- [Issues](https://github.com/microsoft/amplifier/issues) - Report bugs or request features
-- [Module Showcase](./docs/SHOWCASE.md) - Community-created modules
-
-## 📄 License
-
-MIT License - See [LICENSE](./LICENSE) file for details.
-
 ## 🎉 Getting Started
 
 Ready to amplify your development? Try this:
 
 ```bash
 # Your first Amplifier command
-uvx --from git+https://github.com/microsoft/amplifier.git amplifier run \
+uvx --from git+https://github.com/microsoft/amplifier.git@next amplifier run --profile dev \
   "Create a Python script that fetches weather data and sends a summary email"
 ```
 

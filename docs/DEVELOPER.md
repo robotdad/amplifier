@@ -17,7 +17,7 @@ Amplifier follows a modular architecture inspired by the Linux kernel:
 
 - Python 3.11+
 - Git
-- Poetry (recommended) or pip
+- uv
 
 ### Getting Started
 
