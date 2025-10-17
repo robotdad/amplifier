@@ -161,10 +161,10 @@ Amplifier includes specialized agents for focused tasks:
 
 ```bash
 # List available agents
-amplifier agents list
+amplifier agent list
 
 # Show agent details
-amplifier agents show zen-architect
+amplifier agent show zen-architect
 ```
 
 ### Bundled Agents
