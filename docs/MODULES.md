@@ -97,7 +97,7 @@ tools:
 amplifier module list
 
 # Get module details
-amplifier module info tool-filesystem
+amplifier module show tool-filesystem
 ```
 
 ---

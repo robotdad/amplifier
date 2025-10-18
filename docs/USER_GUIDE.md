@@ -308,7 +308,7 @@ amplifier module list
 amplifier module list --type tool
 
 # Get module information
-amplifier module info loop-streaming
+amplifier module show loop-streaming
 ```
 
 ---
