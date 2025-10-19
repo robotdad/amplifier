@@ -2,113 +2,25 @@
 
 Complete guide to using Amplifier for AI-assisted development.
 
-> **Note**: Amplifier is under active development. Some features and commands may change. Links to external repositories (amplifier-core, amplifier-app-cli) may break as we reorganize.
+> **Note**: Amplifier is under active development. Some features and commands may change.
 
 ---
 
 ## Installation
 
-### Quick Start (No Installation)
+See [../README.md](../README.md#quick-start---zero-to-working-in-90-seconds) for complete installation guide.
+
+**Quick summary:**
 
 ```bash
-# Try immediately with uvx
-uvx --from git+https://github.com/microsoft/amplifier.git@next amplifier run "Hello, Amplifier!"
+# Try without installing
+uvx --from git+https://github.com/microsoft/amplifier@next amplifier
+
+# Or install globally
+uv tool install git+https://github.com/microsoft/amplifier@next
 ```
 
-### Global Installation
-
-```bash
-# Install as a tool
-uv tool install git+https://github.com/microsoft/amplifier.git@next
-
-# Verify installation
-amplifier --version
-```
-
-### Prerequisites
-
-- **Python 3.11+**
-- **UV package manager** - [Installation guide](https://github.com/astral-sh/uv)
-- **API key** - For your chosen AI provider (Anthropic recommended for now)
-
----
-
-## Configuration
-
-### Setting API Keys
-
-```bash
-# Anthropic Claude (recommended for early preview)
-export ANTHROPIC_API_KEY="your-api-key"
-
-# OpenAI (requires custom profile setup currently)
-export OPENAI_API_KEY="your-api-key"
-
-# Azure OpenAI
-export AZURE_OPENAI_API_KEY="your-api-key"
-export AZURE_OPENAI_ENDPOINT="your-endpoint"
-```
-
-### Understanding Profiles
-
-Profiles are pre-configured toolboxes that bundle providers, tools, agents, and settings. Think of them like Docker Compose files for your AI environment.
-
-```bash
-# See what profiles are available
-amplifier profile list
-
-# View profile details
-amplifier profile show dev
-
-# Set your preferred profile
-amplifier profile default --set dev
-```
-
-**Bundled Profiles:**
-
-| Profile | Purpose | When to Use |
-|---------|---------|-------------|
-| `foundation` | Bare minimum | Testing core functionality |
-| `base` | Essential tools | Basic tasks, minimal overhead |
-| `dev` | Full development | Daily development (**default & recommended**) |
-| `production` | Production-ready | Persistent context, enhanced security |
-| `test` | Testing | Mock provider for integration tests |
-| `full` | Everything | Exploring all features |
-
-### Creating Custom Profiles
-
-```bash
-# Create profile directory
-mkdir -p ~/.amplifier/profiles
-
-# Create profile file
-cat > ~/.amplifier/profiles/my-profile.md << 'EOF'
----
-profile:
-  name: my-profile
-  version: 1.0.0
-  description: My custom configuration
-  extends: dev
-
-providers:
-  - module: provider-anthropic
-    config:
-      model: claude-opus-4
-
-session:
-  context:
-    config:
-      max_tokens: 200000  # Larger context
----
-
-# My Custom Profile
-
-Additional documentation here.
-EOF
-
-# Use your profile
-amplifier run --profile my-profile "Your prompt"
-```
+First-time setup happens automatically when you run Amplifier with no configuration.
 
 ---
 
@@ -145,14 +57,18 @@ amplifier run --mode chat
 ```
 
 **Chat commands:**
+
 - `/help` - Show available commands
 - `/tools` - List available tools
-- `/status` - Show session information
+- `/agents` - List available agents
+- `/provider` - Show/change active provider
+- `/profile` - Show/change active profile
 - `/think` - Enable plan mode (read-only)
 - `/do` - Disable plan mode (allow modifications)
 - `exit` or `Ctrl+C` - Quit
 
 **Example conversation:**
+
 ```
 > Explain dependency injection in Python
 
@@ -168,6 +84,106 @@ amplifier run --mode chat
 
 > exit
 ```
+
+---
+
+## Configuration
+
+### Understanding Configuration Dimensions
+
+Amplifier has 4 configuration dimensions you can control:
+
+1. **Provider** - Which AI service (Anthropic/OpenAI/Azure OpenAI/Ollama)
+2. **Profile** - Which profile (dev/production/test/minimal)
+3. **Module** - Which capabilities (tools/hooks/agents)
+4. **Source** - Where modules come from (git/local/package)
+
+### Switching Providers
+
+```bash
+# Switch provider (interactive - prompts for model/config)
+amplifier provider use openai
+
+# Or explicit
+amplifier provider use anthropic --model claude-opus-4
+amplifier provider use openai --model gpt-4o
+amplifier provider use ollama --model llama3
+
+# Azure OpenAI (more complex)
+amplifier provider use azure-openai --deployment gpt-5-codex --use-azure-cli
+
+# Configure where to save
+amplifier provider use openai --model gpt-4o --local    # Just you
+amplifier provider use anthropic --model claude-opus-4 --project  # Team
+
+# See what's active
+amplifier provider current
+
+# List available
+amplifier provider list
+```
+
+**Supported providers:**
+
+- **Anthropic Claude** - Recommended, most tested (configure: model + API key)
+- **OpenAI** - Good alternative (configure: model + API key)
+- **Azure OpenAI** - Enterprise (configure: endpoint + deployment + auth method)
+- **Ollama** - Local, free (configure: model only, no API key)
+
+### Switching Profiles (Workflows)
+
+```bash
+# Switch profile
+amplifier profile use dev          # Development tools
+amplifier profile use production   # Production safety
+amplifier profile use test         # Testing setup
+amplifier profile use base         # Minimal tools
+
+# See what's active
+amplifier profile current
+
+# List available
+amplifier profile list
+```
+
+**Bundled Profiles:**
+
+| Profile      | Purpose          | Tools                  | Agents                    |
+| ------------ | ---------------- | ---------------------- | ------------------------- |
+| `foundation` | Bare minimum     | None                   | None                      |
+| `base`       | Essential tools  | filesystem, bash       | None                      |
+| `dev`        | Full development | base + web, search     | zen-architect, bug-hunter |
+| `production` | Production-ready | base + web, monitoring | None                      |
+| `test`       | Testing          | base + task            | None                      |
+| `full`       | Everything       | All tools              | All agents                |
+
+### Adding Capabilities
+
+```bash
+# Add module to current profile
+amplifier module add tool-jupyter
+
+# Add for team
+amplifier module add tool-custom --project
+
+# See loaded modules
+amplifier module current
+```
+
+### Creating Custom Profiles
+
+```bash
+# Create custom profile
+amplifier profile create my-workflow --extend dev
+
+# Edit profile
+# File created at: ~/.amplifier/profiles/my-workflow.md
+
+# Use it
+amplifier profile use my-workflow
+```
+
+See [../docs/USER_ONBOARDING.md#quick-reference](../docs/USER_ONBOARDING.md#quick-reference) for complete configuration reference.
 
 ---
 
@@ -190,21 +206,25 @@ amplifier run "Use researcher to find best practices for async error handling"
 ### Bundled Agents
 
 **zen-architect** - Architecture and design
+
 - Analyzes problems before implementing
 - Designs system architecture
 - Reviews code for simplicity and philosophy compliance
 
 **bug-hunter** - Debugging expert
+
 - Systematic hypothesis-driven debugging
 - Tracks down errors efficiently
 - Fixes issues without adding complexity
 
 **researcher** - Content synthesis
+
 - Researches best practices
 - Analyzes documentation
 - Synthesizes information from multiple sources
 
 **modular-builder** - Implementation specialist
+
 - Builds code from specifications
 - Creates self-contained modules
 - Follows modular design principles
@@ -248,16 +268,6 @@ amplifier session resume <session-id>
 amplifier session resume <session-id> --profile full
 ```
 
-### Cleanup
-
-```bash
-# Remove old sessions (30 days default)
-amplifier session cleanup
-
-# Remove sessions older than 7 days
-amplifier session cleanup --days 7
-```
-
 ### Where Are Sessions Stored?
 
 Sessions are stored in `~/.amplifier/projects/<project-slug>/sessions/` where the project slug is based on your current working directory.
@@ -266,36 +276,26 @@ Example: Working in `/home/user/repos/myapp` stores sessions in:
 `~/.amplifier/projects/-home-user-repos-myapp/sessions/`
 
 Each session contains:
+
 - `transcript.jsonl` - Message history
 - `events.jsonl` - All events (tool calls, approvals, etc.)
-- `metadata.json` - Session info (profile, model, timestamps)
+- `metadata.json` - Session info (profile, provider, timestamps)
 
 ---
 
 ## Advanced Usage
 
-### Using Different Providers
+### Per-Command Overrides
 
 ```bash
-# Override provider on command line
-amplifier run --provider openai --model gpt-4o "Your prompt"
+# Use different provider just once
+amplifier run --provider openai "test prompt"
 
-# Or create a profile
-cat > ~/.amplifier/profiles/openai.md << 'EOF'
----
-profile:
-  name: openai
-  extends: base
+# Use different profile just once
+amplifier --profile production "deploy task"
 
-providers:
-  - module: provider-openai
-    source: git+https://github.com/microsoft/amplifier-module-provider-openai@main
-    config:
-      model: gpt-4o
----
-EOF
-
-amplifier run --profile openai "Your prompt"
+# Combine overrides
+amplifier run --provider openai --profile test "compare models"
 ```
 
 ### Module Management
@@ -311,33 +311,50 @@ amplifier module list --type tool
 amplifier module show loop-streaming
 ```
 
+### Source Overrides (Development)
+
+```bash
+# Override module source for local development
+amplifier source add tool-bash ~/dev/tool-bash --local
+
+# See where modules come from
+amplifier source show tool-bash
+amplifier source list
+
+# Remove override
+amplifier source remove tool-bash --local
+```
+
 ---
 
 ## Troubleshooting
 
 ### "No providers mounted"
 
-**Cause**: Missing API key or profile doesn't include a provider
+**Cause**: Missing API key
 
 **Solution**:
-```bash
-# Set API key
-export ANTHROPIC_API_KEY="your-key"
 
-# Use a profile that includes a provider
-amplifier run --profile dev "test"
+```bash
+# Run init to configure
+amplifier init
+
+# Or set API key manually
+export ANTHROPIC_API_KEY="your-key"
 ```
 
 ### "Module not found"
 
-**Cause**: Module not installed or profile missing git source
+**Cause**: Module not installed or missing git source in profile
 
-**Solution**: Modules are fetched dynamically from git sources specified in profiles. Check that your profile includes `source:` fields:
+**Solution**: Modules are fetched dynamically from git sources. Check your profile includes source fields or install the module.
 
-```yaml
-tools:
-  - module: tool-filesystem
-    source: git+https://github.com/microsoft/amplifier-module-tool-filesystem@main
+```bash
+# Check module resolution
+amplifier source show tool-filesystem
+
+# Check profile
+amplifier profile show dev
 ```
 
 ### Sessions Not Showing
@@ -345,6 +362,7 @@ tools:
 **Cause**: Sessions are project-scoped
 
 **Solution**:
+
 ```bash
 # Show all sessions across projects
 amplifier session list --all-projects
@@ -354,13 +372,6 @@ cd /path/to/project
 amplifier session list
 ```
 
-### API Rate Limits
-
-If you hit rate limits, you can:
-- Switch to a different provider
-- Use a profile with cost-aware scheduling
-- Reduce max_tokens in your profile
-
 ---
 
 ## Tips & Best Practices
@@ -369,12 +380,14 @@ If you hit rate limits, you can:
 2. **Use chat mode** - For complex, multi-turn tasks
 3. **Try agents** - Let specialized agents handle focused work
 4. **Leverage sessions** - Resume complex work later
-5. **Experiment with profiles** - Find the configuration that works for you
+5. **Experiment with providers** - Compare Anthropic vs OpenAI for your use case
+6. **Customize profiles** - Create profiles tailored to your needs
 
 ---
 
 ## What's Next
 
+- **Configuration deep dive**: [../docs/USER_ONBOARDING.md#quick-reference](../docs/USER_ONBOARDING.md#quick-reference)
 - **See available modules**: [MODULES.md](./MODULES.md)
 - **Build your own**: [DEVELOPER.md](./DEVELOPER.md)
-- **Deep dive**: [amplifier-core](https://github.com/microsoft/amplifier-core) for kernel architecture
+- **Understand the philosophy**: [../docs/context/KERNEL_PHILOSOPHY.md](../docs/context/KERNEL_PHILOSOPHY.md)

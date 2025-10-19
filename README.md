@@ -11,13 +11,13 @@
 
 Amplifier brings AI assistance to your command line with a modular, extensible architecture. More info to follow here shortly, for our earlier exploration that this will be racing to supercede, check out [our original version](https://github.com/microsoft/amplifier).
 
-**This CLI is _just one_ interface**—the reference implementation. The real power is the modular platform underneath. Soon you'll see web interfaces, mobile apps, voice-driven coding, and even Amplifier-to-Amplifier collaborative experiences. The community will build interfaces tailored to their workflows, mixing and matching modules dynamically to craft custom AI experiences.
+**This CLI is _just one_ interface**—the reference implementation. The real power is the modular platform underneath. Soon you'll see web interfaces, mobile apps, voice-driven coding, and even Amplifier-to-Amplifier collaborative experiences. The community will build custom interfaces, mixing and matching modules dynamically to craft tailored AI experiences.
 
 ---
 
-## Quick Start (3 Steps to Your First AI Interaction)
+## Quick Start - Zero to Working in 90 Seconds
 
-### 1. Install UV
+### Step 1: Install UV (30 seconds)
 
 ```bash
 # macOS/Linux/WSL
@@ -27,31 +27,142 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-### 2. Set Your API Key
+### Step 2: Run Amplifier (60 seconds)
 
 ```bash
-export ANTHROPIC_API_KEY="your-api-key-here"
+# Try it now (auto-setup on first run)
+uvx --from git+https://github.com/microsoft/amplifier@next amplifier
 ```
 
-> **Note**: We've done most of our early testing with Anthropic Claude. Other providers (OpenAI, Azure OpenAI, Ollama) are supported but may require custom profiles or additional setup. We're rapidly improving the out-of-box experience—expect this to be easier next week!
+**First time? Quick setup wizard:**
 
-### 3. Run Amplifier
+<details>
+<summary><b>With Anthropic Claude (recommended)</b></summary>
+
+```
+Provider? [1] Anthropic [2] OpenAI [3] Azure OpenAI [4] Ollama: 1
+
+API key: ••••••••
+  Get one: https://console.anthropic.com/settings/keys
+✓ Saved
+
+Model? [1] claude-sonnet-4-5 [2] claude-opus-4 [3] custom: 1
+✓ Using claude-sonnet-4-5
+
+Profile? [1] dev [2] base [3] full: 1
+✓ Using 'dev' profile
+
+Ready! Starting chat...
+>
+```
+
+</details>
+
+<details>
+<summary><b>With Azure OpenAI (enterprise)</b></summary>
+
+```
+Provider? [1] Anthropic [2] OpenAI [3] Azure OpenAI [4] Ollama: 3
+
+Azure endpoint: https://my-resource.openai.azure.com/
+✓ Saved
+
+Authentication? [1] API key [2] Azure CLI (az login): 2
+✓ Using DefaultAzureCredential
+  (Works with 'az login' locally or managed identity in Azure)
+
+Deployment name: gpt-5-codex
+  Note: Use your Azure deployment name, not model name
+✓ Configured
+
+Profile? [1] dev [2] base [3] full: 1
+✓ Using 'dev' profile
+
+Ready! Starting chat...
+>
+```
+
+</details>
+
+<details>
+<summary><b>With OpenAI</b></summary>
+
+```
+Provider? [1] Anthropic [2] OpenAI [3] Azure OpenAI [4] Ollama: 2
+
+API key: ••••••••
+  Get one: https://platform.openai.com/api-keys
+✓ Saved
+
+Model? [1] gpt-4o [2] gpt-4o-mini [3] o1 [4] custom: 1
+✓ Using gpt-4o
+
+Profile? [1] dev [2] base [3] full: 1
+✓ Using 'dev' profile
+
+Ready! Starting chat...
+>
+```
+
+</details>
+
+<details>
+<summary><b>With Ollama (local, free)</b></summary>
+
+```
+Provider? [1] Anthropic [2] OpenAI [3] Azure OpenAI [4] Ollama: 4
+
+Model? [1] llama3 [2] codellama [3] mistral [4] custom: 1
+✓ Using llama3
+
+Make sure Ollama is running:
+  ollama serve
+  ollama pull llama3
+
+Profile? [1] dev [2] base [3] full: 1
+✓ Using 'dev' profile
+
+Ready! Starting chat...
+>
+```
+
+</details>
+
+**That's it!** From nothing to productive AI assistant in 90 seconds.
+
+---
+
+## Alternative Paths
+
+### Quick One-Off Test (If You Have API Key)
 
 ```bash
-# Try it instantly (no installation)
-uvx --from git+https://github.com/microsoft/amplifier.git@next amplifier run "tell me about your agents and what kinds of tasks you might be able to help with"
+# Set your API key
+export ANTHROPIC_API_KEY="sk-ant-..."
 
-# Or start a conversation
-uvx --from git+https://github.com/microsoft/amplifier.git@next amplifier
+# Run immediately
+uvx --from git+https://github.com/microsoft/amplifier@next amplifier run "Explain async/await in Python"
 ```
 
-**That's it!** You now have an AI coding assistant at your fingertips.
+### Install for Regular Use
+
+```bash
+# Install globally
+uv tool install git+https://github.com/microsoft/amplifier@next
+
+# Configure (if you skipped auto-init)
+amplifier init
+
+# Use anywhere
+amplifier run "Your prompt"
+amplifier  # Start chat mode
+```
 
 ---
 
 ## What Can Amplifier Do?
 
-First of all, this still VERY early and we have not brought _most_ of our features over from our prior version yet, so keep your expectations low and we'll get it ramped up very quickly over the next week or two. Consider this just an early sneak peek.
+First of all, this is still VERY early and we have not brought _most_ of our features over from our prior version yet, so keep your expectations low and we'll get it ramped up very quickly over the next week or two. Consider this just an early sneak peek.
 
 - **Generate code** - From simple functions to full applications
 - **Debug problems** - Systematic error resolution with the bug-hunter agent
@@ -62,48 +173,37 @@ First of all, this still VERY early and we have not brought _most_ of our featur
 **Additional features over prior version:**
 
 - **Modular**: Swap AI providers, tools, and behaviors like LEGO bricks
-- **Profile-based**: Pre-configured toolboxes for different scenarios
+- **Profile-based**: Pre-configured capability sets for different scenarios
 - **Session persistence**: Pick up where you left off, even across projects
 - **Extensible**: Build your own modules, interfaces, or entire custom experiences
 
 ---
 
-## Installation Options
+## Supported AI Providers
 
-### Instant Try (Recommended for Testing)
+Amplifier works with multiple AI providers:
+
+- **Anthropic Claude** - Recommended, most tested (Sonnet 4.5, Opus models)
+- **OpenAI** - Good alternative (GPT-4o, GPT-4o-mini, o1 models)
+- **Azure OpenAI** - Enterprise users with Azure subscriptions (supports managed identity)
+- **Ollama** - Local, free, no API key needed (llama3, codellama, etc.)
+
+Switch providers anytime:
 
 ```bash
-# No installation, runs directly
-uvx --from git+https://github.com/microsoft/amplifier.git@next amplifier run "Your prompt"
+# Switch provider (interactive - prompts for model/config)
+amplifier provider use openai
+
+# Or explicit
+amplifier provider use anthropic --model claude-opus-4
+amplifier provider use azure-openai --deployment gpt-5-codex
 ```
 
-### Global Tool Install
-
-```bash
-# Install once, run anywhere
-uv tool install git+https://github.com/microsoft/amplifier.git@next
-
-# Then use
-amplifier run "Your prompt"
-amplifier  # Start chat mode
-```
+> **Note**: We've done most of our early testing with Anthropic Claude. Other providers are supported but may have rough edges we're actively smoothing out.
 
 ---
 
 ## Basic Usage
-
-### Single Commands
-
-```bash
-# Get quick answers
-amplifier run "Explain async/await in Python"
-
-# Generate code
-amplifier run "Create a REST API for a todo app with FastAPI"
-
-# Debug issues
-amplifier run "Why does this code throw a TypeError: [paste code]"
-```
 
 ### Interactive Chat Mode
 
@@ -119,11 +219,25 @@ In chat mode:
 
 - Context persists across messages
 - Use `/help` for special commands
+- Use `/provider`, `/profile`, `/module` to configure
 - Type `exit` or Ctrl+C to quit
+
+### Single Commands
+
+```bash
+# Get quick answers
+amplifier run "Explain async/await in Python"
+
+# Generate code
+amplifier run "Create a REST API for a todo app with FastAPI"
+
+# Debug issues
+amplifier run "Why does this code throw a TypeError: [paste code]"
+```
 
 ### Using Profiles
 
-Profiles are pre-configured toolboxes for different scenarios:
+Profiles are pre-configured capability sets for different scenarios:
 
 ```bash
 # See available profiles
@@ -132,8 +246,8 @@ amplifier profile list
 # Use a specific profile
 amplifier run --profile dev "Your prompt"
 
-# Set default for your project (the directory you launch `amplifier` from)
-amplifier profile default --set dev
+# Set as default
+amplifier profile use dev
 ```
 
 **Bundled profiles:**
@@ -141,7 +255,7 @@ amplifier profile default --set dev
 - `foundation` - Absolute minimum (provider + orchestrator only)
 - `base` - Essential tools (filesystem, bash, logging)
 - `dev` - Full development setup (web, search, agents) - **Default & recommended**
-- `production` - "Production" minded exploration (persistent context, early command safety)
+- `production` - Production-minded exploration (persistent context, safety)
 - `full` - Everything enabled
 
 ### Working with Agents
@@ -188,11 +302,64 @@ Sessions are project-scoped—when you're in `/home/user/myapp`, you see only `m
 
 ---
 
+## Configuration
+
+### Switching Providers
+
+```bash
+# Switch provider (interactive - prompts for model)
+amplifier provider use openai
+
+# Or explicit
+amplifier provider use anthropic --model claude-opus-4
+
+# Azure OpenAI (needs endpoint + deployment)
+amplifier provider use azure-openai
+  Azure endpoint: https://my-resource.openai.azure.com/
+  Auth? [1] API key [2] Azure CLI: 2
+  Deployment: gpt-5-codex
+
+# Configure where to save
+amplifier provider use openai --model gpt-4o --local      # Just you
+amplifier provider use anthropic --model claude-opus-4 --project  # Team
+
+# See what's active
+amplifier provider current
+```
+
+### Switching Profiles
+
+```bash
+# Switch profile
+amplifier profile use dev
+amplifier profile use production
+amplifier profile use test
+
+# See what's active
+amplifier profile current
+```
+
+### Adding Capabilities
+
+```bash
+# Add module
+amplifier module add tool-jupyter
+amplifier module add tool-custom --project
+
+# See loaded modules
+amplifier module current
+```
+
+See [docs/USER_ONBOARDING.md#quick-reference](docs/USER_ONBOARDING.md#quick-reference) for complete command reference.
+
+---
+
 ## What's Next
 
-- **Learn more**: [docs/USER_GUIDE.md](docs/USER_GUIDE.md) - Complete usage guide
-- **See modules**: [docs/MODULES.md](docs/MODULES.md) - Available modules catalog
-- **Build with AI**: [docs/DEVELOPER.md](docs/DEVELOPER.md) - Use Amplifier to build modules
+- **Complete usage guide**: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
+- **Command reference**: [docs/USER_ONBOARDING.md#quick-reference](docs/USER_ONBOARDING.md#quick-reference)
+- **Module catalog**: [docs/MODULES.md](docs/MODULES.md)
+- **Build with Amplifier**: [docs/DEVELOPER.md](docs/DEVELOPER.md)
 
 > **Note**: Amplifier is under active development. Links may break as we evolve. If you encounter issues, please report them.
 
@@ -236,7 +403,7 @@ This is an **early preview release**:
 - ⚠️ Other providers need more testing
 - ⚠️ Some error messages could be clearer
 - ⚠️ Documentation is incomplete in places
-- ⚠️ Installation experience will improve significantly
+- ⚠️ Installation experience will improve
 
 **Join us on this journey!** Fork, experiment, build modules, share feedback. This is the ground floor.
 
