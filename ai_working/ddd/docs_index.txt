@@ -1,0 +1,37 @@
+# Documentation Files Index for Transcribe Migration
+# Format: [ ] = pending, [x] = completed
+
+## Files in This Repo (amplifier.transcripts2) - To Update
+
+[x] scenarios/README.md
+[x] scenarios/transcribe/MIGRATION_NOTICE.md
+[x] ai_working/SCENARIO_MIGRATION_GUIDE.md
+[x] README.md (no changes needed - doesn't mention transcribe)
+
+## Documentation Templates for New Modules (to be created, then copied to amplifier-dev)
+
+### tool-whisper
+[x] ai_working/ddd/templates/tool-whisper/README.md
+[x] ai_working/ddd/templates/tool-whisper/examples/whisper.md
+[x] ai_working/ddd/templates/tool-whisper/CODE_OF_CONDUCT.md
+[x] ai_working/ddd/templates/tool-whisper/LICENSE
+[x] ai_working/ddd/templates/tool-whisper/SECURITY.md
+[x] ai_working/ddd/templates/tool-whisper/SUPPORT.md
+
+### tool-youtube-dl
+[x] ai_working/ddd/templates/tool-youtube-dl/README.md
+[x] ai_working/ddd/templates/tool-youtube-dl/examples/youtube-dl.md
+[x] ai_working/ddd/templates/tool-youtube-dl/CODE_OF_CONDUCT.md
+[x] ai_working/ddd/templates/tool-youtube-dl/LICENSE
+[x] ai_working/ddd/templates/tool-youtube-dl/SECURITY.md
+[x] ai_working/ddd/templates/tool-youtube-dl/SUPPORT.md
+
+### app-transcribe
+[x] ai_working/ddd/templates/app-transcribe/README.md
+[x] ai_working/ddd/templates/app-transcribe/HOW_THIS_APP_WAS_MADE.md
+[x] ai_working/ddd/templates/app-transcribe/MIGRATION_NOTES.md
+[x] ai_working/ddd/templates/app-transcribe/.env.example
+[x] ai_working/ddd/templates/app-transcribe/CODE_OF_CONDUCT.md
+[x] ai_working/ddd/templates/app-transcribe/LICENSE
+[x] ai_working/ddd/templates/app-transcribe/SECURITY.md
+[x] ai_working/ddd/templates/app-transcribe/SUPPORT.md
