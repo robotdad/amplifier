@@ -16,9 +16,10 @@ Successfully migrated blog creation functionality from `scenarios/` into unified
 - ✅ Git sources properly configured
 
 **Current Status**:
-- ✅ Development setup works (clone + uv sync)
-- ⚠️ uvx support pending (requires amplifier package publication)
-- ✅ All 3 modules functional and tested
+- ✅ uvx installation works: `uvx --from git+https://github.com/robotdad/amplifier-app-blog-creator blog-creator --help`
+- ✅ All amplifier v1 imports replaced with standard libraries
+- ✅ All 3 modules functional and tested (113+ tests passing)
+- ✅ All 4 repos pushed to GitHub
 - ✅ Code quality verified
 
 **Test Summary**:
@@ -98,14 +99,10 @@ uv run pytest tests/ -v
 
 User should verify end-to-end flow with actual usage:
 
-#### Test Scenario 1: Basic Blog Creation
+#### Test Scenario 1: Basic Blog Creation (via uvx - PRIMARY METHOD)
 ```bash
-# Clone the app
-git clone https://github.com/robotdad/amplifier-app-blog-creator
-cd amplifier-app-blog-creator
-
-# Install (local amplifier path dependency currently required)
-uv sync
+# No installation needed!
+# Create test files first
 
 # Create test idea file
 cat > /tmp/test_idea.md << 'EOF'
@@ -127,8 +124,9 @@ This is how I write. I use short sentences. I prefer active voice.
 I like clear explanations with examples.
 EOF
 
-# Run blog creator
-uv run blog-creator \
+# Run blog creator via uvx (no installation needed)
+uvx --from git+https://github.com/robotdad/amplifier-app-blog-creator \
+  blog-creator \
   --idea /tmp/test_idea.md \
   --writings-dir /tmp/my_writings \
   --verbose
@@ -140,7 +138,8 @@ uv run blog-creator \
 
 #### Test Scenario 2: Blog with Images
 ```bash
-uv run blog-creator \
+uvx --from git+https://github.com/robotdad/amplifier-app-blog-creator \
+  blog-creator \
   --idea /tmp/test_idea.md \
   --writings-dir /tmp/my_writings \
   --illustrate \
@@ -151,14 +150,16 @@ uv run blog-creator \
 #### Test Scenario 3: Resume Functionality
 ```bash
 # Start blog creation
-uv run blog-creator \
+uvx --from git+https://github.com/robotdad/amplifier-app-blog-creator \
+  blog-creator \
   --idea /tmp/test_idea.md \
   --writings-dir /tmp/my_writings
 
 # Ctrl+C to interrupt
 
-# Resume
-uv run blog-creator \
+# Resume (same command with --resume flag)
+uvx --from git+https://github.com/robotdad/amplifier-app-blog-creator \
+  blog-creator \
   --idea /tmp/test_idea.md \
   --writings-dir /tmp/my_writings \
   --resume
@@ -168,13 +169,12 @@ uv run blog-creator \
 
 Run these quick checks to verify basic functionality:
 
-### 1. Installation Check
+### 1. Installation Check (uvx)
 ```bash
-cd amplifier-dev/amplifier-app-blog-creator
-uv sync
-uv run python -m amplifier_app_blog_creator --help
+uvx --from git+https://github.com/robotdad/amplifier-app-blog-creator blog-creator --help
 ```
 **Expected**: Shows help text with all options
+**Result**: ✅ VERIFIED WORKING (110 packages installed, help displayed)
 
 ### 2. Import Check
 ```bash
