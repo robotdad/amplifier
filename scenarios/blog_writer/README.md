@@ -1,5 +1,18 @@
 # Blog Writer: Transform Ideas Into Polished Posts
 
+> **⚠️ MIGRATION NOTICE**
+> This tool has been migrated to amplifier-dev as a reusable app with enhanced capabilities.
+>
+> **New Location**: [amplifier-app-blog-creator](../../amplifier-dev/amplifier-app-blog-creator/)
+>
+> **What's New**:
+> - Optional AI illustration phase
+> - Reusable modules (style-extraction, image-generation, markdown-utils)
+> - Git sources for frictionless installation
+> - Full amplifier-dev ecosystem integration
+>
+> **This version** remains for reference but is no longer actively maintained.
+
 **Turn rough notes into blog posts that sound exactly like you.**
 
 ## The Problem

@@ -1,5 +1,18 @@
 # Article Illustrator: AI-Powered Article Imagery
 
+> **⚠️ MIGRATION NOTICE**
+> This tool has been migrated to amplifier-dev as part of a unified blog creation workflow.
+>
+> **New Location**: [amplifier-app-blog-creator](../../amplifier-dev/amplifier-app-blog-creator/)
+>
+> **What's New**:
+> - Unified with blog writing workflow (content → optional illustration)
+> - Available as reusable module: amplifier-module-image-generation
+> - Git sources for frictionless installation
+> - Full amplifier-dev ecosystem integration
+>
+> **This version** remains for reference but is no longer actively maintained.
+
 **Automatically generate contextually relevant illustrations for your markdown articles.**
 
 ## The Problem

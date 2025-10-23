@@ -1,0 +1,3 @@
+[submodule "amplifier-dev"]
+	path = amplifier-dev
+	url = https://github.com/microsoft/amplifier-dev.git
