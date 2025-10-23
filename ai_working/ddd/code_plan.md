@@ -532,55 +532,59 @@ Tools can be built in parallel, app must wait for tools.
 
 ---
 
-## Unknowns / Research Needed
+## Research Findings ✅ COMPLETED
 
-### 1. amplifier-core Tool Protocol
+**Full details**: `ai_working/ddd/research_findings.md`
 
-**Question**: What's the exact Tool protocol interface?
+### 1. Tool Protocol ✅
 
-**Need to research**:
-```bash
-# In amplifier-dev (when available)
-grep -r "class Tool" --include="*.py"
-# Or check amplifier-dev documentation
+**Found**: `amplifier-core/amplifier_core/interfaces.py:87-110`
+
+```python
+from amplifier_core.interfaces import Tool
+from amplifier_core.models import ToolResult
+
+# Protocol requires:
+- @property name -> str
+- @property description -> str
+- async execute(input: dict) -> ToolResult
 ```
 
-**Fallback**: Look at existing tool modules (tool-bash, tool-filesystem) for pattern
+**ToolResult**: Pydantic model with `success`, `output`, `error`
 
-**Impact**: Blocks tool wrapper implementation
+### 2. Event Emission ✅
 
-### 2. Event Emission API
+**Pattern**: Tools DON'T emit events - orchestrator handles it
 
-**Question**: How do tools emit events in amplifier-dev?
+- Orchestrator emits `tool:pre` before calling execute()
+- Orchestrator emits `tool:post` after success
+- Orchestrator emits `tool:error` on failure
 
-**Need to find**:
+**Impact**: Keep tools simple, no event code needed
+
+### 3. Logging ✅
+
+**Pattern**: Standard Python logging
+
 ```python
-# How to emit tool:pre, tool:post, tool:error events
-# Is there a coordinator.emit() or similar?
+import logging
+logger = logging.getLogger(__name__)
 ```
 
-**Fallback**: Check amplifier-core docs or existing tool implementations
+**Migration**: Replace `amplifier.utils.logger.get_logger` with `logging.getLogger`
 
-**Impact**: Needed for proper event emission
+### 4. Screenshot Capture ✅
 
-### 3. Logging in amplifier-dev
+**Command**: `ffmpeg -ss HH:MM:SS -i video.mp4 -frames:v 1 -q:v 2 output.jpg`
 
-**Question**: Where is `get_logger()` in amplifier-core?
+**Verified**: ffmpeg 7.1.1 available, command tested
 
-**Current**: `amplifier.utils.logger.get_logger`
-**Need**: New location in amplifier-core
-
-**Impact**: All imports need updating
-
-### 4. Screenshot Capture with yt-dlp
-
-**Question**: Can yt-dlp capture screenshots or need ffmpeg?
-
-**Research**: Check yt-dlp documentation for `--write-thumbnail` or similar
-
-**Likely solution**: Use ffmpeg directly:
 ```python
-ffmpeg -ss 00:05:30 -i video.mp4 -frames:v 1 screenshot.jpg
+subprocess.run([
+    "ffmpeg", "-ss", timestamp,
+    "-i", str(video), "-frames:v", "1",
+    "-q:v", "2", "-y", str(output)
+], check=True)
 ```
 
 ---
