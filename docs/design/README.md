@@ -1,6 +1,6 @@
 # Design Intelligence Capability
 
-This directory contains Amplifier's integrated design intelligence capability, extracted from the `amplified-design` repository to provide reusable design methodology, knowledge, and specialist agents for any project.
+This directory contains Amplifier's integrated design intelligence capability that provides reusable design methodology, knowledge, and specialist agents for any project.
 
 ## Overview
 
@@ -141,11 +141,3 @@ Design intelligence integrates seamlessly with Amplifier's software development 
 2. **Review design protocols** - Learn the design process workflows
 3. **Try /designer** - Experience orchestrated design intelligence
 4. **Read philosophy docs** - Understand the design thinking framework
-
-## Source
-
-This design capability was extracted from the `amplified-design` repository and integrated into Amplifier to make it available for any project requiring design intelligence.
-
-**Migration Date:** October 2025
-**Source Repository:** `/Users/robotdad/Source/amplified-design/`
-**Migration Plan:** `/Users/robotdad/amplifier/AMPLIFIER-DESIGN-MIGRATION-PLAN.md`
