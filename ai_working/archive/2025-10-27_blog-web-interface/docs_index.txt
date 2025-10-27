@@ -1,0 +1,4 @@
+[x] README.md
+[x] HOW_I_BUILT_THIS.md
+[x] MIGRATION_NOTES.md
+[x] src/amplifier_app_blog_creator/web/README.md
