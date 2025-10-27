@@ -105,7 +105,7 @@ Amplifier has 4 configuration dimensions you can control:
 amplifier provider use openai
 
 # Or explicit
-amplifier provider use anthropic --model claude-opus-4
+amplifier provider use anthropic --model claude-opus-4-1
 amplifier provider use openai --model gpt-4o
 amplifier provider use ollama --model llama3
 
@@ -114,7 +114,7 @@ amplifier provider use azure-openai --deployment gpt-5-codex --use-azure-cli
 
 # Configure where to save
 amplifier provider use openai --model gpt-4o --local    # Just you
-amplifier provider use anthropic --model claude-opus-4 --project  # Team
+amplifier provider use anthropic --model claude-opus-4-1 --project  # Team
 
 # See what's active
 amplifier provider current

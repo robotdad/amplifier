@@ -46,7 +46,7 @@ API key: ••••••••
   Get one: https://console.anthropic.com/settings/keys
 ✓ Saved
 
-Model? [1] claude-sonnet-4-5 [2] claude-opus-4 [3] custom: 1
+Model? [1] claude-sonnet-4-5 [2] claude-opus-4-1 [3] custom: 1
 ✓ Using claude-sonnet-4-5
 
 Profile? [1] dev [2] base [3] full: 1
@@ -195,7 +195,7 @@ Switch providers anytime:
 amplifier provider use openai
 
 # Or explicit
-amplifier provider use anthropic --model claude-opus-4
+amplifier provider use anthropic --model claude-opus-4-1
 amplifier provider use azure-openai --deployment gpt-5-codex
 ```
 
@@ -311,7 +311,7 @@ Sessions are project-scoped—when you're in `/home/user/myapp`, you see only `m
 amplifier provider use openai
 
 # Or explicit
-amplifier provider use anthropic --model claude-opus-4
+amplifier provider use anthropic --model claude-opus-4-1
 
 # Azure OpenAI (needs endpoint + deployment)
 amplifier provider use azure-openai
@@ -321,7 +321,7 @@ amplifier provider use azure-openai
 
 # Configure where to save
 amplifier provider use openai --model gpt-4o --local      # Just you
-amplifier provider use anthropic --model claude-opus-4 --project  # Team
+amplifier provider use anthropic --model claude-opus-4-1 --project  # Team
 
 # See what's active
 amplifier provider current
