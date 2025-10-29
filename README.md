@@ -94,8 +94,8 @@ API key: ••••••••
   Get one: https://platform.openai.com/api-keys
 ✓ Saved
 
-Model? [1] gpt-4o [2] gpt-4o-mini [3] o1 [4] custom: 1
-✓ Using gpt-4o
+Model? [1] gpt-5 [2] gpt-5-mini [3] gpt-5-codex [4] o1 [5] custom: 1
+✓ Using gpt-5
 
 Profile? [1] dev [2] base [3] full: 1
 ✓ Using 'dev' profile
@@ -320,7 +320,7 @@ amplifier provider use azure-openai
   Deployment: gpt-5-codex
 
 # Configure where to save
-amplifier provider use openai --model gpt-4o --local      # Just you
+amplifier provider use openai --model gpt-5 --local      # Just you
 amplifier provider use anthropic --model claude-opus-4-1 --project  # Team
 
 # See what's active

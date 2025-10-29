@@ -106,14 +106,14 @@ amplifier provider use openai
 
 # Or explicit
 amplifier provider use anthropic --model claude-opus-4-1
-amplifier provider use openai --model gpt-4o
+amplifier provider use openai --model gpt-5
 amplifier provider use ollama --model llama3
 
 # Azure OpenAI (more complex)
 amplifier provider use azure-openai --deployment gpt-5-codex --use-azure-cli
 
 # Configure where to save
-amplifier provider use openai --model gpt-4o --local    # Just you
+amplifier provider use openai --model gpt-5 --local    # Just you
 amplifier provider use anthropic --model claude-opus-4-1 --project  # Team
 
 # See what's active
