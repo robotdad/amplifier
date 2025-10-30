@@ -390,7 +390,7 @@ This is an **early preview release**:
 - Documentation is catching up with code
 - We're moving fast—breaking changes happen
 
-**What works well today:**
+**What works today:**
 
 - ✅ Core AI interactions (Anthropic Claude)
 - ✅ Profile-based configuration
