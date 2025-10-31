@@ -184,7 +184,7 @@ First of all, this is still VERY early and we have not brought _most_ of our fea
 Amplifier works with multiple AI providers:
 
 - **Anthropic Claude** - Recommended, most tested (Sonnet 4.5, Opus models)
-- **OpenAI** - Good alternative (GPT-4o, GPT-4o-mini, o1 models)
+- **OpenAI** - Good alternative (GPT-5, GPT-5-Mini, GPT-5-Codex)
 - **Azure OpenAI** - Enterprise users with Azure subscriptions (supports managed identity)
 - **Ollama** - Local, free, no API key needed (llama3, codellama, etc.)
 
@@ -363,6 +363,7 @@ Profiles configure your Amplifier environment with providers, tools, agents, and
 **→ [Profile Authoring Guide](https://github.com/microsoft/amplifier-profiles/blob/main/docs/PROFILE_AUTHORING.md)** - Complete guide to creating profiles
 
 **Quick example**:
+
 ```yaml
 ---
 profile:
@@ -385,6 +386,7 @@ Agents are specialized AI personas for focused tasks.
 **→ [Agent Authoring Guide](https://github.com/microsoft/amplifier-profiles/blob/main/docs/AGENT_AUTHORING.md)** - Complete guide to creating agents
 
 **Quick example**:
+
 ```yaml
 ---
 meta:
@@ -392,7 +394,7 @@ meta:
   description: Expert in [domain]
 providers:
   - module: provider-anthropic
-    config: {model: claude-opus-4-1}
+    config: { model: claude-opus-4-1 }
 ---
 You are a specialized expert in [domain]...
 ```
@@ -404,6 +406,7 @@ You are a specialized expert in [domain]...
 ### Building on Amplifier
 
 **Core Libraries**:
+
 - **[amplifier-core](https://github.com/microsoft/amplifier-core)** - Kernel mechanisms and contracts
 - **[amplifier-profiles](https://github.com/microsoft/amplifier-profiles)** - Profile/agent loading and compilation
 - **[amplifier-collections](https://github.com/microsoft/amplifier-collections)** - Collections system
@@ -411,9 +414,11 @@ You are a specialized expert in [domain]...
 - **[amplifier-module-resolution](https://github.com/microsoft/amplifier-module-resolution)** - Module source resolution
 
 **Reference Implementation**:
+
 - **[amplifier-app-cli](https://github.com/microsoft/amplifier-app-cli)** - CLI application (this implementation)
 
 **Architecture**:
+
 - **[Repository Rules](docs/REPOSITORY_RULES.md)** - Where docs go, what references what
 - **[Module Catalog](#modules)** - Available providers, tools, hooks, orchestrators
 
