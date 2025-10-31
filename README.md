@@ -354,14 +354,74 @@ See [docs/USER_ONBOARDING.md#quick-reference](docs/USER_ONBOARDING.md#quick-refe
 
 ---
 
+## Customizing Amplifier
+
+### Creating Custom Profiles
+
+Profiles configure your Amplifier environment with providers, tools, agents, and settings.
+
+**→ [Profile Authoring Guide](https://github.com/microsoft/amplifier-profiles/blob/main/docs/PROFILE_AUTHORING.md)** - Complete guide to creating profiles
+
+**Quick example**:
+```yaml
+---
+profile:
+  name: my-profile
+  extends: base
+tools:
+  - module: tool-web
+  - module: tool-search
+agents:
+  include: [zen-architect, researcher]
+---
+```
+
+**API Reference**: [amplifier-profiles](https://github.com/microsoft/amplifier-profiles)
+
+### Creating Custom Agents
+
+Agents are specialized AI personas for focused tasks.
+
+**→ [Agent Authoring Guide](https://github.com/microsoft/amplifier-profiles/blob/main/docs/AGENT_AUTHORING.md)** - Complete guide to creating agents
+
+**Quick example**:
+```yaml
+---
+meta:
+  name: my-agent
+  description: Expert in [domain]
+providers:
+  - module: provider-anthropic
+    config: {model: claude-opus-4-1}
+---
+You are a specialized expert in [domain]...
+```
+
+---
+
+## For Developers
+
+### Building on Amplifier
+
+**Core Libraries**:
+- **[amplifier-core](https://github.com/microsoft/amplifier-core)** - Kernel mechanisms and contracts
+- **[amplifier-profiles](https://github.com/microsoft/amplifier-profiles)** - Profile/agent loading and compilation
+- **[amplifier-collections](https://github.com/microsoft/amplifier-collections)** - Collections system
+- **[amplifier-config](https://github.com/microsoft/amplifier-config)** - Configuration management
+- **[amplifier-module-resolution](https://github.com/microsoft/amplifier-module-resolution)** - Module source resolution
+
+**Reference Implementation**:
+- **[amplifier-app-cli](https://github.com/microsoft/amplifier-app-cli)** - CLI application (this implementation)
+
+**Architecture**:
+- **[Repository Rules](docs/REPOSITORY_RULES.md)** - Where docs go, what references what
+- **[Module Catalog](#modules)** - Available providers, tools, hooks, orchestrators
+
+---
+
 ## What's Next
 
-- **Complete usage guide**: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
-- **Command reference**: [docs/USER_ONBOARDING.md#quick-reference](docs/USER_ONBOARDING.md#quick-reference)
-- **Module catalog**: [docs/MODULES.md](docs/MODULES.md)
-- **Build with Amplifier**: [docs/DEVELOPER.md](docs/DEVELOPER.md)
-
-> **Note**: Amplifier is under active development. Links may break as we evolve. If you encounter issues, please report them.
+> **Note**: Amplifier is under active development. Some documentation links are being consolidated. If you encounter issues, please report them.
 
 ---
 
