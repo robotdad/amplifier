@@ -84,6 +84,36 @@ Ready! Try: amplifier run "Hello world"
 
 ---
 
+## Environment Variables
+
+Amplifier detects environment variables and uses them as defaults during configuration. If set, you can simply press Enter to confirm instead of typing values.
+
+### Supported Variables
+
+| Provider | Variable | Purpose |
+|----------|----------|---------|
+| **Anthropic** | `ANTHROPIC_API_KEY` | API key |
+| **OpenAI** | `OPENAI_API_KEY` | API key |
+| **Azure OpenAI** | `AZURE_OPENAI_ENDPOINT` | Azure endpoint URL |
+| | `AZURE_OPENAI_DEPLOYMENT` | Deployment name |
+| | `AZURE_OPENAI_API_KEY` | API key (if using key auth) |
+| | `AZURE_USE_DEFAULT_CREDENTIAL` | Use Azure CLI auth (`true`/`false`) |
+| **Ollama** | `OLLAMA_HOST` | Ollama server URL |
+
+### Quick Setup with Environment Variables
+
+```bash
+# Set your environment
+export ANTHROPIC_API_KEY="your-key"
+
+# Run init - detected values shown, just press Enter
+amplifier init
+```
+
+The wizard shows detected values and lets you confirm or override them.
+
+---
+
 ## Shell Completion (Optional)
 
 Enable tab completion in one command. Amplifier will automatically modify your shell configuration.
