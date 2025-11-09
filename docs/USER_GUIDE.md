@@ -298,6 +298,62 @@ amplifier --profile production "deploy task"
 amplifier run --provider openai --profile test "compare models"
 ```
 
+### Keeping Amplifier Up to Date
+
+Amplifier checks for updates across all components: the CLI itself, cached modules, and installed collections.
+
+```bash
+# Check for updates (no changes made)
+amplifier update --check-only
+
+# Update everything (modules + collections + Amplifier itself)
+amplifier update
+
+# Update with confirmation prompts
+amplifier update --yes
+```
+
+**What gets updated:**
+
+- **Cached modules** - Modules pinned to mutable refs (`@main`, `@dev`)
+- **Collections** - Installed collections pinned to mutable refs
+- **Amplifier itself** - The CLI tool and core libraries
+
+**Updating modules:**
+
+```bash
+# Refresh all cached modules
+amplifier module refresh
+
+# Refresh specific module
+amplifier module refresh tool-filesystem
+
+# Only refresh branches (not tags/SHAs)
+amplifier module refresh --mutable-only
+
+# Check what needs updating
+amplifier module check-updates
+```
+
+**Updating collections:**
+
+```bash
+# Refresh all installed collections
+amplifier collection refresh
+
+# Refresh specific collection
+amplifier collection refresh foundation
+
+# Only refresh branches (not tags/SHAs)
+amplifier collection refresh --mutable-only
+```
+
+**Notes:**
+
+- Immutable refs (tags like `@v1.0.0`, SHAs) are never automatically updated
+- Local file sources show update status but require manual `git pull`
+- Use `--mutable-only` to skip pinned versions during refresh
+
 ### Module Management
 
 ```bash
