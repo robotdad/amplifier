@@ -1,14 +1,59 @@
-# Amplifier Module Catalog
+# Amplifier Component Catalog
 
-Amplifier's modular architecture allows you to mix and match capabilities. This page catalogs available modules—both reference implementations and community contributions.
+Amplifier's modular architecture allows you to mix and match capabilities. This page catalogs all available components in the Amplifier ecosystem—core infrastructure, applications, libraries, collections, and runtime modules.
 
-> **Note**: Module links point to GitHub repositories. We're moving fast, so some may be temporarily unavailable as we reorganize.
+> **Note**: Component links point to GitHub repositories. We're moving fast, so some may be temporarily unavailable as we reorganize.
 
 ---
 
-## Reference Implementation Modules
+## Core Infrastructure
 
-These modules are maintained as part of the Amplifier project and serve as both working implementations and examples for building your own.
+The foundational kernel that everything builds on.
+
+| Component | Description | Repository |
+|-----------|-------------|------------|
+| **amplifier-core** | Ultra-thin kernel for modular AI agent system | [amplifier-core](https://github.com/microsoft/amplifier-core) |
+
+---
+
+## Applications
+
+CLI applications and user-facing interfaces.
+
+| Component | Description | Repository |
+|-----------|-------------|------------|
+| **amplifier** | Main Amplifier CLI application and user documentation | [amplifier](https://github.com/microsoft/amplifier) |
+| **amplifier-app-cli** | Reference CLI implementation for Amplifier platform | [amplifier-app-cli](https://github.com/microsoft/amplifier-app-cli) |
+
+---
+
+## Libraries
+
+Foundational libraries used by applications and modules.
+
+| Component | Description | Repository |
+|-----------|-------------|------------|
+| **amplifier-profiles** | Profile and agent loading with inheritance and Mount Plan compilation | [amplifier-profiles](https://github.com/microsoft/amplifier-profiles) |
+| **amplifier-collections** | Convention-based collection discovery and management | [amplifier-collections](https://github.com/microsoft/amplifier-collections) |
+| **amplifier-module-resolution** | Module source resolution with pluggable strategies | [amplifier-module-resolution](https://github.com/microsoft/amplifier-module-resolution) |
+| **amplifier-config** | Three-scope configuration management (user/project/env) | [amplifier-config](https://github.com/microsoft/amplifier-config) |
+
+---
+
+## Collections
+
+Packaged bundles of profiles, agents, and context for specific domains.
+
+| Collection | Description | Repository |
+|------------|-------------|------------|
+| **toolkit** | Building sophisticated CLI tools using metacognitive recipes | [amplifier-collection-toolkit](https://github.com/microsoft/amplifier-collection-toolkit) |
+| **design-intelligence** | Comprehensive design intelligence capability with specialized agents | [amplifier-collection-design-intelligence](https://github.com/microsoft/amplifier-collection-design-intelligence) |
+
+---
+
+## Runtime Modules
+
+These modules are loaded dynamically at runtime based on your profile configuration.
 
 ### Orchestrators
 
@@ -29,8 +74,8 @@ Connect to AI model providers.
 | **provider-anthropic** | Anthropic Claude integration (Sonnet 4.5, Opus, etc.) | [amplifier-module-provider-anthropic](https://github.com/microsoft/amplifier-module-provider-anthropic) |
 | **provider-openai** | OpenAI GPT integration | [amplifier-module-provider-openai](https://github.com/microsoft/amplifier-module-provider-openai) |
 | **provider-azure-openai** | Azure OpenAI with managed identity support | [amplifier-module-provider-azure-openai](https://github.com/microsoft/amplifier-module-provider-azure-openai) |
-| **provider-ollama** | Local Ollama models | [amplifier-module-provider-ollama](https://github.com/microsoft/amplifier-module-provider-ollama) |
-| **provider-mock** | Mock provider for testing | [amplifier-module-provider-mock](https://github.com/microsoft/amplifier-module-provider-mock) |
+| **provider-ollama** | Local Ollama models for offline development | [amplifier-module-provider-ollama](https://github.com/microsoft/amplifier-module-provider-ollama) |
+| **provider-mock** | Mock provider for testing without API calls | [amplifier-module-provider-mock](https://github.com/microsoft/amplifier-module-provider-mock) |
 
 ### Tools
 
@@ -38,11 +83,12 @@ Extend AI capabilities with actions.
 
 | Module | Description | Repository |
 |--------|-------------|------------|
-| **tool-filesystem** | File operations (read, write, edit, list) | [amplifier-module-tool-filesystem](https://github.com/microsoft/amplifier-module-tool-filesystem) |
+| **tool-filesystem** | File operations (read, write, edit, list, glob) | [amplifier-module-tool-filesystem](https://github.com/microsoft/amplifier-module-tool-filesystem) |
 | **tool-bash** | Shell command execution | [amplifier-module-tool-bash](https://github.com/microsoft/amplifier-module-tool-bash) |
 | **tool-web** | Web search and content fetching | [amplifier-module-tool-web](https://github.com/microsoft/amplifier-module-tool-web) |
-| **tool-search** | Web search capabilities | [amplifier-module-tool-search](https://github.com/microsoft/amplifier-module-tool-search) |
-| **tool-task** | Agent delegation (sub-session spawning) | [amplifier-module-tool-task](https://github.com/microsoft/amplifier-module-tool-task) |
+| **tool-search** | Code search capabilities (grep/glob) | [amplifier-module-tool-search](https://github.com/microsoft/amplifier-module-tool-search) |
+| **tool-task** | Agent delegation and sub-session spawning | [amplifier-module-tool-task](https://github.com/microsoft/amplifier-module-tool-task) |
+| **tool-todo** | AI self-accountability and todo list management | [amplifier-module-tool-todo](https://github.com/microsoft/amplifier-module-tool-todo) |
 
 ### Context Managers
 
@@ -60,12 +106,14 @@ Extend lifecycle events and observability.
 | Module | Description | Repository |
 |--------|-------------|------------|
 | **hooks-logging** | Unified JSONL event logging to per-session files | [amplifier-module-hooks-logging](https://github.com/microsoft/amplifier-module-hooks-logging) |
-| **hooks-redaction** | Privacy-preserving data redaction | [amplifier-module-hooks-redaction](https://github.com/microsoft/amplifier-module-hooks-redaction) |
-| **hooks-approval** | Interactive approval for sensitive operations | [amplifier-module-hooks-approval](https://github.com/microsoft/amplifier-module-hooks-approval) |
-| **hooks-backup** | Automatic session backup | [amplifier-module-hooks-backup](https://github.com/microsoft/amplifier-module-hooks-backup) |
-| **hooks-streaming-ui** | Real-time UI updates during streaming | [amplifier-module-hooks-streaming-ui](https://github.com/microsoft/amplifier-module-hooks-streaming-ui) |
-| **hooks-scheduler-cost-aware** | Cost-aware model routing | [amplifier-module-hooks-scheduler-cost-aware](https://github.com/microsoft/amplifier-module-hooks-scheduler-cost-aware) |
-| **hooks-scheduler-heuristic** | Heuristic-based model selection | [amplifier-module-hooks-scheduler-heuristic](https://github.com/microsoft/amplifier-module-hooks-scheduler-heuristic) |
+| **hooks-redaction** | Privacy-preserving data redaction for secrets/PII | [amplifier-module-hooks-redaction](https://github.com/microsoft/amplifier-module-hooks-redaction) |
+| **hooks-approval** | Interactive approval gates for sensitive operations | [amplifier-module-hooks-approval](https://github.com/microsoft/amplifier-module-hooks-approval) |
+| **hooks-backup** | Automatic session transcript backup | [amplifier-module-hooks-backup](https://github.com/microsoft/amplifier-module-hooks-backup) |
+| **hooks-streaming-ui** | Real-time console UI for streaming responses | [amplifier-module-hooks-streaming-ui](https://github.com/microsoft/amplifier-module-hooks-streaming-ui) |
+| **hooks-status-context** | Inject git status and datetime into agent context | [amplifier-module-hooks-status-context](https://github.com/microsoft/amplifier-module-hooks-status-context) |
+| **hooks-todo-reminder** | Inject todo list reminders into AI context | [amplifier-module-hooks-todo-reminder](https://github.com/microsoft/amplifier-module-hooks-todo-reminder) |
+| **hooks-scheduler-cost-aware** | Cost-aware model routing for event-driven orchestration | [amplifier-module-hooks-scheduler-cost-aware](https://github.com/microsoft/amplifier-module-hooks-scheduler-cost-aware) |
+| **hooks-scheduler-heuristic** | Heuristic-based model selection scheduler | [amplifier-module-hooks-scheduler-heuristic](https://github.com/microsoft/amplifier-module-hooks-scheduler-heuristic) |
 
 ---
 
@@ -178,6 +226,23 @@ All modules follow the same pattern:
 For technical details, see:
 - [amplifier-core](https://github.com/microsoft/amplifier-core) - Kernel interfaces and protocols
 - [amplifier-dev docs](https://github.com/microsoft/amplifier-dev/tree/main/docs) - Architecture guides
+
+---
+
+## Component Summary
+
+**Total Components**: 33
+
+- **Core**: 1 (amplifier-core)
+- **Applications**: 2 (amplifier, amplifier-app-cli)
+- **Libraries**: 4 (profiles, collections, module-resolution, config)
+- **Collections**: 2 (toolkit, design-intelligence)
+- **Runtime Modules**: 24
+  - Orchestrators: 3
+  - Providers: 5
+  - Tools: 6
+  - Context: 2
+  - Hooks: 9
 
 ---
 
