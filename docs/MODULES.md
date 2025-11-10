@@ -18,18 +18,20 @@ The foundational kernel that everything builds on.
 
 ## Applications
 
-CLI applications and user-facing interfaces.
+User-facing applications that compose libraries and modules.
 
 | Component | Description | Repository |
 |-----------|-------------|------------|
-| **amplifier** | Main Amplifier CLI application and user documentation | [amplifier](https://github.com/microsoft/amplifier) |
-| **amplifier-app-cli** | Reference CLI implementation for Amplifier platform | [amplifier-app-cli](https://github.com/microsoft/amplifier-app-cli) |
+| **amplifier** | Main Amplifier project and entry point - installs amplifier-app-cli via `uv tool install` | [amplifier](https://github.com/microsoft/amplifier) |
+| **amplifier-app-cli** | Reference CLI application implementing the Amplifier platform | [amplifier-app-cli](https://github.com/microsoft/amplifier-app-cli) |
+
+**Note**: When you install `amplifier@next`, you get the amplifier-app-cli as the executable application.
 
 ---
 
 ## Libraries
 
-Foundational libraries used by applications and modules.
+Foundational libraries used by **applications** (not used directly by runtime modules).
 
 | Component | Description | Repository |
 |-----------|-------------|------------|
@@ -37,6 +39,8 @@ Foundational libraries used by applications and modules.
 | **amplifier-collections** | Convention-based collection discovery and management | [amplifier-collections](https://github.com/microsoft/amplifier-collections) |
 | **amplifier-module-resolution** | Module source resolution with pluggable strategies | [amplifier-module-resolution](https://github.com/microsoft/amplifier-module-resolution) |
 | **amplifier-config** | Three-scope configuration management (user/project/env) | [amplifier-config](https://github.com/microsoft/amplifier-config) |
+
+**Architectural Boundary**: Libraries are consumed by applications (like amplifier-app-cli). Runtime modules only depend on amplifier-core and never use these libraries directly.
 
 ---
 
@@ -48,6 +52,19 @@ Packaged bundles of profiles, agents, and context for specific domains.
 |------------|-------------|------------|
 | **toolkit** | Building sophisticated CLI tools using metacognitive recipes | [amplifier-collection-toolkit](https://github.com/microsoft/amplifier-collection-toolkit) |
 | **design-intelligence** | Comprehensive design intelligence capability with specialized agents | [amplifier-collection-design-intelligence](https://github.com/microsoft/amplifier-collection-design-intelligence) |
+
+**Installation**: Collections are **not loaded by default**. Install them explicitly:
+
+```bash
+# Install a collection
+amplifier collection add git+https://github.com/microsoft/amplifier-collection-toolkit@main
+
+# Update installed collections
+amplifier collection refresh
+
+# List installed collections
+amplifier collection list
+```
 
 ---
 
