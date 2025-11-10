@@ -13,8 +13,104 @@ Amplifier uses a modular repository architecture with clear boundaries. This doc
 1. **Single source of truth** - Content lives in ONE place
 2. **Link, don't duplicate** - Other repos link via GitHub URLs
 3. **Respect awareness** - Don't reference what you're not aware of
-4. **Challenge necessity** - Only create content that provides unique value
-5. **Docs are contract** - Documentation defines what code must implement
+4. **Dependency-based awareness** - Only reference what you actually depend on
+5. **Challenge necessity** - Only create content that provides unique value
+6. **Docs are contract** - Documentation defines what code must implement
+
+---
+
+## Dependency-Based Awareness (Critical Rule)
+
+**The Golden Rule**: A repository/module can only reference another repository/module if it has a **declared dependency** on it.
+
+### What "Dependency" Means
+
+**Code dependency**: Listed in `pyproject.toml` dependencies, imported in code, or consumed via API
+
+**NOT dependency**: Nice to know about, related concepts, similar domain, built by same team
+
+### Why This Matters
+
+**Context poisoning prevention**: When libraries reference other libraries they don't depend on, AI tools load inconsistent information about which components exist and how they relate.
+
+**Example of the problem** (what we just fixed):
+- `amplifier-module-resolution` referenced private `amplifier-dev` in docs
+- `amplifier-collections` referenced private `amplifier-dev` in docs
+- Problem: Public repos pointing to inaccessible private repo
+- Users cloning public repos got broken links
+- AI tools loaded references to concepts they couldn't access
+
+### Application by Repository Type
+
+| Repository Type | Awareness Rule | Examples |
+|----------------|---------------|----------|
+| **Kernel** (amplifier-core) | References ONLY entry point | Can reference amplifier@next for "see getting started" |
+| **Libraries** | Reference core + entry + **dependencies only** | amplifier-profiles depends on amplifier-collections → can reference it |
+| **Modules** | Reference core + possibly entry, **never peers** | amplifier-module-tool-bash cannot reference amplifier-module-tool-filesystem |
+| **Applications** | Reference anything they consume | amplifier-app-cli uses all libraries → can reference all |
+| **Entry Point** | Reference everything | amplifier@next links to all components |
+
+### Decision Framework
+
+Before adding a reference to another repo, ask:
+
+1. **Is this in my pyproject.toml dependencies?**
+   - YES → Can reference ✅
+   - NO → Continue to question 2
+
+2. **Do I import code from this repo?**
+   - YES → Can reference ✅
+   - NO → Continue to question 3
+
+3. **Is this amplifier-core and I'm a module/library?**
+   - YES → Can reference ✅
+   - NO → Continue to question 4
+
+4. **Is this amplifier@next entry point?**
+   - YES → Can reference ✅ (for "see getting started" only)
+   - NO → **Cannot reference ❌**
+
+### Correct Examples
+
+```markdown
+<!-- amplifier-profiles/docs/AUTHORING.md -->
+<!-- ✅ CORRECT: amplifier-profiles depends on amplifier-collections -->
+For collection format details, see [amplifier-collections](https://github.com/microsoft/amplifier-collections).
+
+<!-- ✅ CORRECT: All libraries can reference kernel -->
+This implements the protocol from [amplifier-core](https://github.com/microsoft/amplifier-core).
+
+<!-- ✅ CORRECT: Can reference entry point for getting started -->
+For initial setup, see [Getting Started](https://github.com/microsoft/amplifier).
+```
+
+### Incorrect Examples
+
+```markdown
+<!-- amplifier-module-resolution/docs/SPECIFICATION.md -->
+<!-- ❌ WRONG: amplifier-module-resolution does NOT depend on amplifier-profiles -->
+Module resolution works with profiles from [amplifier-profiles](https://github.com/microsoft/amplifier-profiles).
+
+<!-- ❌ WRONG: Module referencing another module (no peer awareness) -->
+<!-- amplifier-module-tool-bash/README.md -->
+Works well with [amplifier-module-tool-filesystem](https://github.com/microsoft/amplifier-module-tool-filesystem).
+
+<!-- ❌ WRONG: Library referencing private development repo -->
+<!-- amplifier-collections/docs/AUTHORING.md -->
+See [Module Development](https://github.com/microsoft/amplifier-dev/blob/main/docs/MODULE_DEVELOPMENT.md).
+```
+
+### Special Case: Describing Without Referencing
+
+**When you need to explain a concept without depending on it**, use generic language:
+
+```markdown
+<!-- ✅ CORRECT: Describes concept generically -->
+Modules are loaded by applications using this resolution mechanism.
+
+<!-- ❌ WRONG: References specific library not depended on -->
+Modules are loaded using amplifier-profiles' ProfileLoader API.
+```
 
 ---
 
@@ -502,10 +598,12 @@ Before creating/moving documentation:
 **Awareness Rules**:
 - Entry point can reference all ✅
 - Core references nothing except entry ✅
-- Libraries reference core + entry (+ other libs if needed) ✅
+- Libraries reference core + entry + **declared dependencies only** ✅
 - Apps reference libs + modules + core ✅
-- Modules reference only core (+ possibly entry) ✅
+- Modules reference only core (+ possibly entry), **never peers** ✅
 - No circular references ✅
+
+**Dependency-Based**: Only reference what you actually depend on (in pyproject.toml or imported)
 
 **Philosophy**:
 - Docs are contract, code is implementation
