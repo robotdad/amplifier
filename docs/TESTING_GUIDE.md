@@ -566,6 +566,18 @@ Logs appear in: `~/.amplifier/projects/<project>/sessions/<session_id>/events.js
 
 **See**: [hooks-logging module documentation](../amplifier-module-hooks-logging/README.md#debug) for complete DEBUG logging details.
 
+**Visualize logs**: Use [amplifier-app-log-viewer](https://github.com/microsoft/amplifier-app-log-viewer) for interactive log inspection:
+
+```bash
+# Run the log viewer (separate terminal)
+uvx --from git+https://github.com/microsoft/amplifier-app-log-viewer@main amplifier-log-viewer
+
+# View logs in browser at http://localhost:8180
+# - Real-time updates as Amplifier runs
+# - Interactive JSON viewer with expand/collapse
+# - Smart filtering by event type and level
+```
+
 ## Related Documentation
 
 - [MODULE_DEVELOPMENT.md](MODULE_DEVELOPMENT.md) - Module development guide
