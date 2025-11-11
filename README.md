@@ -285,6 +285,12 @@ amplifier run "Use bug-hunter to debug this error: [paste error]"
 Every interaction is automatically saved:
 
 ```bash
+# Resume most recent session
+amplifier continue
+
+# Resume with new prompt (single-shot mode)
+amplifier continue "follow-up question"
+
 # List your recent sessions (current project only)
 amplifier session list
 
@@ -294,8 +300,11 @@ amplifier session list --all-projects
 # View session details
 amplifier session show <session-id>
 
-# Resume a previous session
+# Resume a specific session (interactive mode)
 amplifier session resume <session-id>
+
+# Resume specific session with new prompt
+amplifier run --resume <session-id> "new question"
 ```
 
 Sessions are project-scoped—when you're in `/home/user/myapp`, you see only `myapp` sessions. Change directories, see different sessions. Your work stays organized.

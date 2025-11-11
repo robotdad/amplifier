@@ -261,10 +261,20 @@ amplifier session show <session-id> --detailed
 ### Resuming Sessions
 
 ```bash
-# Continue where you left off
+# Resume most recent session (interactive)
+amplifier continue
+
+# Resume most recent with new prompt (single-shot)
+amplifier continue "follow-up question"
+
+# Resume specific session (interactive)
 amplifier session resume <session-id>
 
+# Resume specific session with new prompt (single-shot)
+amplifier run --resume <session-id> "new question"
+
 # Resume with different profile
+amplifier continue --profile full
 amplifier session resume <session-id> --profile full
 ```
 
