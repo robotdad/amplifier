@@ -453,11 +453,20 @@ amplifier source list
 ### Session Commands
 
 ```bash
-amplifier run "prompt"           # Single interaction
-amplifier                        # Interactive chat
-amplifier continue               # Resume most recent session
-amplifier session list           # List recent sessions
-amplifier session resume <id>    # Resume specific session
+# New sessions
+amplifier run "prompt"                    # Single-shot (auto-persists, shows session ID)
+amplifier                                 # Interactive chat (auto-generates session ID)
+
+# Resume sessions
+amplifier continue                        # Resume most recent (interactive)
+amplifier continue "new prompt"           # Resume most recent (single-shot with context)
+amplifier run --resume <id> "prompt"      # Resume specific session (single-shot)
+
+# Session management
+amplifier session list                    # List recent sessions
+amplifier session resume <id>             # Resume specific session (interactive)
+amplifier session delete <id>             # Delete session
+amplifier session cleanup                 # Clean up old sessions
 ```
 
 ### Scope Flags
