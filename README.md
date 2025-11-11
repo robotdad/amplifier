@@ -177,6 +177,15 @@ First of all, this is still VERY early and we have not brought _most_ of our fea
 - **Session persistence**: Pick up where you left off, even across projects
 - **Extensible**: Build your own modules, interfaces, or entire custom experiences
 
+**Developer Tools:**
+
+- **[Log Viewer](https://github.com/microsoft/amplifier-app-log-viewer)**: Web-based tool for debugging sessions with real-time log streaming and interactive JSON inspection
+
+```bash
+# Run the log viewer while developing
+uvx --from git+https://github.com/microsoft/amplifier-app-log-viewer@main amplifier-log-viewer
+```
+
 ---
 
 ## Supported AI Providers

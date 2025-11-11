@@ -24,6 +24,7 @@ User-facing applications that compose libraries and modules.
 |-----------|-------------|------------|
 | **amplifier** | Main Amplifier project and entry point - installs amplifier-app-cli via `uv tool install` | [amplifier](https://github.com/microsoft/amplifier) |
 | **amplifier-app-cli** | Reference CLI application implementing the Amplifier platform | [amplifier-app-cli](https://github.com/microsoft/amplifier-app-cli) |
+| **amplifier-app-log-viewer** | Web-based log viewer for debugging sessions with real-time updates | [amplifier-app-log-viewer](https://github.com/microsoft/amplifier-app-log-viewer) |
 
 **Note**: When you install `amplifier@next`, you get the amplifier-app-cli as the executable application.
 
@@ -251,7 +252,7 @@ For technical details, see:
 **Total Components**: 33
 
 - **Core**: 1 (amplifier-core)
-- **Applications**: 2 (amplifier, amplifier-app-cli)
+- **Applications**: 3 (amplifier, amplifier-app-cli, amplifier-app-log-viewer)
 - **Libraries**: 4 (profiles, collections, module-resolution, config)
 - **Collections**: 2 (toolkit, design-intelligence)
 - **Runtime Modules**: 24

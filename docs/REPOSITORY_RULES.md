@@ -191,6 +191,9 @@ Modules are loaded using amplifier-profiles' ProfileLoader API.
 
 **amplifier-app-cli** (microsoft/amplifier-app-cli)
 - **Purpose**: Reference CLI application
+
+**amplifier-app-log-viewer** (microsoft/amplifier-app-log-viewer)
+- **Purpose**: Web-based log viewer for debugging sessions
 - **Can Reference**: All libraries, modules, core
 - **Referenced By**: Nothing (it's an endpoint)
 - **Contains**:
