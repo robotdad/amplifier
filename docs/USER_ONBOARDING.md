@@ -455,8 +455,9 @@ amplifier source list
 ```bash
 amplifier run "prompt"           # Single interaction
 amplifier                        # Interactive chat
-amplifier session list           # Recent sessions
-amplifier session resume <id>    # Continue session
+amplifier continue               # Resume most recent session
+amplifier session list           # List recent sessions
+amplifier session resume <id>    # Resume specific session
 ```
 
 ### Scope Flags
