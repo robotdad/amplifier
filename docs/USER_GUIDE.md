@@ -13,14 +13,22 @@ See [../README.md](../README.md#quick-start---zero-to-working-in-90-seconds) for
 **Quick summary:**
 
 ```bash
-# Try without installing
-uvx --from git+https://github.com/microsoft/amplifier@next amplifier
-
-# Or install globally
 uv tool install git+https://github.com/microsoft/amplifier@next
+amplifier init      # optional if you let the first run wizard handle setup
+amplifier run "Your prompt"
 ```
 
-First-time setup happens automatically when you run Amplifier with no configuration.
+After installing, add the optional collections so the bundled scenarios and agents are available:
+
+```bash
+amplifier collection add git+https://github.com/microsoft/amplifier-collection-toolkit@main
+amplifier collection add git+https://github.com/microsoft/amplifier-collection-design-intelligence@main
+```
+
+Use `toolkit-dev` or `designer` as turnkey profiles, or call their agents directly (use `/agents` in chat to list and look for the ones prefixed with `toolkit:` / `design-intelligence:`).
+
+> [!IMPORTANT]
+> Amplifier is currently tested on macOS, Linux, and Windows Subsystem for Linux (WSL). Native Windows shells have known issues—use WSL unless you're helping improve Windows support.
 
 ---
 
@@ -94,7 +102,7 @@ amplifier run --mode chat
 Amplifier has 4 configuration dimensions you can control:
 
 1. **Provider** - Which AI service (Anthropic/OpenAI/Azure OpenAI/Ollama)
-2. **Profile** - Which profile (dev/production/test/minimal)
+2. **Profile** - Which profile (dev/base/test/foundation/full)
 3. **Module** - Which capabilities (tools/hooks/agents)
 4. **Source** - Where modules come from (git/local/package)
 
@@ -135,9 +143,9 @@ amplifier provider list
 ```bash
 # Switch profile
 amplifier profile use dev          # Development tools
-amplifier profile use production   # Production safety
+amplifier profile use base         # Essential CLI helpers
 amplifier profile use test         # Testing setup
-amplifier profile use base         # Minimal tools
+amplifier profile use foundation   # Minimal footprint
 
 # See what's active
 amplifier profile current
@@ -148,14 +156,13 @@ amplifier profile list
 
 **Bundled Profiles:**
 
-| Profile      | Purpose          | Tools                  | Agents                    |
-| ------------ | ---------------- | ---------------------- | ------------------------- |
-| `foundation` | Bare minimum     | None                   | None                      |
-| `base`       | Essential tools  | filesystem, bash       | None                      |
-| `dev`        | Full development | base + web, search     | zen-architect, bug-hunter |
-| `production` | Production-ready | base + web, monitoring | None                      |
-| `test`       | Testing          | base + task            | None                      |
-| `full`       | Everything       | All tools              | All agents                |
+| Profile      | Purpose                    | Tools                    | Agents                                                           |
+| ------------ | -------------------------- | ------------------------ | ---------------------------------------------------------------- |
+| `foundation` | Bare minimum               | None                     | None                                                             |
+| `base`       | Essential CLI helpers      | filesystem, bash         | None                                                             |
+| `dev`        | Full development           | base + web, search, task | zen-architect, bug-hunter, modular-builder, explorer, researcher |
+| `test`       | Focused testing workflows  | base + task              | None                                                             |
+| `full`       | Demo of nearly all modules | Almost everything        | Broad showcase (best for exploration, not daily use)             |
 
 ### Adding Capabilities
 
@@ -302,7 +309,7 @@ Each session contains:
 amplifier run --provider openai "test prompt"
 
 # Use different profile just once
-amplifier --profile production "deploy task"
+amplifier --profile designer "audit the design system"
 
 # Combine overrides
 amplifier run --provider openai --profile test "compare models"

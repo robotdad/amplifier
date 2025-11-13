@@ -14,29 +14,41 @@ audience: user
 
 ### For Users
 
-**Try without installing:**
+> [!IMPORTANT]
+> Amplifier runs best on macOS, Linux, and Windows Subsystem for Linux (WSL). Native Windows shells have unresolved issues—use WSL unless you're contributing Windows compatibility fixes.
+
+**Install UV (if you haven't already):**
 
 ```bash
-# Run directly with uvx
-uvx --from git+https://github.com/microsoft/amplifier@next amplifier run "Hello, Amplifier!"
+# macOS/Linux/WSL
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Start chat mode
-uvx --from git+https://github.com/microsoft/amplifier@next amplifier
+# Windows PowerShell
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-**Install globally:**
+**Install Amplifier CLI:**
 
 ```bash
-# Install as a tool
 uv tool install git+https://github.com/microsoft/amplifier@next
 
-# Then use anywhere
-amplifier run "Your prompt"
-amplifier  # Chat mode
-
-# First-time setup
-amplifier init
+amplifier init          # optional if you let the first run wizard configure things
+amplifier run "Hello, Amplifier!"
+amplifier              # enter chat mode
 ```
+
+**Add recommended collections:**
+
+```bash
+amplifier collection add git+https://github.com/microsoft/amplifier-collection-toolkit@main
+amplifier collection add git+https://github.com/microsoft/amplifier-collection-design-intelligence@main
+
+# Explore their profiles or agents
+amplifier profile use toolkit-dev
+amplifier profile use designer
+```
+
+Both collections expose agents visible via `/agents` in chat and are the ones prefixed with `toolkit:` or `design-intelligence:`. You can invoke these from any profile.
 
 ### For Contributors (workspace)
 
@@ -90,15 +102,15 @@ Amplifier detects environment variables and uses them as defaults during configu
 
 ### Supported Variables
 
-| Provider | Variable | Purpose |
-|----------|----------|---------|
-| **Anthropic** | `ANTHROPIC_API_KEY` | API key |
-| **OpenAI** | `OPENAI_API_KEY` | API key |
-| **Azure OpenAI** | `AZURE_OPENAI_ENDPOINT` | Azure endpoint URL |
-| | `AZURE_OPENAI_DEPLOYMENT` | Deployment name |
-| | `AZURE_OPENAI_API_KEY` | API key (if using key auth) |
-| | `AZURE_USE_DEFAULT_CREDENTIAL` | Use Azure CLI auth (`true`/`false`) |
-| **Ollama** | `OLLAMA_HOST` | Ollama server URL |
+| Provider         | Variable                       | Purpose                             |
+| ---------------- | ------------------------------ | ----------------------------------- |
+| **Anthropic**    | `ANTHROPIC_API_KEY`            | API key                             |
+| **OpenAI**       | `OPENAI_API_KEY`               | API key                             |
+| **Azure OpenAI** | `AZURE_OPENAI_ENDPOINT`        | Azure endpoint URL                  |
+|                  | `AZURE_OPENAI_DEPLOYMENT`      | Deployment name                     |
+|                  | `AZURE_OPENAI_API_KEY`         | API key (if using key auth)         |
+|                  | `AZURE_USE_DEFAULT_CREDENTIAL` | Use Azure CLI auth (`true`/`false`) |
+| **Ollama**       | `OLLAMA_HOST`                  | Ollama server URL                   |
 
 ### Quick Setup with Environment Variables
 
@@ -123,6 +135,7 @@ amplifier --install-completion
 ```
 
 **What this does**:
+
 1. Detects your current shell (bash, zsh, or fish)
 2. **Adds completion line to your shell config file**:
    - Bash → appends to `~/.bashrc`
@@ -162,7 +175,7 @@ amplifier run "Write a Python hello world script"
 amplifier run "Explain what this code does" < script.py
 
 # With specific profile
-amplifier run --profile production "deploy to prod"
+amplifier run --profile designer "audit the design system"
 ```
 
 ### Interactive Chat
@@ -220,8 +233,9 @@ amplifier provider current
 ```bash
 # Switch profile
 amplifier profile use dev          # Development tools
-amplifier profile use production   # Production safety
+amplifier profile use base         # Essential CLI helpers
 amplifier profile use test         # Testing setup
+amplifier profile use foundation   # Minimal footprint
 
 # Check current
 amplifier profile current
@@ -263,14 +277,13 @@ amplifier source list
 
 Profiles are pre-configured **capability sets** that define what's available:
 
-| Profile        | Purpose          | Tools                  | Agents                    | Use When          |
-| -------------- | ---------------- | ---------------------- | ------------------------- | ----------------- |
-| **foundation** | Absolute minimum | None                   | None                      | Testing core      |
-| **base**       | Essential tools  | filesystem, bash       | None                      | Basic work        |
-| **dev**        | Development      | base + web, search     | zen-architect, bug-hunter | Daily development |
-| **production** | Production       | base + web, monitoring | None                      | Deployments       |
-| **test**       | Testing          | base + task            | None                      | Running tests     |
-| **full**       | Everything       | All tools              | All agents                | Exploration       |
+| Profile        | Purpose                    | Tools                    | Agents                                                           | Use When           |
+| -------------- | -------------------------- | ------------------------ | ---------------------------------------------------------------- | ------------------ |
+| **foundation** | Bare minimum               | None                     | None                                                             | Lightweight checks |
+| **base**       | Essential CLI helpers      | filesystem, bash         | None                                                             | Everyday basics    |
+| **dev**        | Full development           | base + web, search, task | zen-architect, bug-hunter, modular-builder, explorer, researcher | Daily building     |
+| **test**       | Focused testing workflows  | base + task              | None                                                             | Running suites     |
+| **full**       | Demo of nearly all modules | Almost everything        | Broad showcase (great for exploration)                           | Feature tours      |
 
 **Profiles define WHAT you can do.**
 **Providers define WHERE the AI comes from.**
@@ -285,11 +298,13 @@ Amplifier includes specialized agents for specific tasks:
 
 ### Available Agents (in dev profile)
 
-| Agent               | Specialty                              | Example Use                            |
-| ------------------- | -------------------------------------- | -------------------------------------- |
-| **zen-architect**   | System design with ruthless simplicity | Architecture decisions, design reviews |
-| **bug-hunter**      | Systematic debugging                   | Finding root causes, fixing issues     |
-| **modular-builder** | Building self-contained modules        | Creating new components                |
+| Agent               | Specialty                                         | Example Use                                 |
+| ------------------- | ------------------------------------------------- | ------------------------------------------- |
+| **zen-architect**   | System design with ruthless simplicity            | Architecture decisions, design reviews      |
+| **bug-hunter**      | Systematic debugging                              | Finding root causes, fixing issues          |
+| **modular-builder** | Building self-contained modules                   | Creating new components                     |
+| **researcher**      | Curated research and synthesis of external info   | Summarising docs, comparing approaches      |
+| **explorer**        | Breadth-first exploration of local files & assets | Mapping code ownership, surfacing key files |
 
 ### Using Agents
 
@@ -342,7 +357,7 @@ $ amplifier run "analyze this dataset"
 ```bash
 # Configure for team
 $ cd ~/team-project
-$ amplifier profile use production --project
+$ amplifier profile use dev --project
 $ amplifier provider use azure --project
 $ git add .amplifier/settings.yaml
 $ git commit -m "Configure project defaults"
@@ -350,7 +365,7 @@ $ git commit -m "Configure project defaults"
 # Team member gets it
 $ git clone .../team-project
 $ amplifier profile current
-Profile: production (from project)
+Profile: dev (from project)
 Provider: Azure (from project)
 ```
 
@@ -496,12 +511,12 @@ Scopes: --local | --project | --global | --profile=name
 
 ### Configuration Scopes
 
-| Scope | Flag | Where Stored | Who It Affects |
-|-------|------|--------------|----------------|
-| **Local** | `--local` | `.amplifier/settings.local.yaml` | Just you (gitignored) |
-| **Project** | `--project` | `.amplifier/settings.yaml` | Whole team (committed) |
-| **Global** | `--global` | `~/.amplifier/settings.yaml` | All your projects |
-| **Profile** | `--profile=name` | Profile file | That profile definition |
+| Scope       | Flag             | Where Stored                     | Who It Affects          |
+| ----------- | ---------------- | -------------------------------- | ----------------------- |
+| **Local**   | `--local`        | `.amplifier/settings.local.yaml` | Just you (gitignored)   |
+| **Project** | `--project`      | `.amplifier/settings.yaml`       | Whole team (committed)  |
+| **Global**  | `--global`       | `~/.amplifier/settings.yaml`     | All your projects       |
+| **Profile** | `--profile=name` | Profile file                     | That profile definition |
 
 When no scope specified, commands prompt interactively.
 
@@ -509,7 +524,7 @@ When no scope specified, commands prompt interactively.
 
 ## Next Steps
 
-1. **Explore profiles**: Try `dev`, `production`, `test` to see differences
+1. **Explore profiles**: Try `dev`, `base`, `test`, and `full` to see differences
 2. **Try agents**: Delegate tasks to specialized agents
 3. **Explore collections**: Install shareable expertise bundles
 4. **Build scenario tools**: Create sophisticated multi-stage CLI tools

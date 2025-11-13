@@ -17,6 +17,9 @@ Amplifier brings AI assistance to your command line with a modular, extensible a
 
 ## Quick Start - Zero to Working in 90 Seconds
 
+> [!IMPORTANT]
+> Amplifier is currently developed and tested on macOS, Linux, and Windows Subsystem for Linux (WSL). Native Windows shells have known issues—use WSL unless you're actively contributing Windows fixes.
+
 ### Step 1: Install UV (30 seconds)
 
 ```bash
@@ -27,12 +30,37 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-### Step 2: Run Amplifier (60 seconds)
+### Step 2: Install Amplifier (30 seconds)
 
 ```bash
-# Try it now (auto-setup on first run)
-uvx --from git+https://github.com/microsoft/amplifier@next amplifier
+uv tool install git+https://github.com/microsoft/amplifier@next
 ```
+
+### Step 3: Run Amplifier (30 seconds)
+
+```bash
+# First-time wizard (auto-detects missing config)
+amplifier init
+
+# Ask a question
+amplifier run "Explain async/await in Python"
+
+# Start chat mode
+amplifier
+```
+
+### Step 4: Add collections (optional, highly recommended)
+
+```bash
+amplifier collection add git+https://github.com/microsoft/amplifier-collection-toolkit@main
+amplifier collection add git+https://github.com/microsoft/amplifier-collection-design-intelligence@main
+
+# Explore their profiles
+amplifier profile use toolkit-dev
+amplifier profile use designer
+```
+
+Both collections also ship focused agents you can invoke from any profile by name, use `/agents` in chat and look for the ones with `toolkit:` or `design-intelligence:` prefixes .
 
 **First time? Quick setup wizard:**
 
@@ -130,36 +158,6 @@ Ready! Starting chat...
 
 **That's it!** From nothing to productive AI assistant in 90 seconds.
 
----
-
-## Alternative Paths
-
-### Quick One-Off Test (If You Have API Key)
-
-```bash
-# Set your API key
-export ANTHROPIC_API_KEY="sk-ant-..."
-
-# Run immediately
-uvx --from git+https://github.com/microsoft/amplifier@next amplifier run "Explain async/await in Python"
-```
-
-### Install for Regular Use
-
-```bash
-# Install globally
-uv tool install git+https://github.com/microsoft/amplifier@next
-
-# Configure (if you skipped auto-init)
-amplifier init
-
-# Use anywhere
-amplifier run "Your prompt"
-amplifier  # Start chat mode
-```
-
----
-
 ## What Can Amplifier Do?
 
 First of all, this is still VERY early and we have not brought _most_ of our features over from our prior version yet, so keep your expectations low and we'll get it ramped up very quickly over the next week or two. Consider this just an early sneak peek.
@@ -182,8 +180,9 @@ First of all, this is still VERY early and we have not brought _most_ of our fea
 - **[Log Viewer](https://github.com/microsoft/amplifier-app-log-viewer)**: Web-based tool for debugging sessions with real-time log streaming and interactive JSON inspection
 
 ```bash
-# Run the log viewer while developing
-uvx --from git+https://github.com/microsoft/amplifier-app-log-viewer@main amplifier-log-viewer
+# Install and run the log viewer while developing
+uv tool install git+https://github.com/microsoft/amplifier-app-log-viewer@main
+amplifier-log-viewer
 ```
 
 ---
@@ -263,9 +262,9 @@ amplifier profile use dev
 
 - `foundation` - Absolute minimum (provider + orchestrator only)
 - `base` - Essential tools (filesystem, bash, logging)
-- `dev` - Full development setup (web, search, agents) - **Default & recommended**
-- `production` - Production-minded exploration (persistent context, safety)
-- `full` - Everything enabled
+- `dev` - Full development setup (web, search, agents) — **default & recommended**
+- `test` - Focused testing utilities layered on top of `base`
+- `full` - Showcase build with nearly every module enabled; great for demos, less optimal for day-to-day work
 
 ### Working with Agents
 
@@ -286,6 +285,7 @@ amplifier run "Use bug-hunter to debug this error: [paste error]"
 - **bug-hunter** - Systematic debugging
 - **researcher** - Content research and synthesis
 - **modular-builder** - Code implementation
+- **explorer** - Breadth-first exploration of local code, docs, and other files with citation-ready summaries
 
 ---
 
@@ -350,8 +350,9 @@ amplifier provider current
 ```bash
 # Switch profile
 amplifier profile use dev
-amplifier profile use production
+amplifier profile use base
 amplifier profile use test
+amplifier profile use foundation
 
 # See what's active
 amplifier profile current
@@ -380,21 +381,6 @@ Profiles configure your Amplifier environment with providers, tools, agents, and
 
 **→ [Profile Authoring Guide](https://github.com/microsoft/amplifier-profiles/blob/main/docs/PROFILE_AUTHORING.md)** - Complete guide to creating profiles
 
-**Quick example**:
-
-```yaml
----
-profile:
-  name: my-profile
-  extends: base
-tools:
-  - module: tool-web
-  - module: tool-search
-agents:
-  include: [zen-architect, researcher]
----
-```
-
 **API Reference**: [amplifier-profiles](https://github.com/microsoft/amplifier-profiles)
 
 ### Creating Custom Agents
@@ -402,20 +388,6 @@ agents:
 Agents are specialized AI personas for focused tasks.
 
 **→ [Agent Authoring Guide](https://github.com/microsoft/amplifier-profiles/blob/main/docs/AGENT_AUTHORING.md)** - Complete guide to creating agents
-
-**Quick example**:
-
-```yaml
----
-meta:
-  name: my-agent
-  description: Expert in [domain]
-providers:
-  - module: provider-anthropic
-    config: { model: claude-opus-4-1 }
----
-You are a specialized expert in [domain]...
-```
 
 ---
 
