@@ -212,6 +212,71 @@ Built something cool? Share it with the community!
   - Compatible: Amplifier 0.1.x
   - Status: Active
 
+- **tool-mcp** by @robotdad - Model Context Protocol integration enabling connection to MCP servers with Tools, Resources, and Prompts support
+  - Repository: https://github.com/robotdad/amplifier-module-tool-mcp
+  - Compatible: Amplifier 0.1.x
+  - Status: Active
+
+- **tool-skills** by @robotdad - Load domain knowledge from skills with progressive disclosure and Anthropic Skills support
+  - Repository: https://github.com/robotdad/amplifier-module-tool-skills
+  - Compatible: Amplifier 0.1.x
+  - Status: Active
+
+- **collection-ddd** by @robotdad - Document-Driven Development collection with 5 specialized workflow agents for evolving existing codebases
+  - Repository: https://github.com/robotdad/amplifier-collection-ddd
+  - Compatible: Amplifier 0.1.x
+  - Status: Active
+
+- **collection-spec-kit** by @robotdad - Specification-Driven Development collection with 8 specialized agents and constitutional governance for greenfield development
+  - Repository: https://github.com/robotdad/amplifier-collection-spec-kit
+  - Compatible: Amplifier 0.1.x
+  - Status: Experimental
+
+- **app-transcribe** by @robotdad - Transform YouTube videos and audio files into searchable transcripts with AI-powered insights (uses tool-youtube-dl and tool-whisper)
+  - Repository: https://github.com/robotdad/amplifier-app-transcribe
+  - Compatible: Amplifier 0.1.x
+  - Status: Active
+
+- **tool-youtube-dl** by @robotdad - Download audio and video from YouTube with metadata extraction and screenshot capture
+  - Repository: https://github.com/robotdad/amplifier-module-tool-youtube-dl
+  - Compatible: Amplifier 0.1.x
+  - Status: Active
+
+- **tool-whisper** by @robotdad - Speech-to-text transcription using OpenAI's Whisper API with timestamped segments
+  - Repository: https://github.com/robotdad/amplifier-module-tool-whisper
+  - Compatible: Amplifier 0.1.x
+  - Status: Active
+
+- **app-blog-creator** by @robotdad - AI-powered blog creation with style-aware generation and rich markdown editor (web interface designed with design-intelligence collection, uses image-generation, style-extraction, and markdown-utils modules)
+  - Repository: https://github.com/robotdad/amplifier-app-blog-creator
+  - Compatible: Amplifier 0.1.x
+  - Status: Active
+
+- **module-image-generation** by @robotdad - Multi-provider AI image generation with DALL-E, Imagen, and GPT-Image-1 support
+  - Repository: https://github.com/robotdad/amplifier-module-image-generation
+  - Compatible: Amplifier 0.1.x
+  - Status: Active
+
+- **module-style-extraction** by @robotdad - Extract and apply writing style from text samples for style-aware content generation
+  - Repository: https://github.com/robotdad/amplifier-module-style-extraction
+  - Compatible: Amplifier 0.1.x
+  - Status: Active
+
+- **module-markdown-utils** by @robotdad - Markdown parsing, injection, and metadata extraction utilities
+  - Repository: https://github.com/robotdad/amplifier-module-markdown-utils
+  - Compatible: Amplifier 0.1.x
+  - Status: Active
+
+- **app-voice** by @robotdad - Desktop voice assistant with native speech-to-speech via OpenAI Realtime API (uses provider-openai-realtime)
+  - Repository: https://github.com/robotdad/amplifier-app-voice
+  - Compatible: Amplifier 0.1.x
+  - Status: Experimental
+
+- **provider-openai-realtime** by @robotdad - OpenAI Realtime API provider enabling native speech-to-speech interactions with ultra-low latency
+  - Repository: https://github.com/robotdad/amplifier-module-provider-openai-realtime
+  - Compatible: Amplifier 0.1.x
+  - Status: Experimental
+
 ---
 
 ## Building Your Own Modules
