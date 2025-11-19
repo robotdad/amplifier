@@ -329,10 +329,10 @@ Amplifier checks for updates across all components: the CLI itself, cached modul
 # Check for updates (no changes made)
 amplifier update --check-only
 
-# Update everything (modules + collections + Amplifier itself)
+# Update everything (prompts for confirmation)
 amplifier update
 
-# Update with confirmation prompts
+# Update without confirmation prompts
 amplifier update --yes
 ```
 
