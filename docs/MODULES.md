@@ -25,6 +25,7 @@ User-facing applications that compose libraries and modules.
 | **amplifier** | Main Amplifier project and entry point - installs amplifier-app-cli via `uv tool install` | [amplifier](https://github.com/microsoft/amplifier) |
 | **amplifier-app-cli** | Reference CLI application implementing the Amplifier platform | [amplifier-app-cli](https://github.com/microsoft/amplifier-app-cli) |
 | **amplifier-app-log-viewer** | Web-based log viewer for debugging sessions with real-time updates | [amplifier-app-log-viewer](https://github.com/microsoft/amplifier-app-log-viewer) |
+| **amplifier-app-benchmarks** | Benchmarking and evaluating Amplifier  | [amplifier-app-benchmarks](https://github.com/DavidKoleczek/amplifier-app-benchmarks) |
 
 **Note**: When you install `amplifier@next`, you get the amplifier-app-cli as the executable application.
 
