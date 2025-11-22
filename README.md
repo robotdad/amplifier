@@ -122,7 +122,7 @@ API key: ••••••••
   Get one: https://platform.openai.com/api-keys
 ✓ Saved
 
-Model? [1] gpt-5.1 [2] gpt-5.1-mini [3] gpt-5.1-codex [4] o1 [5] custom: 1
+Model? [1] gpt-5.1 [2] gpt-5-mini [3] gpt-5.1-codex [4] o1 [5] custom: 1
 ✓ Using gpt-5.1
 
 Profile? [1] dev [2] base [3] full: 1
