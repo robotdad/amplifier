@@ -55,6 +55,7 @@ Packaged bundles of profiles, agents, and context for specific domains.
 | **toolkit** | Building sophisticated CLI tools using metacognitive recipes | [amplifier-collection-toolkit](https://github.com/microsoft/amplifier-collection-toolkit) |
 | **design-intelligence** | Comprehensive design intelligence capability with specialized agents | [amplifier-collection-design-intelligence](https://github.com/microsoft/amplifier-collection-design-intelligence) |
 | **recipes** | Multi-step AI agent orchestration for repeatable workflows | [amplifier-collection-recipes](https://github.com/microsoft/amplifier-collection-recipes) |
+| **issues** | Issue management | [amplifier-collection-issues](https://github.com/microsoft/amplifier-collection-issues) |
 
 **Installation**: Collections are **not loaded by default**. Install them explicitly:
 
