@@ -450,16 +450,14 @@ amplifier source add tool-custom git+https://github.com/...
 ### Logs and Debugging
 
 ```bash
-# Watch activity
-amplifier logs
-
-# Filter for specific events
-amplifier logs --filter "error"
-amplifier logs --filter "tool:"
-
 # Session details
 amplifier session show <session-id>
+
+# Session logs are written to:
+# ~/.amplifier/projects/<project-slug>/sessions/<session-id>/events.jsonl
 ```
+
+For visual log inspection, see [amplifier-log-viewer](https://github.com/microsoft/amplifier-app-log-viewer).
 
 ---
 
