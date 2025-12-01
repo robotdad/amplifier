@@ -226,8 +226,9 @@ amplifier run --mode chat
 In chat mode:
 
 - Context persists across messages
-- Use `/help` for special commands
-- Use `/provider`, `/profile`, `/module` to configure
+- Use `/help` to see available commands
+- Use `/tools`, `/agents`, `/status`, `/config` to inspect session
+- Use `/think` and `/do` to toggle plan mode
 - Type `exit` or Ctrl+C to quit
 
 ### Single Commands

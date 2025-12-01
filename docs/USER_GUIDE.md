@@ -75,10 +75,12 @@ amplifier run --mode chat
 - `/help` - Show available commands
 - `/tools` - List available tools
 - `/agents` - List available agents
-- `/provider` - Show/change active provider
-- `/profile` - Show/change active profile
+- `/status` - Show session status
+- `/config` - Show current configuration
 - `/think` - Enable plan mode (read-only)
 - `/do` - Disable plan mode (allow modifications)
+- `/clear` - Clear conversation context
+- `/save` - Save conversation transcript
 - `exit` or `Ctrl+C` - Quit
 
 **Example conversation:**

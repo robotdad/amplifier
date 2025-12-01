@@ -185,12 +185,17 @@ amplifier run --profile designer "audit the design system"
 amplifier
 
 # Available slash commands:
-> /help          # Show commands
+> /help          # Show available commands
 > /tools         # List available tools
 > /agents        # List available agents
-> /profile       # Show active profile
-> /provider      # Show active provider
-> /exit          # Quit
+> /status        # Show session status
+> /config        # Show current configuration
+> /think         # Enable read-only plan mode
+> /do            # Exit plan mode (allow modifications)
+> /clear         # Clear conversation context
+> /save          # Save conversation transcript
+
+# To exit: type 'exit' or press Ctrl+C
 ```
 
 ### Session Management
