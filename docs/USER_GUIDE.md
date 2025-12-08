@@ -19,7 +19,7 @@ See [../README.md](../README.md#quick-start---zero-to-working-in-90-seconds) for
 **Quick summary:**
 
 ```bash
-uv tool install git+https://github.com/microsoft/amplifier@next
+uv tool install git+https://github.com/microsoft/amplifier
 amplifier init      # optional if you let the first run wizard handle setup
 amplifier run "Your prompt"
 ```

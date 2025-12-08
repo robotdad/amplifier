@@ -5,11 +5,14 @@
 > [!CAUTION]
 > This project is a research demonstrator. It is in early development and may change significantly. Using permissive AI tools on your computer requires careful attention to security considerations and careful human supervision, and even then things can still go wrong. Use it with caution, and at your own risk, we have NOT built in the safety systems yet. We are performing our _active exploration_ in the open for others to join in the conversation and exploration, not as a product or "official release".
 
+> [!NOTE]
+> **Looking for the earlier Claude Code-based version?** The previous version of Amplifier, built on top of Claude Code, has been moved to the [`amplifier-claude`](https://github.com/microsoft/amplifier/tree/amplifier-claude) branch.
+
 ---
 
 ## What is Amplifier?
 
-Amplifier brings AI assistance to your command line with a modular, extensible architecture. More info to follow here shortly, for our earlier exploration that this will be racing to supercede, check out [our original version](https://github.com/microsoft/amplifier).
+Amplifier brings AI assistance to your command line with a modular, extensible architecture.
 
 **This CLI is _just one_ interface**—the reference implementation. The real power is the modular platform underneath. Soon you'll see web interfaces, mobile apps, voice-driven coding, and even Amplifier-to-Amplifier collaborative experiences. The community will build custom interfaces, mixing and matching modules dynamically to craft tailored AI experiences.
 
@@ -33,7 +36,7 @@ powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 ### Step 2: Install Amplifier (30 seconds)
 
 ```bash
-uv tool install git+https://github.com/microsoft/amplifier@next
+uv tool install git+https://github.com/microsoft/amplifier
 ```
 
 ### Step 3: Run Amplifier (30 seconds)
@@ -160,7 +163,7 @@ Ready! Starting chat...
 
 ## What Can Amplifier Do?
 
-First of all, this is still VERY early and we have not brought _most_ of our features over from our prior version yet, so keep your expectations low and we'll get it ramped up very quickly over the next week or two. Consider this just an early sneak peek.
+First of all, this is still VERY early and we have not brought _most_ of our features over yet, so keep your expectations low and we'll get it ramped up very quickly over the next week or two. Consider this just an early sneak peek.
 
 - **Generate code** - From simple functions to full applications
 - **Debug problems** - Systematic error resolution with the bug-hunter agent
@@ -168,7 +171,7 @@ First of all, this is still VERY early and we have not brought _most_ of our fea
 - **Research solutions** - Find patterns and best practices with the researcher agent
 - **Build modules** - Use Amplifier to create new Amplifier modules (yes, really!)
 
-**Additional features over prior version:**
+**Key features:**
 
 - **Modular**: Swap AI providers, tools, and behaviors like LEGO bricks
 - **Profile-based**: Pre-configured capability sets for different scenarios

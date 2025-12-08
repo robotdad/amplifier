@@ -30,7 +30,7 @@ powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 **Install Amplifier CLI:**
 
 ```bash
-uv tool install git+https://github.com/microsoft/amplifier@next
+uv tool install git+https://github.com/microsoft/amplifier
 
 amplifier init          # optional if you let the first run wizard configure things
 amplifier run "Hello, Amplifier!"

@@ -44,11 +44,11 @@ Amplifier uses a modular repository architecture with clear boundaries. This doc
 
 | Repository Type | Awareness Rule | Examples |
 |----------------|---------------|----------|
-| **Kernel** (amplifier-core) | References ONLY entry point | Can reference amplifier@next for "see getting started" |
+| **Kernel** (amplifier-core) | References ONLY entry point | Can reference amplifier for "see getting started" |
 | **Libraries** | Reference core + entry + **dependencies only** | amplifier-profiles depends on amplifier-collections → can reference it |
 | **Modules** | Reference core + possibly entry, **never peers** | amplifier-module-tool-bash cannot reference amplifier-module-tool-filesystem |
 | **Applications** | Reference anything they consume | amplifier-app-cli uses all libraries → can reference all |
-| **Entry Point** | Reference everything | amplifier@next links to all components |
+| **Entry Point** | Reference everything | amplifier links to all components |
 
 ### Decision Framework
 
@@ -66,7 +66,7 @@ Before adding a reference to another repo, ask:
    - YES → Can reference ✅
    - NO → Continue to question 4
 
-4. **Is this amplifier@next entry point?**
+4. **Is this amplifier entry point?**
    - YES → Can reference ✅ (for "see getting started" only)
    - NO → **Cannot reference ❌**
 
@@ -117,7 +117,7 @@ Modules are loaded using amplifier-profiles' ProfileLoader API.
 ## The Complete Hierarchy
 
 ### Entry Point
-**amplifier** (microsoft/amplifier@next)
+**amplifier** (microsoft/amplifier)
 - **Purpose**: Main entry point for users and developers
 - **Can Reference**: Everything (it's the entry point)
 - **Referenced By**: All other repos (as the canonical "how to get started")
@@ -130,7 +130,7 @@ Modules are loaded using amplifier-profiles' ProfileLoader API.
 ### Kernel
 **amplifier-core** (microsoft/amplifier-core)
 - **Purpose**: Ultra-thin kernel providing mechanisms only
-- **Can Reference**: ONLY amplifier@next
+- **Can Reference**: ONLY amplifier
 - **Referenced By**: Everything (it's the kernel)
 - **CANNOT Reference**: Any libraries, modules, apps (they don't exist to kernel)
 - **Contains**:
@@ -143,7 +143,7 @@ Modules are loaded using amplifier-profiles' ProfileLoader API.
 
 **amplifier-profiles** (microsoft/amplifier-profiles)
 - **Purpose**: Profile and agent loading, inheritance, Mount Plan compilation
-- **Can Reference**: amplifier-core, amplifier@next, amplifier-collections
+- **Can Reference**: amplifier-core, amplifier, amplifier-collections
 - **Referenced By**: Applications (amplifier-app-cli, etc.)
 - **CANNOT Be Referenced By**: amplifier-core
 - **Contains**:
@@ -156,7 +156,7 @@ Modules are loaded using amplifier-profiles' ProfileLoader API.
 
 **amplifier-collections** (microsoft/amplifier-collections)
 - **Purpose**: Collections system for shareable expertise bundles
-- **Can Reference**: amplifier-core, amplifier@next, amplifier-module-resolution
+- **Can Reference**: amplifier-core, amplifier, amplifier-module-resolution
 - **Referenced By**: Applications, amplifier-profiles
 - **CANNOT Be Referenced By**: amplifier-core
 - **Contains**:
@@ -167,7 +167,7 @@ Modules are loaded using amplifier-profiles' ProfileLoader API.
 
 **amplifier-config** (microsoft/amplifier-config)
 - **Purpose**: Configuration management (settings, scopes, paths)
-- **Can Reference**: amplifier-core, amplifier@next
+- **Can Reference**: amplifier-core, amplifier
 - **Referenced By**: Applications
 - **CANNOT Be Referenced By**: amplifier-core
 - **Contains**:
@@ -178,7 +178,7 @@ Modules are loaded using amplifier-profiles' ProfileLoader API.
 
 **amplifier-module-resolution** (microsoft/amplifier-module-resolution)
 - **Purpose**: Module source resolution (git, file, package)
-- **Can Reference**: amplifier-core, amplifier@next
+- **Can Reference**: amplifier-core, amplifier
 - **Referenced By**: Applications, amplifier-collections
 - **CANNOT Be Referenced By**: amplifier-core
 - **Contains**:
@@ -249,7 +249,7 @@ Modules are loaded using amplifier-profiles' ProfileLoader API.
 
 **All Modules**:
 - **Referenced By**: Apps/libraries via mount plans
-- **Can Reference**: ONLY amplifier-core, possibly amplifier@next
+- **Can Reference**: ONLY amplifier-core, possibly amplifier
 - **CANNOT Reference**: Other modules, libraries, apps (unaware of peers)
 - **Contains**: Module implementation, module-specific documentation
 
@@ -292,7 +292,7 @@ Modules are loaded using amplifier-profiles' ProfileLoader API.
 - Toolkit utilities
 
 ### Is it user/dev entry point?
-→ **amplifier@next** (`README.md`, `docs/`)
+→ **amplifier** (`README.md`, `docs/`)
 
 **What lives here**:
 - Getting started (thin overview)
@@ -326,12 +326,12 @@ Modules are loaded using amplifier-profiles' ProfileLoader API.
 - All profile examples and patterns
 
 **What links there**:
-- amplifier@next README - Links to profile authoring guide via GitHub URL
+- amplifier README - Links to profile authoring guide via GitHub URL
 - amplifier-app-cli README - Links to profile API docs via GitHub URL
 - Other docs reference via GitHub URLs
 
 **What does NOT live elsewhere**:
-- ❌ Profile authoring guide in amplifier@next (just link)
+- ❌ Profile authoring guide in amplifier (just link)
 - ❌ Profile concepts in app-cli docs (just link)
 - ❌ Duplicated profile examples (just link)
 
@@ -415,7 +415,7 @@ See [System Design](docs/DESIGN.md) for architecture details.
 ### ❌ WRONG: Duplicate Content
 
 ```markdown
-<!-- In amplifier@next README -->
+<!-- In amplifier README -->
 ## Creating Profiles
 
 Profiles are YAML configuration files with frontmatter...
@@ -470,7 +470,7 @@ Used by applications for profile management.
 ### ❌ WRONG: Local File Link to External Repo
 
 ```markdown
-<!-- In amplifier@next README -->
+<!-- In amplifier README -->
 See [Profile Guide](../amplifier-profiles/docs/PROFILE_AUTHORING.md)
 ```
 
@@ -501,7 +501,7 @@ Before creating/moving documentation:
 ### User Wants to Create a Profile
 
 **Journey**:
-1. Start at amplifier@next README
+1. Start at amplifier README
 2. See "Creating Profiles" section
 3. Click link to amplifier-profiles/docs/PROFILE_AUTHORING.md
 4. Read complete authoring guide
@@ -515,7 +515,7 @@ Before creating/moving documentation:
 ### Developer Building an App
 
 **Journey**:
-1. Start at amplifier@next README
+1. Start at amplifier README
 2. See "For Developers" section with library links
 3. Click link to amplifier-profiles
 4. Read ProfileLoader API documentation
@@ -559,7 +559,7 @@ Before creating/moving documentation:
 1. Owner: amplifier-collections (it's about collections)
 2. Check: Does amplifier-profiles mention this? (no)
 3. Add: amplifier-collections/docs/AUTHORING.md
-4. Link: Update amplifier@next to link to it
+4. Link: Update amplifier to link to it
 5. Update: Note in this doc if needed
 ```
 
@@ -585,7 +585,7 @@ Before creating/moving documentation:
 ## Summary Reference
 
 **Repository Types**:
-- **Entry Point**: amplifier@next - Links to everything
+- **Entry Point**: amplifier - Links to everything
 - **Kernel**: amplifier-core - Contracts and mechanisms only
 - **Libraries**: amplifier-{profiles,collections,config,module-resolution} - APIs and guides
 - **Applications**: amplifier-app-cli - Implementation and commands
