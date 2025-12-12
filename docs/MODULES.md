@@ -26,7 +26,7 @@ User-facing applications that compose libraries and modules.
 | **amplifier-app-cli** | Reference CLI application implementing the Amplifier platform | [amplifier-app-cli](https://github.com/microsoft/amplifier-app-cli) |
 | **amplifier-app-log-viewer** | Web-based log viewer for debugging sessions with real-time updates | [amplifier-app-log-viewer](https://github.com/microsoft/amplifier-app-log-viewer) |
 | **amplifier-app-benchmarks** | Benchmarking and evaluating Amplifier  | [amplifier-app-benchmarks](https://github.com/DavidKoleczek/amplifier-app-benchmarks) |
-| **Amplifier Lakehouse** | Amplifier on top of your data (daemon and webapp) | [amplifier-lakehouse](https://github.com/payneio/amplifierd) |
+| **Amplifier Lakehouse** | Amplifier on top of your data (daemon and webapp) | [amplifier-lakehouse](https://github.com/payneio/lakehouse) |
 
 **Note**: When you install `amplifier`, you get the amplifier-app-cli as the executable application.
 
