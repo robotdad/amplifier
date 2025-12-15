@@ -141,6 +141,19 @@ Modules are loaded using amplifier-profiles' ProfileLoader API.
 
 ### Libraries (Provide APIs)
 
+**amplifier-foundation** (microsoft/amplifier-foundation)
+- **Purpose**: Foundational library for building on the Amplifier ecosystem
+- **Can Reference**: amplifier-core, amplifier
+- **Referenced By**: Applications, other libraries
+- **CANNOT Be Referenced By**: amplifier-core, modules
+- **Contains**:
+  - Bundle primitives (composition, validation, resolution)
+  - Best-practice mount plans, configs, and instructions
+  - Shared utilities (deep_merge, file I/O, path handling)
+  - Reference bundles (providers/, behaviors/, agents/, context/)
+  - Examples for app/service developers
+  - Recommended approaches for common features
+
 **amplifier-profiles** (microsoft/amplifier-profiles)
 - **Purpose**: Profile and agent loading, inheritance, Mount Plan compilation
 - **Can Reference**: amplifier-core, amplifier, amplifier-collections
@@ -587,7 +600,7 @@ Before creating/moving documentation:
 **Repository Types**:
 - **Entry Point**: amplifier - Links to everything
 - **Kernel**: amplifier-core - Contracts and mechanisms only
-- **Libraries**: amplifier-{profiles,collections,config,module-resolution} - APIs and guides
+- **Libraries**: amplifier-foundation, amplifier-{profiles,collections,config,module-resolution} - APIs and guides
 - **Applications**: amplifier-app-cli - Implementation and commands
 - **Collections**: amplifier-collection-* - Bundled expertise
 - **Modules**: amplifier-module-* - Isolated kernel extensions
