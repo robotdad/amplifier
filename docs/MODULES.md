@@ -113,6 +113,7 @@ Extend AI capabilities with actions.
 | **tool-search** | Code search capabilities (grep/glob) | [amplifier-module-tool-search](https://github.com/microsoft/amplifier-module-tool-search) |
 | **tool-task** | Agent delegation and sub-session spawning | [amplifier-module-tool-task](https://github.com/microsoft/amplifier-module-tool-task) |
 | **tool-todo** | AI self-accountability and todo list management | [amplifier-module-tool-todo](https://github.com/microsoft/amplifier-module-tool-todo) |
+| **tool-skills** | Load domain knowledge from skills following the Anthropic Skills format | [amplifier-module-tool-skills](https://github.com/microsoft/amplifier-module-tool-skills) |
 
 ### Context Managers
 
@@ -250,11 +251,6 @@ Built something cool? Share it with the community!
   - Compatible: Amplifier 0.1.x
   - Status: Active
 
-- **tool-skills** by @robotdad - Load domain knowledge from skills with progressive disclosure and Anthropic Skills support
-  - Repository: https://github.com/robotdad/amplifier-module-tool-skills
-  - Compatible: Amplifier 0.1.x
-  - Status: Active
-
 - **collection-ddd** by @robotdad - Document-Driven Development collection with 5 specialized workflow agents for evolving existing codebases
   - Repository: https://github.com/robotdad/amplifier-collection-ddd
   - Compatible: Amplifier 0.1.x
@@ -327,16 +323,16 @@ For technical details, see:
 
 ## Component Summary
 
-**Total Components**: 34
+**Total Components**: 35
 
 - **Core**: 1 (amplifier-core)
 - **Applications**: 3 (amplifier, amplifier-app-cli, amplifier-app-log-viewer)
 - **Libraries**: 4 (profiles, collections, module-resolution, config)
 - **Collections**: 3 (toolkit, design-intelligence, recipes)
-- **Runtime Modules**: 24
+- **Runtime Modules**: 25
   - Orchestrators: 3
-  - Providers: 5
-  - Tools: 6
+  - Providers: 7
+  - Tools: 7
   - Context: 2
   - Hooks: 9
 
