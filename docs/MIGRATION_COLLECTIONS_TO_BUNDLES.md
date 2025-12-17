@@ -11,7 +11,7 @@
 | Aspect        | Collections (deprecated)                        | Bundles (current)              |
 | ------------- | ----------------------------------------------- | ------------------------------ |
 | Format        | Python package with pyproject.toml              | Markdown with YAML frontmatter |
-| Loading       | `amplifier collection add ...`                  | `amplifier --bundle ...`       |
+| Loading       | `amplifier collection add ...`                  | `amplifier run --bundle ...`   |
 | Configuration | `[tool.amplifier.collection]` in pyproject.toml | YAML in bundle.md frontmatter  |
 | Naming        | `amplifier-collection-*`                        | `amplifier-bundle-*`           |
 | Philosophy    | Python package                                  | Configuration file             |
@@ -138,10 +138,10 @@ amplifier run --profile collection-foo:default "prompt"
 
 ```bash
 # Load the bundle directly
-amplifier --bundle git+https://github.com/org/amplifier-bundle-foo@main run "prompt"
+amplifier run --bundle git+https://github.com/org/amplifier-bundle-foo@main "prompt"
 
 # Or load from local path
-amplifier --bundle ./bundle.md run "prompt"
+amplifier run --bundle ./bundle.md "prompt"
 ```
 
 **Include in another bundle**:
@@ -185,7 +185,7 @@ During migration:
 After migration:
 
 - [ ] Update README with bundle loading syntax
-- [ ] Test bundle loads: `amplifier --bundle ./bundle.md run "test"`
+- [ ] Test bundle loads: `amplifier run --bundle ./bundle.md "test"`
 - [ ] Verify agents load correctly
 - [ ] Verify tools execute correctly
 - [ ] Consider renaming repository

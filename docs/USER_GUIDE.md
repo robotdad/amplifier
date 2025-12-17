@@ -317,7 +317,7 @@ Each session contains:
 amplifier run --provider openai "test prompt"
 
 # Use different profile just once
-amplifier --profile designer "audit the design system"
+amplifier run --profile designer "audit the design system"
 
 # Combine overrides
 amplifier run --provider openai --profile test "compare models"
