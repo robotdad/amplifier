@@ -26,7 +26,6 @@ User-facing applications that compose libraries and modules.
 | **amplifier-app-cli** | Reference CLI application implementing the Amplifier platform | [amplifier-app-cli](https://github.com/microsoft/amplifier-app-cli) |
 | **amplifier-app-log-viewer** | Web-based log viewer for debugging sessions with real-time updates | [amplifier-app-log-viewer](https://github.com/microsoft/amplifier-app-log-viewer) |
 | **amplifier-app-benchmarks** | Benchmarking and evaluating Amplifier  | [amplifier-app-benchmarks](https://github.com/DavidKoleczek/amplifier-app-benchmarks) |
-| **Amplifier Lakehouse** | Amplifier on top of your data (daemon and webapp) | [amplifier-lakehouse](https://github.com/payneio/lakehouse) |
 
 **Note**: When you install `amplifier`, you get the amplifier-app-cli as the executable application.
 
@@ -197,6 +196,8 @@ Applications built by the community using Amplifier.
 | **app-voice** | Desktop voice assistant with native speech-to-speech via OpenAI Realtime API (uses provider-openai-realtime) | @robotdad | [amplifier-app-voice](https://github.com/robotdad/amplifier-app-voice) | Amplifier 0.1.x | Experimental |
 | **amplifier-app-tool-generator** | AI-powered tool generator for creating custom Amplifier tools | @samueljklee | [amplifier-app-tool-generator](https://github.com/samueljklee/amplifier-app-tool-generator) | Amplifier | Active |
 | **amplifier-playground** | Interactive environment for building, configuring, and testing Amplifier AI agent sessions with web UI and CLI | @samueljklee | [amplifier-playground](https://github.com/samueljklee/amplifier-playground) | Amplifier | Active |
+| **Amplifier Lakehouse** | Amplifier on top of your data (daemon and webapp) | @payneio | [amplifier-lakehouse](https://github.com/payneio/lakehouse) | Amplifier | Active |
+
 
 **Want to showcase your application?** Submit a PR to add your Amplifier-powered application to this list!
 
