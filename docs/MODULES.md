@@ -35,18 +35,23 @@ User-facing applications that compose libraries and modules.
 
 Foundational libraries used by **applications** (not used directly by runtime modules).
 
-| Component | Description | Repository |
-|-----------|-------------|------------|
-| **amplifier-profiles** | Profile and agent loading with inheritance and Mount Plan compilation | [amplifier-profiles](https://github.com/microsoft/amplifier-profiles) |
-| **amplifier-collections** | Convention-based collection discovery and management | [amplifier-collections](https://github.com/microsoft/amplifier-collections) |
-| **amplifier-module-resolution** | Module source resolution with pluggable strategies | [amplifier-module-resolution](https://github.com/microsoft/amplifier-module-resolution) |
-| **amplifier-config** | Three-scope configuration management (user/project/env) | [amplifier-config](https://github.com/microsoft/amplifier-config) |
+| Component | Description | Repository | Status |
+|-----------|-------------|------------|--------|
+| **amplifier-foundation** | Foundational library for bundles, module resolution, and shared utilities | [amplifier-foundation](https://github.com/microsoft/amplifier-foundation) | **Active** |
+| **amplifier-profiles** | Profile and agent loading with inheritance and Mount Plan compilation | [amplifier-profiles](https://github.com/microsoft/amplifier-profiles) | ⚠️ Deprecated |
+| **amplifier-collections** | Convention-based collection discovery and management | [amplifier-collections](https://github.com/microsoft/amplifier-collections) | ⚠️ Deprecated |
+| **amplifier-module-resolution** | Module source resolution with pluggable strategies | [amplifier-module-resolution](https://github.com/microsoft/amplifier-module-resolution) | ⚠️ Deprecated |
+| **amplifier-config** | Three-scope configuration management (user/project/env) | [amplifier-config](https://github.com/microsoft/amplifier-config) | ⚠️ Deprecated |
+
+> **Migration Note**: The deprecated libraries (profiles, collections, module-resolution, config) are being replaced by **amplifier-foundation** and the **bundles** system. New projects should use bundles instead of profiles/collections.
 
 **Architectural Boundary**: Libraries are consumed by applications (like amplifier-app-cli). Runtime modules only depend on amplifier-core and never use these libraries directly.
 
 ---
 
 ## Collections
+
+> **⚠️ Deprecation Notice**: Collections are being deprecated in favor of [Bundles](#bundles) and [amplifier-foundation](https://github.com/microsoft/amplifier-foundation). New projects should use bundles instead.
 
 Packaged bundles of profiles, agents, and context for specific domains.
 
@@ -68,6 +73,30 @@ amplifier collection refresh
 
 # List installed collections
 amplifier collection list
+```
+
+---
+
+## Bundles
+
+Composable configuration packages that combine providers, behaviors, agents, and context into reusable units.
+
+| Bundle | Description | Repository |
+|--------|-------------|------------|
+| **recipes** | Multi-step AI agent orchestration with behavior overlays and standalone options | [amplifier-bundle-recipes](https://github.com/microsoft/amplifier-bundle-recipes) |
+
+**Usage**: Bundles are loaded via the `amplifier bundle` commands:
+
+```bash
+# Use a bundle
+amplifier bundle use foundation
+amplifier bundle use recipes
+
+# Check for bundle updates
+amplifier bundle status
+
+# Update bundle to latest
+amplifier bundle update
 ```
 
 ---
@@ -334,12 +363,13 @@ For technical details, see:
 
 ## Component Summary
 
-**Total Components**: 35
+**Total Components**: 36
 
 - **Core**: 1 (amplifier-core)
 - **Applications**: 3 (amplifier, amplifier-app-cli, amplifier-app-log-viewer)
 - **Libraries**: 4 (profiles, collections, module-resolution, config)
 - **Collections**: 3 (toolkit, design-intelligence, recipes)
+- **Bundles**: 1 (recipes)
 - **Runtime Modules**: 25
   - Orchestrators: 3
   - Providers: 7

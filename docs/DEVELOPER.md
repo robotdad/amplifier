@@ -6,7 +6,7 @@ As of 10/17/2025, this statement (and contents below) is more aspirational and f
 
 This guide shows you how to leverage Amplifier itself to create custom modules, interfaces, and extensions. The line between "user" and "developer" blurs when AI can generate code from specifications.
 
-> **Note**: Links to amplifier-core and amplifier-dev repos may break as we reorganize. We're moving fast!
+> **Note**: Links may break as we reorganize. We're moving fast!
 
 ---
 
@@ -193,11 +193,12 @@ If you want to build modules manually:
 
 ### 1. Study the Reference Implementations
 
-Clone the amplifier-dev monorepo and examine the reference modules:
+Clone individual module repos and examine their implementations:
 
 ```bash
-git clone https://github.com/microsoft/amplifier-dev
-cd amplifier-dev
+# Clone specific modules you want to study
+git clone https://github.com/microsoft/amplifier-module-tool-filesystem
+git clone https://github.com/microsoft/amplifier-module-provider-anthropic
 ```
 
 **Good modules to study:**

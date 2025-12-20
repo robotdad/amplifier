@@ -50,15 +50,17 @@ amplifier profile use designer
 
 Both collections expose agents visible via `/agents` in chat and are the ones prefixed with `toolkit:` or `design-intelligence:`. You can invoke these from any profile.
 
-### For Contributors (workspace)
+### For Contributors
 
 ```bash
-# Clone development workspace
-git clone --recursive https://github.com/microsoft/amplifier-dev
-cd amplifier-dev
+# Clone the repos you need to work on
+git clone https://github.com/microsoft/amplifier
+git clone https://github.com/microsoft/amplifier-core
+git clone https://github.com/microsoft/amplifier-app-cli
+# ... clone other modules as needed
 
-# Install for development
-./scripts/install-dev.sh
+# Install Amplifier
+uv tool install git+https://github.com/microsoft/amplifier
 
 # First-time setup
 amplifier init

@@ -67,16 +67,21 @@ amplifier run --mode chat
 # Uses local versions automatically
 ```
 
-### Scenario 3: Full Dev Workspace (amplifier-dev)
+### Scenario 3: Full Dev Workspace
 
 **Goal:** Work on core + CLI + many modules simultaneously.
 
 **Option A: Zero-Config Workspace Convention**
 
 ```bash
-# Clone dev workspace
-git clone --recursive https://github.com/microsoft/amplifier-dev
-cd amplifier-dev
+# Create your workspace directory
+mkdir amplifier-workspace && cd amplifier-workspace
+
+# Clone the repos you need
+git clone https://github.com/microsoft/amplifier-core
+git clone https://github.com/microsoft/amplifier-app-cli
+git clone https://github.com/microsoft/amplifier-module-tool-bash
+# ... clone other modules as needed
 
 # Use workspace convention for auto-discovery
 amplifier module dev init
@@ -89,7 +94,7 @@ amplifier module dev status
 **Option B: Manual Symlinks**
 
 ```bash
-cd amplifier-dev
+cd amplifier-workspace
 mkdir -p .amplifier/modules
 
 # Symlink modules you're working on
@@ -105,7 +110,7 @@ amplifier module status
 **Option C: Git Submodules (Selective Loading)**
 
 ```bash
-cd amplifier-dev/.amplifier/modules
+cd amplifier-workspace/.amplifier/modules
 
 # Add as submodules
 git submodule add ../../amplifier-module-tool-bash tool-bash

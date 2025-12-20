@@ -33,9 +33,8 @@ Amplifier uses a modular repository architecture with clear boundaries. This doc
 
 **Context poisoning prevention**: When libraries reference other libraries they don't depend on, AI tools load inconsistent information about which components exist and how they relate.
 
-**Example of the problem** (what we just fixed):
-- `amplifier-module-resolution` referenced private `amplifier-dev` in docs
-- `amplifier-collections` referenced private `amplifier-dev` in docs
+**Example of the problem**:
+- A public library references a private development repository in its docs
 - Problem: Public repos pointing to inaccessible private repo
 - Users cloning public repos got broken links
 - AI tools loaded references to concepts they couldn't access
@@ -45,7 +44,7 @@ Amplifier uses a modular repository architecture with clear boundaries. This doc
 | Repository Type | Awareness Rule | Examples |
 |----------------|---------------|----------|
 | **Kernel** (amplifier-core) | References ONLY entry point | Can reference amplifier for "see getting started" |
-| **Libraries** | Reference core + entry + **dependencies only** | amplifier-profiles depends on amplifier-collections → can reference it |
+| **Libraries** | Reference core + entry + **dependencies only** | amplifier-foundation provides primitives other libraries can depend on |
 | **Modules** | Reference core + possibly entry, **never peers** | amplifier-module-tool-bash cannot reference amplifier-module-tool-filesystem |
 | **Applications** | Reference anything they consume | amplifier-app-cli uses all libraries → can reference all |
 | **Entry Point** | Reference everything | amplifier links to all components |
@@ -73,9 +72,9 @@ Before adding a reference to another repo, ask:
 ### Correct Examples
 
 ```markdown
-<!-- amplifier-profiles/docs/AUTHORING.md -->
-<!-- ✅ CORRECT: amplifier-profiles depends on amplifier-collections -->
-For collection format details, see [amplifier-collections](https://github.com/microsoft/amplifier-collections).
+<!-- amplifier-bundle-recipes/docs/AUTHORING.md -->
+<!-- ✅ CORRECT: Bundles can reference amplifier-foundation -->
+For bundle primitives, see [amplifier-foundation](https://github.com/microsoft/amplifier-foundation).
 
 <!-- ✅ CORRECT: All libraries can reference kernel -->
 This implements the protocol from [amplifier-core](https://github.com/microsoft/amplifier-core).
@@ -87,17 +86,17 @@ For initial setup, see [Getting Started](https://github.com/microsoft/amplifier)
 ### Incorrect Examples
 
 ```markdown
-<!-- amplifier-module-resolution/docs/SPECIFICATION.md -->
-<!-- ❌ WRONG: amplifier-module-resolution does NOT depend on amplifier-profiles -->
-Module resolution works with profiles from [amplifier-profiles](https://github.com/microsoft/amplifier-profiles).
+<!-- amplifier-module-provider-anthropic/docs/SPECIFICATION.md -->
+<!-- ❌ WRONG: Module does NOT depend on amplifier-foundation -->
+Provider configuration uses utilities from [amplifier-foundation](https://github.com/microsoft/amplifier-foundation).
 
 <!-- ❌ WRONG: Module referencing another module (no peer awareness) -->
 <!-- amplifier-module-tool-bash/README.md -->
 Works well with [amplifier-module-tool-filesystem](https://github.com/microsoft/amplifier-module-tool-filesystem).
 
 <!-- ❌ WRONG: Library referencing private development repo -->
-<!-- amplifier-collections/docs/AUTHORING.md -->
-See [Module Development](https://github.com/microsoft/amplifier-dev/blob/main/docs/MODULE_DEVELOPMENT.md).
+<!-- amplifier-foundation/docs/AUTHORING.md -->
+See [Module Development](https://github.com/private-repo/docs/MODULE_DEVELOPMENT.md).
 ```
 
 ### Special Case: Describing Without Referencing
@@ -154,7 +153,8 @@ Modules are loaded using amplifier-profiles' ProfileLoader API.
   - Examples for app/service developers
   - Recommended approaches for common features
 
-**amplifier-profiles** (microsoft/amplifier-profiles)
+**amplifier-profiles** (microsoft/amplifier-profiles) ⚠️ **DEPRECATED**
+- **Status**: Being replaced by amplifier-foundation and bundles
 - **Purpose**: Profile and agent loading, inheritance, Mount Plan compilation
 - **Can Reference**: amplifier-core, amplifier, amplifier-collections
 - **Referenced By**: Applications (amplifier-app-cli, etc.)
@@ -167,7 +167,8 @@ Modules are loaded using amplifier-profiles' ProfileLoader API.
   - System design and architecture
   - All profile/agent concepts and examples
 
-**amplifier-collections** (microsoft/amplifier-collections)
+**amplifier-collections** (microsoft/amplifier-collections) ⚠️ **DEPRECATED**
+- **Status**: Being replaced by amplifier-foundation and bundles
 - **Purpose**: Collections system for shareable expertise bundles
 - **Can Reference**: amplifier-core, amplifier, amplifier-module-resolution
 - **Referenced By**: Applications, amplifier-profiles
@@ -178,7 +179,8 @@ Modules are loaded using amplifier-profiles' ProfileLoader API.
   - Collection authoring guide
   - Collection format specification
 
-**amplifier-config** (microsoft/amplifier-config)
+**amplifier-config** (microsoft/amplifier-config) ⚠️ **DEPRECATED**
+- **Status**: Being replaced by amplifier-foundation and bundles
 - **Purpose**: Configuration management (settings, scopes, paths)
 - **Can Reference**: amplifier-core, amplifier
 - **Referenced By**: Applications
@@ -189,7 +191,8 @@ Modules are loaded using amplifier-profiles' ProfileLoader API.
   - Settings management
   - deep_merge utility
 
-**amplifier-module-resolution** (microsoft/amplifier-module-resolution)
+**amplifier-module-resolution** (microsoft/amplifier-module-resolution) ⚠️ **DEPRECATED**
+- **Status**: Being replaced by amplifier-foundation and bundles
 - **Purpose**: Module source resolution (git, file, package)
 - **Can Reference**: amplifier-core, amplifier
 - **Referenced By**: Applications, amplifier-collections
@@ -215,16 +218,33 @@ Modules are loaded using amplifier-profiles' ProfileLoader API.
   - Toolkit utilities for building sophisticated tools
   - How THIS app uses libraries
 
-### Collections (Shareable Bundles)
+### Collections (Shareable Expertise) ⚠️ **DEPRECATED**
 
-**amplifier-collection-design-intelligence**
+> **Note**: Collections are being replaced by Bundles. See [Bundles](#bundles-composable-configurations) below for the current approach.
+
 **amplifier-collection-***
-- **Purpose**: Bundles of profiles, agents, context, tools, modules
+- **Status**: Being replaced by bundles
+- **Purpose**: Shareable expertise bundles with profiles, agents, context, tools
 - **Can Reference**: Modules, libraries (looser rules, evolving)
 - **Referenced By**: Applications (via collection:name syntax)
 - **Contains**:
   - Profiles, agents, context, scenario tools, modules
   - Collection-specific documentation
+
+### Bundles (Composable Configurations)
+
+**amplifier-bundle-recipes**
+**amplifier-bundle-***
+- **Purpose**: Composable configuration packages combining providers, behaviors, agents, and context
+- **Can Reference**: Modules, libraries (looser rules, evolving)
+- **Intra-Bundle Awareness**: Components within the same bundle CAN reference each other (this is the common use case - bundles group related/interdependent items that would otherwise require users to understand complex combinations)
+- **Referenced By**: Applications (via `amplifier bundle use`)
+- **Contains**:
+  - Provider configurations
+  - Behavior overlays
+  - Agent definitions
+  - Context files
+  - Bundle-specific documentation
 
 ### Modules (Kernel Extensions)
 
@@ -290,10 +310,11 @@ Modules are loaded using amplifier-profiles' ProfileLoader API.
 - Schemas and protocols
 
 **Libraries**:
-- **amplifier-profiles** - Profile/agent system (ALL profile/agent docs)
-- **amplifier-collections** - Collections system (ALL collection docs)
-- **amplifier-config** - Configuration (ALL config docs)
-- **amplifier-module-resolution** - Module sources (ALL resolution docs)
+- **amplifier-foundation** - Bundle primitives, shared utilities, reference bundles (primary library)
+- **amplifier-profiles** ⚠️ Deprecated - Profile/agent system
+- **amplifier-collections** ⚠️ Deprecated - Collections system
+- **amplifier-config** ⚠️ Deprecated - Configuration
+- **amplifier-module-resolution** ⚠️ Deprecated - Module sources
 
 ### Is it app-specific implementation?
 → **amplifier-app-cli** (or other app) (`README.md`, `docs/`)
@@ -326,27 +347,27 @@ Modules are loaded using amplifier-profiles' ProfileLoader API.
 
 ## Content Ownership Examples
 
-### Example 1: Profile System
+### Example 1: Bundle System
 
-**Owner**: amplifier-profiles library
+**Owner**: amplifier-foundation library
 
 **What lives there**:
-- ProfileLoader API documentation
-- "What are profiles?" conceptual explanation
-- "How do I create profiles?" user guide (PROFILE_AUTHORING.md)
-- Profile schemas and validation
-- Inheritance and overlay merging design
-- All profile examples and patterns
+- Bundle primitives and composition APIs
+- "What are bundles?" conceptual explanation
+- "How do I create bundles?" user guide (BUNDLE_AUTHORING.md)
+- Bundle schemas and validation
+- Composition and overlay merging design
+- All bundle examples and patterns
 
 **What links there**:
-- amplifier README - Links to profile authoring guide via GitHub URL
-- amplifier-app-cli README - Links to profile API docs via GitHub URL
+- amplifier README - Links to bundle authoring guide via GitHub URL
+- amplifier-app-cli README - Links to bundle API docs via GitHub URL
 - Other docs reference via GitHub URLs
 
 **What does NOT live elsewhere**:
-- ❌ Profile authoring guide in amplifier (just link)
-- ❌ Profile concepts in app-cli docs (just link)
-- ❌ Duplicated profile examples (just link)
+- ❌ Bundle authoring guide in amplifier (just link)
+- ❌ Bundle concepts in app-cli docs (just link)
+- ❌ Duplicated bundle examples (just link)
 
 ### Example 2: Mount Plan Contract
 
@@ -367,20 +388,20 @@ Modules are loaded using amplifier-profiles' ProfileLoader API.
 
 ### Example 3: Agent Delegation
 
-**Conceptual docs owner**: amplifier-profiles library
+**Conceptual docs owner**: amplifier-foundation library
 **Implementation docs owner**: amplifier-app-cli
 
-**amplifier-profiles contains**:
+**amplifier-foundation contains**:
 - "What are agents?" concepts
 - Agent schemas and formats
 - Agent authoring guide
-- AgentLoader/AgentResolver API
+- Agent resolution utilities
 
 **amplifier-app-cli contains**:
 - How CLI resolves agents (search paths)
 - CLI-specific features (environment variables)
 - CLI commands (agent list, agent show)
-- Links to amplifier-profiles for concepts
+- Links to amplifier-foundation for concepts
 
 **Why split**:
 - Concepts = library's domain
@@ -397,9 +418,9 @@ Modules are loaded using amplifier-profiles' ProfileLoader API.
 
 **Format**:
 ```markdown
-**→ [Profile Authoring Guide](https://github.com/microsoft/amplifier-profiles/blob/main/docs/PROFILE_AUTHORING.md)**
+**→ [Bundle Authoring Guide](https://github.com/microsoft/amplifier-foundation/blob/main/docs/BUNDLE_AUTHORING.md)**
 
-For details on collections, see [amplifier-collections](https://github.com/microsoft/amplifier-collections).
+For bundle primitives, see [amplifier-foundation](https://github.com/microsoft/amplifier-foundation).
 ```
 
 **Why**:
@@ -429,26 +450,26 @@ See [System Design](docs/DESIGN.md) for architecture details.
 
 ```markdown
 <!-- In amplifier README -->
-## Creating Profiles
+## Creating Bundles
 
-Profiles are YAML configuration files with frontmatter...
-[500 lines of duplicated profile documentation]
+Bundles are composable configuration packages...
+[500 lines of duplicated bundle documentation]
 ```
 
 **Problem**: Duplication causes context poisoning when content diverges
 
 **Fix**: Link to authoritative source
 ```markdown
-## Creating Profiles
+## Creating Bundles
 
-**→ [Profile Authoring Guide](https://github.com/microsoft/amplifier-profiles/blob/main/docs/PROFILE_AUTHORING.md)**
+**→ [Bundle Authoring Guide](https://github.com/microsoft/amplifier-foundation/blob/main/docs/BUNDLE_AUTHORING.md)**
 ```
 
 ### ❌ WRONG: Core References Library
 
 ```markdown
 <!-- In amplifier-core/README.md -->
-For profile configuration, see amplifier-profiles library.
+For bundle configuration, see amplifier-foundation library.
 ```
 
 **Problem**: Core shouldn't know libraries exist
@@ -469,29 +490,29 @@ Works well with amplifier-module-tool-filesystem.
 ### ❌ WRONG: Library References App
 
 ```markdown
-<!-- In amplifier-profiles/README.md -->
-Used by amplifier-app-cli for profile management.
+<!-- In amplifier-foundation/README.md -->
+Used by amplifier-app-cli for bundle management.
 ```
 
 **Problem**: Library shouldn't know about specific apps
 
 **Fix**: Generic language
 ```markdown
-Used by applications for profile management.
+Used by applications for bundle management.
 ```
 
 ### ❌ WRONG: Local File Link to External Repo
 
 ```markdown
 <!-- In amplifier README -->
-See [Profile Guide](../amplifier-profiles/docs/PROFILE_AUTHORING.md)
+See [Bundle Guide](../amplifier-foundation/docs/BUNDLE_AUTHORING.md)
 ```
 
 **Problem**: Assumes local multi-repo structure, breaks for users who clone single repo
 
 **Fix**: Use GitHub URL
 ```markdown
-**→ [Profile Authoring Guide](https://github.com/microsoft/amplifier-profiles/blob/main/docs/PROFILE_AUTHORING.md)**
+**→ [Bundle Authoring Guide](https://github.com/microsoft/amplifier-foundation/blob/main/docs/BUNDLE_AUTHORING.md)**
 ```
 
 ---
@@ -511,14 +532,14 @@ Before creating/moving documentation:
 
 ## Content Distribution Examples
 
-### User Wants to Create a Profile
+### User Wants to Create a Bundle
 
 **Journey**:
 1. Start at amplifier README
-2. See "Creating Profiles" section
-3. Click link to amplifier-profiles/docs/PROFILE_AUTHORING.md
+2. See "Creating Bundles" section
+3. Click link to amplifier-foundation/docs/BUNDLE_AUTHORING.md
 4. Read complete authoring guide
-5. Reference API docs in amplifier-profiles/README.md as needed
+5. Reference API docs in amplifier-foundation/README.md as needed
 
 **Why this works**:
 - Entry point guides user
@@ -530,8 +551,8 @@ Before creating/moving documentation:
 **Journey**:
 1. Start at amplifier README
 2. See "For Developers" section with library links
-3. Click link to amplifier-profiles
-4. Read ProfileLoader API documentation
+3. Click link to amplifier-foundation
+4. Read bundle primitives API documentation
 5. Reference design docs as needed
 
 **Why this works**:
@@ -539,17 +560,17 @@ Before creating/moving documentation:
 - Library provides complete API docs
 - App examples show integration
 
-### Contributor to amplifier-profiles
+### Contributor to amplifier-foundation
 
 **Journey**:
-1. Clone amplifier-profiles repo
+1. Clone amplifier-foundation repo
 2. Read README for API overview
 3. Read docs/DESIGN.md for architecture
 4. Read code with docs as contract
 5. Make changes maintaining contracts
 
 **Why this works**:
-- All profile/agent knowledge in one repo
+- All bundle/foundation knowledge in one repo
 - Complete context for contributors
 - Docs define contracts code must implement
 
@@ -568,10 +589,10 @@ Before creating/moving documentation:
 
 **Example**:
 ```
-# Adding collection authoring guide
-1. Owner: amplifier-collections (it's about collections)
-2. Check: Does amplifier-profiles mention this? (no)
-3. Add: amplifier-collections/docs/AUTHORING.md
+# Adding bundle authoring guide
+1. Owner: amplifier-foundation (it's about bundles)
+2. Check: Does amplifier-app-cli mention this? (no)
+3. Add: amplifier-foundation/docs/BUNDLE_AUTHORING.md
 4. Link: Update amplifier to link to it
 5. Update: Note in this doc if needed
 ```
@@ -600,9 +621,10 @@ Before creating/moving documentation:
 **Repository Types**:
 - **Entry Point**: amplifier - Links to everything
 - **Kernel**: amplifier-core - Contracts and mechanisms only
-- **Libraries**: amplifier-foundation, amplifier-{profiles,collections,config,module-resolution} - APIs and guides
+- **Libraries**: amplifier-foundation (primary), amplifier-{profiles,collections,config,module-resolution} ⚠️ Deprecated
 - **Applications**: amplifier-app-cli - Implementation and commands
-- **Collections**: amplifier-collection-* - Bundled expertise
+- **Collections**: amplifier-collection-* ⚠️ Deprecated - Being replaced by bundles
+- **Bundles**: amplifier-bundle-* - Composable configuration packages (primary)
 - **Modules**: amplifier-module-* - Isolated kernel extensions
 
 **Content Flow**:

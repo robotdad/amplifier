@@ -29,7 +29,7 @@ audience: developer
 ### 1. Install Development Environment
 
 ```bash
-cd amplifier-dev
+cd <your-workspace>
 scripts/install-dev.sh
 ```
 
@@ -182,7 +182,7 @@ amplifier-collections = { git = "https://github.com/microsoft/amplifier-collecti
 **Modules can use path dependencies** (not distributed):
 
 ```toml
-# In amplifier-dev/amplifier-module-tool-bash/pyproject.toml (local only)
+# In <your-workspace>/amplifier-module-tool-bash/pyproject.toml (local only)
 [tool.uv.sources.amplifier-core]
 path = "../amplifier-core"
 editable = true
