@@ -1,10 +1,95 @@
-# Migrating from Collections to Bundles
+# Migrating to Bundles
 
-**Purpose**: Guide for converting existing `amplifier-collection-*` repositories to the new `amplifier-bundle-*` format.
+**Purpose**: Guide for migrating from the deprecated profile/collection system to bundles.
 
 ---
 
-## Why Migrate?
+## Quick Reference: What's Being Replaced?
+
+| Deprecated | Replacement | Migration Effort |
+|------------|-------------|------------------|
+| Profiles (`amplifier profile use`) | Bundles (`amplifier bundle use`) | Minimal - see [Profile Migration](#migrating-from-profiles) |
+| Collections (`amplifier collection add`) | Bundles (`amplifier bundle add`) | Moderate - see [Collection Migration](#migrating-from-collections) |
+
+---
+
+## Migrating from Profiles
+
+**Profiles are deprecated.** The `foundation` bundle is now the default for new users.
+
+### For Users (Using Profiles)
+
+If you have an active profile set:
+
+```bash
+# Check current configuration
+amplifier bundle current
+
+# If it shows "Mode: Profile (deprecated)", migrate to bundles:
+amplifier bundle clear  # Clears profile, defaults to foundation bundle
+
+# Or explicitly set a bundle
+amplifier bundle use foundation
+```
+
+**That's it!** The foundation bundle provides equivalent functionality to the base profiles.
+
+### For Profile Authors (Custom Profiles)
+
+If you've created custom profiles, convert them to bundles:
+
+**Before (profile YAML)**:
+```yaml
+# profiles/my-custom.yaml
+profile:
+  name: my-custom
+  extends: base
+
+providers:
+  - module: provider-anthropic
+    config:
+      default_model: claude-opus-4
+
+tools:
+  - module: tool-filesystem
+  - module: tool-bash
+```
+
+**After (bundle.md)**:
+```yaml
+---
+bundle:
+  name: my-custom
+  version: 1.0.0
+  description: My custom configuration
+
+includes:
+  - bundle: foundation  # Inherit from foundation instead of "extends: base"
+
+providers:
+  - module: provider-anthropic
+    source: git+https://github.com/microsoft/amplifier-module-provider-anthropic@main
+    config:
+      default_model: claude-opus-4
+
+# tools inherited from foundation, add more if needed
+---
+
+# Custom System Instructions
+
+Your custom system prompt goes here.
+```
+
+**Key differences**:
+- `extends:` becomes `includes:` with bundle reference
+- All modules need explicit `source:` URLs (or inherit from included bundle)
+- System instructions go in the markdown body, not a separate field
+
+---
+
+## Migrating from Collections
+
+**Collections are deprecated.** Convert them to bundles for continued use.
 
 **Bundles** replace **collections** as the primary way to package and share Amplifier configurations:
 
@@ -18,9 +103,7 @@
 
 **Key insight**: Bundles are configuration, not Python packages. This simplifies distribution and composition.
 
----
-
-## Migration Overview
+### Collection Migration Overview
 
 Converting a collection to a bundle involves:
 
