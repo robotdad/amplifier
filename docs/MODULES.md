@@ -47,6 +47,7 @@ Composable configuration packages that combine providers, behaviors, agents, and
 
 | Bundle | Description | Repository |
 |--------|-------------|------------|
+| **design-intelligence** | Comprehensive design intelligence with 7 specialized agents, design philosophy framework, and knowledge base | [amplifier-bundle-design-intelligence](https://github.com/microsoft/amplifier-bundle-design-intelligence) |
 | **recipes** | Multi-step AI agent orchestration with behavior overlays and standalone options | [amplifier-bundle-recipes](https://github.com/microsoft/amplifier-bundle-recipes) |
 
 **Usage**: Bundles are loaded via the `amplifier bundle` commands:
