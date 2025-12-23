@@ -52,10 +52,10 @@ Composable configuration packages that combine providers, behaviors, agents, and
 **Usage**: Bundles are loaded via the `amplifier bundle` commands:
 
 ```bash
-# Add a bundle from a git URL
-amplifier bundle add git+https://github.com/microsoft/amplifier-bundle-recipes@main
+# Add a bundle to the registry (NAME + URI)
+amplifier bundle add recipes git+https://github.com/microsoft/amplifier-bundle-recipes@main
 
-# Use a well-known bundle by name
+# Use a bundle by name
 amplifier bundle use foundation
 amplifier bundle use recipes
 
@@ -166,8 +166,8 @@ Your system prompt here.
 ### Command Line
 
 ```bash
-# Add a module from git URL
-amplifier module add git+https://github.com/microsoft/amplifier-module-tool-web@main
+# Add a module override (MODULE_ID + --source)
+amplifier module add tool-web --source git+https://github.com/microsoft/amplifier-module-tool-web@main
 
 # See installed modules
 amplifier module list
