@@ -1,8 +1,6 @@
 # Amplifier Component Catalog
 
-Amplifier's modular architecture allows you to mix and match capabilities. This page catalogs all available components in the Amplifier ecosystem—core infrastructure, applications, libraries, collections, and runtime modules.
-
-> **Note**: Component links point to GitHub repositories. We're moving fast, so some may be temporarily unavailable as we reorganize.
+Amplifier's modular architecture allows you to mix and match capabilities. This page catalogs all available components in the Amplifier ecosystem—core infrastructure, applications, libraries, bundles, and runtime modules.
 
 ---
 
@@ -25,7 +23,7 @@ User-facing applications that compose libraries and modules.
 | **amplifier** | Main Amplifier project and entry point - installs amplifier-app-cli via `uv tool install` | [amplifier](https://github.com/microsoft/amplifier) |
 | **amplifier-app-cli** | Reference CLI application implementing the Amplifier platform | [amplifier-app-cli](https://github.com/microsoft/amplifier-app-cli) |
 | **amplifier-app-log-viewer** | Web-based log viewer for debugging sessions with real-time updates | [amplifier-app-log-viewer](https://github.com/microsoft/amplifier-app-log-viewer) |
-| **amplifier-app-benchmarks** | Benchmarking and evaluating Amplifier  | [amplifier-app-benchmarks](https://github.com/DavidKoleczek/amplifier-app-benchmarks) |
+| **amplifier-app-benchmarks** | Benchmarking and evaluating Amplifier | [amplifier-app-benchmarks](https://github.com/DavidKoleczek/amplifier-app-benchmarks) |
 
 **Note**: When you install `amplifier`, you get the amplifier-app-cli as the executable application.
 
@@ -35,45 +33,11 @@ User-facing applications that compose libraries and modules.
 
 Foundational libraries used by **applications** (not used directly by runtime modules).
 
-| Component | Description | Repository | Status |
-|-----------|-------------|------------|--------|
-| **amplifier-foundation** | Foundational library for bundles, module resolution, and shared utilities | [amplifier-foundation](https://github.com/microsoft/amplifier-foundation) | **Active** |
-| **amplifier-profiles** | Profile and agent loading with inheritance and Mount Plan compilation | [amplifier-profiles](https://github.com/microsoft/amplifier-profiles) | ⚠️ Deprecated |
-| **amplifier-collections** | Convention-based collection discovery and management | [amplifier-collections](https://github.com/microsoft/amplifier-collections) | ⚠️ Deprecated |
-| **amplifier-module-resolution** | Module source resolution with pluggable strategies | [amplifier-module-resolution](https://github.com/microsoft/amplifier-module-resolution) | ⚠️ Deprecated |
-| **amplifier-config** | Three-scope configuration management (user/project/env) | [amplifier-config](https://github.com/microsoft/amplifier-config) | ⚠️ Deprecated |
-
-> **Migration Note**: The deprecated libraries (profiles, collections, module-resolution, config) are being replaced by **amplifier-foundation** and the **bundles** system. New projects should use bundles instead of profiles/collections.
+| Component | Description | Repository |
+|-----------|-------------|------------|
+| **amplifier-foundation** | Foundational library for bundles, module resolution, and shared utilities | [amplifier-foundation](https://github.com/microsoft/amplifier-foundation) |
 
 **Architectural Boundary**: Libraries are consumed by applications (like amplifier-app-cli). Runtime modules only depend on amplifier-core and never use these libraries directly.
-
----
-
-## Collections
-
-> **⚠️ Deprecation Notice**: Collections are being deprecated in favor of [Bundles](#bundles) and [amplifier-foundation](https://github.com/microsoft/amplifier-foundation). New projects should use bundles instead.
-
-Packaged bundles of profiles, agents, and context for specific domains.
-
-| Collection | Description | Repository |
-|------------|-------------|------------|
-| **toolkit** | Building sophisticated CLI tools using metacognitive recipes | [amplifier-collection-toolkit](https://github.com/microsoft/amplifier-collection-toolkit) |
-| **design-intelligence** | Comprehensive design intelligence capability with specialized agents | [amplifier-collection-design-intelligence](https://github.com/microsoft/amplifier-collection-design-intelligence) |
-| **recipes** | Multi-step AI agent orchestration for repeatable workflows | [amplifier-collection-recipes](https://github.com/microsoft/amplifier-collection-recipes) |
-| **issues** | Issue management | [amplifier-collection-issues](https://github.com/microsoft/amplifier-collection-issues) |
-
-**Installation**: Collections are **not loaded by default**. Install them explicitly:
-
-```bash
-# Install a collection
-amplifier collection add git+https://github.com/microsoft/amplifier-collection-toolkit@main
-
-# Update installed collections
-amplifier collection refresh
-
-# List installed collections
-amplifier collection list
-```
 
 ---
 
@@ -88,7 +52,10 @@ Composable configuration packages that combine providers, behaviors, agents, and
 **Usage**: Bundles are loaded via the `amplifier bundle` commands:
 
 ```bash
-# Use a bundle
+# Add a bundle from a git URL
+amplifier bundle add git+https://github.com/microsoft/amplifier-bundle-recipes@main
+
+# Use a well-known bundle by name
 amplifier bundle use foundation
 amplifier bundle use recipes
 
@@ -99,11 +66,13 @@ amplifier bundle status
 amplifier bundle update
 ```
 
+**Creating Bundles**: See the [Bundle Guide](https://github.com/microsoft/amplifier-foundation/blob/main/docs/BUNDLE_GUIDE.md) for how to create your own bundles.
+
 ---
 
 ## Runtime Modules
 
-These modules are loaded dynamically at runtime based on your profile configuration.
+These modules are loaded dynamically at runtime based on your bundle configuration.
 
 ### Orchestrators
 
@@ -172,16 +141,15 @@ Extend lifecycle events and observability.
 
 ## Using Modules
 
-### In Profiles
+### In Bundles
 
-Modules are loaded via profiles (recommended):
+Modules are loaded via bundles (recommended):
 
-```yaml
-# ~/.amplifier/profiles/my-profile.md
+```markdown
 ---
-profile:
-  name: my-profile
-  extends: base
+bundle:
+  name: my-bundle
+  version: 1.0.0
 
 tools:
   - module: tool-web
@@ -189,11 +157,18 @@ tools:
   - module: tool-custom
     source: git+https://github.com/you/your-custom-tool@main
 ---
+
+# My Bundle Instructions
+
+Your system prompt here.
 ```
 
 ### Command Line
 
 ```bash
+# Add a module from git URL
+amplifier module add git+https://github.com/microsoft/amplifier-module-tool-web@main
+
 # See installed modules
 amplifier module list
 
@@ -207,26 +182,16 @@ amplifier module show tool-filesystem
 
 Applications built by the community using Amplifier.
 
-> **⚠️ SECURITY WARNING**
->
-> Community applications execute arbitrary code in your environment with full access to your filesystem, network, and credentials.
->
-> - **Only use applications from sources you absolutely trust**
-> - **Review application code before installation** - read every line
-> - **Understand what the application does** - don't trust descriptions alone
-> - **Use at your own risk** - no warranties, guarantees, or security vetting
->
-> You are responsible for what runs on your machine. When in doubt, don't install it.
+> **SECURITY WARNING**: Community applications execute arbitrary code in your environment with full access to your filesystem, network, and credentials. Only use applications from sources you trust. Review code before installation.
 
-| Application | Description | Author | Repository | Compatible | Status |
-|-------------|-------------|--------|------------|------------|--------|
-| **app-transcribe** | Transform YouTube videos and audio files into searchable transcripts with AI-powered insights (uses tool-youtube-dl and tool-whisper) | @robotdad | [amplifier-app-transcribe](https://github.com/robotdad/amplifier-app-transcribe) | Amplifier 0.1.x | Active |
-| **app-blog-creator** | AI-powered blog creation with style-aware generation and rich markdown editor (web interface designed with design-intelligence collection, uses image-generation, style-extraction, and markdown-utils modules) | @robotdad | [amplifier-app-blog-creator](https://github.com/robotdad/amplifier-app-blog-creator) | Amplifier 0.1.x | Active |
-| **app-voice** | Desktop voice assistant with native speech-to-speech via OpenAI Realtime API (uses provider-openai-realtime) | @robotdad | [amplifier-app-voice](https://github.com/robotdad/amplifier-app-voice) | Amplifier 0.1.x | Experimental |
-| **amplifier-app-tool-generator** | AI-powered tool generator for creating custom Amplifier tools | @samueljklee | [amplifier-app-tool-generator](https://github.com/samueljklee/amplifier-app-tool-generator) | Amplifier | Active |
-| **amplifier-playground** | Interactive environment for building, configuring, and testing Amplifier AI agent sessions with web UI and CLI | @samueljklee | [amplifier-playground](https://github.com/samueljklee/amplifier-playground) | Amplifier | Active |
-| **Amplifier Lakehouse** | Amplifier on top of your data (daemon and webapp) | @payneio | [amplifier-lakehouse](https://github.com/payneio/lakehouse) | Amplifier | Active |
-
+| Application | Description | Author | Repository |
+|-------------|-------------|--------|------------|
+| **app-transcribe** | Transform YouTube videos and audio files into searchable transcripts with AI-powered insights | [@robotdad](https://github.com/robotdad) | [amplifier-app-transcribe](https://github.com/robotdad/amplifier-app-transcribe) |
+| **app-blog-creator** | AI-powered blog creation with style-aware generation and rich markdown editor | [@robotdad](https://github.com/robotdad) | [amplifier-app-blog-creator](https://github.com/robotdad/amplifier-app-blog-creator) |
+| **app-voice** | Desktop voice assistant with native speech-to-speech via OpenAI Realtime API | [@robotdad](https://github.com/robotdad) | [amplifier-app-voice](https://github.com/robotdad/amplifier-app-voice) |
+| **app-tool-generator** | AI-powered tool generator for creating custom Amplifier tools | [@samueljklee](https://github.com/samueljklee) | [amplifier-app-tool-generator](https://github.com/samueljklee/amplifier-app-tool-generator) |
+| **amplifier-playground** | Interactive environment for building, configuring, and testing Amplifier AI agent sessions | [@samueljklee](https://github.com/samueljklee) | [amplifier-playground](https://github.com/samueljklee/amplifier-playground) |
+| **amplifier-lakehouse** | Amplifier on top of your data (daemon and webapp) | [@payneio](https://github.com/payneio) | [amplifier-lakehouse](https://github.com/payneio/lakehouse) |
 
 **Want to showcase your application?** Submit a PR to add your Amplifier-powered application to this list!
 
@@ -234,102 +199,43 @@ Applications built by the community using Amplifier.
 
 ## Community Modules
 
-> **⚠️ CRITICAL SECURITY WARNING**
->
-> Community modules execute arbitrary code in your environment with full access to your filesystem, network, and credentials.
->
-> - **Only use modules from sources you absolutely trust**
-> - **Review module code before installation** - read every line
-> - **Understand what the module does** - don't trust descriptions alone
-> - **Use at your own risk** - no warranties, guarantees, or security vetting
-> - **Assume malicious intent** until proven otherwise
->
-> You are responsible for what runs on your machine. When in doubt, don't install it.
+Modules built by the community.
+
+> **SECURITY WARNING**: Community modules execute arbitrary code in your environment with full access to your filesystem, network, and credentials. Only use modules from sources you trust. Review code before installation.
+
+### Providers
+
+| Module | Description | Author | Repository |
+|--------|-------------|--------|------------|
+| **provider-bedrock** | AWS Bedrock integration with cross-region inference support for Claude models | [@brycecutt-msft](https://github.com/brycecutt-msft) | [amplifier-module-provider-bedrock](https://github.com/brycecutt-msft/amplifier-module-provider-bedrock) |
+| **provider-openai-realtime** | OpenAI Realtime API for native speech-to-speech interactions | [@robotdad](https://github.com/robotdad) | [amplifier-module-provider-openai-realtime](https://github.com/robotdad/amplifier-module-provider-openai-realtime) |
+
+### Tools
+
+| Module | Description | Author | Repository |
+|--------|-------------|--------|------------|
+| **tool-mcp** | Model Context Protocol integration for MCP servers | [@robotdad](https://github.com/robotdad) | [amplifier-module-tool-mcp](https://github.com/robotdad/amplifier-module-tool-mcp) |
+| **tool-youtube-dl** | Download audio and video from YouTube with metadata extraction | [@robotdad](https://github.com/robotdad) | [amplifier-module-tool-youtube-dl](https://github.com/robotdad/amplifier-module-tool-youtube-dl) |
+| **tool-whisper** | Speech-to-text transcription using OpenAI's Whisper API | [@robotdad](https://github.com/robotdad) | [amplifier-module-tool-whisper](https://github.com/robotdad/amplifier-module-tool-whisper) |
+| **tool-memory** | Persistent memory tool for storing and retrieving facts across sessions | [@michaeljabbour](https://github.com/michaeljabbour) | [amplifier-module-tool-memory](https://github.com/michaeljabbour/amplifier-module-tool-memory) |
+| **module-image-generation** | Multi-provider AI image generation with DALL-E, Imagen, and GPT-Image-1 | [@robotdad](https://github.com/robotdad) | [amplifier-module-image-generation](https://github.com/robotdad/amplifier-module-image-generation) |
+| **module-style-extraction** | Extract and apply writing style from text samples | [@robotdad](https://github.com/robotdad) | [amplifier-module-style-extraction](https://github.com/robotdad/amplifier-module-style-extraction) |
+| **module-markdown-utils** | Markdown parsing, injection, and metadata extraction utilities | [@robotdad](https://github.com/robotdad) | [amplifier-module-markdown-utils](https://github.com/robotdad/amplifier-module-markdown-utils) |
+
+### Hooks
+
+| Module | Description | Author | Repository |
+|--------|-------------|--------|------------|
+| **hooks-event-broadcast** | Transport-agnostic event broadcasting for streaming UI applications | [@michaeljabbour](https://github.com/michaeljabbour) | [amplifier-module-hooks-event-broadcast](https://github.com/michaeljabbour/amplifier-module-hooks-event-broadcast) |
 
 ### Contributing Your Modules
 
 Built something cool? Share it with the community!
 
-**To add your module to this catalog:**
-
 1. **Build your module** - See [DEVELOPER.md](./DEVELOPER.md) for guidance
 2. **Publish to GitHub** - Make your code publicly reviewable
 3. **Test thoroughly** - Ensure it works with current Amplifier versions
-4. **Submit a PR** - Add your module to the "Community Modules" section below with:
-   - Module name and description
-   - GitHub repository link
-   - Your name/organization
-   - Compatible Amplifier version
-   - **Clear documentation** in your repo's README
-
-**Module submission guidelines:**
-- Must follow Amplifier module conventions
-- Must include comprehensive README
-- Must include tests
-- Must specify compatible Amplifier versions
-- Source code must be publicly available for review
-
-### Community-Contributed Modules
-
-- **provider-bedrock** by @brycecutt-msft - AWS Bedrock integration with cross-region inference support for Claude models
-  - Repository: https://github.com/brycecutt-msft/amplifier-module-provider-bedrock
-  - Compatible: Amplifier 0.1.x
-  - Status: Active
-
-- **tool-mcp** by @robotdad - Model Context Protocol integration enabling connection to MCP servers with Tools, Resources, and Prompts support
-  - Repository: https://github.com/robotdad/amplifier-module-tool-mcp
-  - Compatible: Amplifier 0.1.x
-  - Status: Active
-
-- **collection-ddd** by @robotdad - Document-Driven Development collection with 5 specialized workflow agents for evolving existing codebases
-  - Repository: https://github.com/robotdad/amplifier-collection-ddd
-  - Compatible: Amplifier 0.1.x
-  - Status: Active
-
-- **collection-spec-kit** by @robotdad - Specification-Driven Development collection with 8 specialized agents and constitutional governance for greenfield development
-  - Repository: https://github.com/robotdad/amplifier-collection-spec-kit
-  - Compatible: Amplifier 0.1.x
-  - Status: Experimental
-
-- **tool-youtube-dl** by @robotdad - Download audio and video from YouTube with metadata extraction and screenshot capture
-  - Repository: https://github.com/robotdad/amplifier-module-tool-youtube-dl
-  - Compatible: Amplifier 0.1.x
-  - Status: Active
-
-- **tool-whisper** by @robotdad - Speech-to-text transcription using OpenAI's Whisper API with timestamped segments
-  - Repository: https://github.com/robotdad/amplifier-module-tool-whisper
-  - Compatible: Amplifier 0.1.x
-  - Status: Active
-
-- **module-image-generation** by @robotdad - Multi-provider AI image generation with DALL-E, Imagen, and GPT-Image-1 support
-  - Repository: https://github.com/robotdad/amplifier-module-image-generation
-  - Compatible: Amplifier 0.1.x
-  - Status: Active
-
-- **module-style-extraction** by @robotdad - Extract and apply writing style from text samples for style-aware content generation
-  - Repository: https://github.com/robotdad/amplifier-module-style-extraction
-  - Compatible: Amplifier 0.1.x
-  - Status: Active
-
-- **module-markdown-utils** by @robotdad - Markdown parsing, injection, and metadata extraction utilities
-  - Repository: https://github.com/robotdad/amplifier-module-markdown-utils
-  - Compatible: Amplifier 0.1.x
-  - Status: Active
-
-- **provider-openai-realtime** by @robotdad - OpenAI Realtime API provider enabling native speech-to-speech interactions with ultra-low latency
-  - Repository: https://github.com/robotdad/amplifier-module-provider-openai-realtime
-  - Compatible: Amplifier 0.1.x
-  - Status: Experimental
-
-- **hooks-event-broadcast** by @michaeljabbour - Transport-agnostic event broadcasting hook for streaming UI applications (uses capability injection pattern)
-  - Repository: https://github.com/michaeljabbour/amplifier-module-hooks-event-broadcast
-  - Compatible: Amplifier 0.1.x
-  - Status: Experimental
-
-- **tool-memory** by @michaeljabbour - Persistent memory tool for storing and retrieving facts across sessions
-  - Repository: https://github.com/michaeljabbour/amplifier-module-tool-memory
-  - Compatible: Amplifier 0.1.x
-  - Status: Experimental
+4. **Submit a PR** - Add your module to this catalog
 
 ---
 
@@ -361,21 +267,36 @@ For technical details, see:
 
 ---
 
-## Component Summary
+## Deprecated Components
 
-**Total Components**: 36
+The following components are deprecated and being replaced by **amplifier-foundation** and the **bundles** system. They remain available for backward compatibility but new projects should use bundles instead.
 
-- **Core**: 1 (amplifier-core)
-- **Applications**: 3 (amplifier, amplifier-app-cli, amplifier-app-log-viewer)
-- **Libraries**: 4 (profiles, collections, module-resolution, config)
-- **Collections**: 3 (toolkit, design-intelligence, recipes)
-- **Bundles**: 1 (recipes)
-- **Runtime Modules**: 25
-  - Orchestrators: 3
-  - Providers: 7
-  - Tools: 7
-  - Context: 2
-  - Hooks: 9
+> **Note**: The profiles and collections systems have been replaced by the bundles system. See the [Bundles](#bundles) section above and the [Bundle Guide](https://github.com/microsoft/amplifier-foundation/blob/main/docs/BUNDLE_GUIDE.md) for the current approach.
+
+### Deprecated Libraries
+
+| Component | Description | Repository |
+|-----------|-------------|------------|
+| **amplifier-profiles** | Profile and agent loading with inheritance and Mount Plan compilation | [amplifier-profiles](https://github.com/microsoft/amplifier-profiles) |
+| **amplifier-collections** | Convention-based collection discovery and management | [amplifier-collections](https://github.com/microsoft/amplifier-collections) |
+| **amplifier-module-resolution** | Module source resolution with pluggable strategies | [amplifier-module-resolution](https://github.com/microsoft/amplifier-module-resolution) |
+| **amplifier-config** | Three-scope configuration management (user/project/env) | [amplifier-config](https://github.com/microsoft/amplifier-config) |
+
+### Deprecated Collections
+
+| Collection | Description | Repository |
+|------------|-------------|------------|
+| **toolkit** | Building sophisticated CLI tools using metacognitive recipes | [amplifier-collection-toolkit](https://github.com/microsoft/amplifier-collection-toolkit) |
+| **design-intelligence** | Comprehensive design intelligence capability with specialized agents | [amplifier-collection-design-intelligence](https://github.com/microsoft/amplifier-collection-design-intelligence) |
+| **recipes** | Multi-step AI agent orchestration (replaced by amplifier-bundle-recipes) | [amplifier-collection-recipes](https://github.com/microsoft/amplifier-collection-recipes) |
+| **issues** | Issue management | [amplifier-collection-issues](https://github.com/microsoft/amplifier-collection-issues) |
+
+### Deprecated Community Collections
+
+| Collection | Description | Author | Repository |
+|------------|-------------|--------|------------|
+| **collection-ddd** | Document-Driven Development with 5 specialized workflow agents | [@robotdad](https://github.com/robotdad) | [amplifier-collection-ddd](https://github.com/robotdad/amplifier-collection-ddd) |
+| **collection-spec-kit** | Specification-Driven Development with 8 specialized agents | [@robotdad](https://github.com/robotdad) | [amplifier-collection-spec-kit](https://github.com/robotdad/amplifier-collection-spec-kit) |
 
 ---
 
