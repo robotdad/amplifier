@@ -52,8 +52,8 @@ Composable configuration packages that combine providers, behaviors, agents, and
 **Usage**: Bundles are loaded via the `amplifier bundle` commands:
 
 ```bash
-# Add a bundle to the registry (NAME + URI)
-amplifier bundle add recipes git+https://github.com/microsoft/amplifier-bundle-recipes@main
+# Add a bundle to the registry (name auto-derived from bundle metadata)
+amplifier bundle add git+https://github.com/microsoft/amplifier-bundle-recipes@main
 
 # Use a bundle by name
 amplifier bundle use foundation
