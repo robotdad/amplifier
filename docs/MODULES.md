@@ -321,13 +321,13 @@ Built something cool? Share it with the community!
   - Compatible: Amplifier 0.1.x
   - Status: Experimental
 
-- **hooks-event-broadcast** by @microsoftmj - Transport-agnostic event broadcasting hook for streaming UI applications (uses capability injection pattern)
-  - Repository: https://github.com/microsoft/amplifier-module-hooks-event-broadcast
+- **hooks-event-broadcast** by @michaeljabbour - Transport-agnostic event broadcasting hook for streaming UI applications (uses capability injection pattern)
+  - Repository: https://github.com/michaeljabbour/amplifier-module-hooks-event-broadcast
   - Compatible: Amplifier 0.1.x
   - Status: Experimental
 
-- **tool-memory** by @microsoftmj - Persistent memory tool for storing and retrieving facts across sessions
-  - Repository: https://github.com/microsoft/amplifier-module-tool-memory
+- **tool-memory** by @michaeljabbour - Persistent memory tool for storing and retrieving facts across sessions
+  - Repository: https://github.com/michaeljabbour/amplifier-module-tool-memory
   - Compatible: Amplifier 0.1.x
   - Status: Experimental
 
