@@ -59,8 +59,11 @@ amplifier bundle add recipes git+https://github.com/microsoft/amplifier-bundle-r
 amplifier bundle use foundation
 amplifier bundle use recipes
 
+# Show current bundle
+amplifier bundle current
+
 # Check for bundle updates
-amplifier bundle status
+amplifier bundle update --check
 
 # Update bundle to latest
 amplifier bundle update
