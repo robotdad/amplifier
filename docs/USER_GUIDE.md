@@ -473,6 +473,12 @@ cd /path/to/project
 amplifier session list
 ```
 
+### Installation & Update Issues
+
+If `amplifier update` leaves things in a broken state, or you encounter persistent issues that configuration changes don't fix:
+
+**→ See [Clean Reinstall (Recovery)](USER_ONBOARDING.md#clean-reinstall-recovery)**
+
 ---
 
 ## Tips & Best Practices

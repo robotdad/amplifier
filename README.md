@@ -464,6 +464,8 @@ This is an **early preview release**:
 - ⚠️ Documentation is incomplete in places
 - ⚠️ Installation experience will improve
 
+**Having issues?** See [Troubleshooting](docs/USER_ONBOARDING.md#troubleshooting) including [Clean Reinstall](docs/USER_ONBOARDING.md#clean-reinstall-recovery) for recovery steps.
+
 **Join us on this journey!** Fork, experiment, build modules, share feedback. This is the ground floor.
 
 ---
