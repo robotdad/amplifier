@@ -373,10 +373,8 @@ steps:
     command: |
       cd {{working_dir}}/discovery
       
-      # Save repos for processing (unique delimiter to avoid collision)
-      cat > repos-to-check.json << '___AMPLIFIER_JSON_EOF___'
-      {{filtered_repos.repos}}
-___AMPLIFIER_JSON_EOF___
+      # Save repos for processing (printf safer than heredoc in YAML)
+      printf '%s\n' '{{filtered_repos.repos}}' > repos-to-check.json
       
       filter_mode="{{user_info.filter_mode}}"
       username="{{user_info.username}}"
@@ -439,10 +437,8 @@ ___AMPLIFIER_JSON_EOF___
     command: |
       cd {{working_dir}}/discovery
       
-      # Save activity checks to file for processing (unique delimiter)
-      cat > activity-checks.json << '___AMPLIFIER_JSON_EOF___'
-      {{activity_checks}}
-___AMPLIFIER_JSON_EOF___
+      # Save activity checks to file for processing (printf safer than heredoc in YAML)
+      printf '%s\n' '{{activity_checks}}' > activity-checks.json
       
       # Filter to active repos and build output
       jq '{
