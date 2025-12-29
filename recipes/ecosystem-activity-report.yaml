@@ -67,7 +67,7 @@ steps:
   # Step 1: Discover current GitHub user
   # ==========================================================================
   - id: "discover-user"
-    agent: "foundation:modular-builder"
+    agent: "foundation:explorer"
     parse_json: true
     prompt: |
       Discover the current GitHub user for filtering activity.
@@ -110,8 +110,7 @@ steps:
   # Step 2: Parse date range
   # ==========================================================================
   - id: "parse-date-range"
-    agent: "foundation:zen-architect"
-    mode: "ANALYZE"
+    agent: "foundation:explorer"
     parse_json: true
     prompt: |
       Parse the date range for GitHub API queries.
@@ -159,7 +158,7 @@ steps:
   # Step 3: Read MODULES.md
   # ==========================================================================
   - id: "read-modules-md"
-    agent: "foundation:modular-builder"
+    agent: "foundation:explorer"
     parse_json: true
     prompt: |
       Read the Amplifier MODULES.md file to discover ecosystem repos.
@@ -207,8 +206,7 @@ steps:
   # Step 4: Extract repos from MODULES.md
   # ==========================================================================
   - id: "extract-repos"
-    agent: "foundation:zen-architect"
-    mode: "ANALYZE"
+    agent: "foundation:explorer"
     parse_json: true
     prompt: |
       Extract all GitHub repository URLs from MODULES.md content.
@@ -262,7 +260,7 @@ steps:
   # Step 5: Filter repos
   # ==========================================================================
   - id: "filter-repos"
-    agent: "foundation:modular-builder"
+    agent: "foundation:explorer"
     parse_json: true
     prompt: |
       Filter discovered repos based on user criteria.
@@ -321,7 +319,7 @@ steps:
     as: "repo"
     parallel: true
     collect: "activity_checks"
-    agent: "foundation:modular-builder"
+    agent: "foundation:explorer"
     parse_json: true
     prompt: |
       Quick check if user has ANY activity in this repo.
@@ -372,7 +370,7 @@ steps:
   # Step 7: Filter to repos with activity
   # ==========================================================================
   - id: "filter-to-active"
-    agent: "foundation:modular-builder"
+    agent: "foundation:explorer"
     parse_json: true
     prompt: |
       Filter the activity check results to only repos with activity.
@@ -406,8 +404,7 @@ steps:
   # Step 8: Show discovery summary
   # ==========================================================================
   - id: "discovery-summary"
-    agent: "foundation:zen-architect"
-    mode: "ANALYZE"
+    agent: "foundation:explorer"
     prompt: |
       Create a summary of what we're about to analyze.
       
