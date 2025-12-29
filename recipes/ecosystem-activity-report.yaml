@@ -1,0 +1,481 @@
+name: "ecosystem-activity-report"
+description: "Analyze activity across the Amplifier ecosystem by discovering repos from MODULES.md"
+version: "1.0.0"
+author: "Amplifier"
+tags: ["amplifier", "ecosystem", "github", "activity", "modules", "discovery"]
+
+# Amplifier Ecosystem Activity Report
+#
+# This recipe is the top-level entry point for analyzing activity across
+# the Amplifier ecosystem. It:
+#
+# 1. Discovers the current GitHub user (for filtering to your activity)
+# 2. Parses date range from natural language
+# 3. Reads MODULES.md to discover all ecosystem repos
+# 4. Filters repos based on criteria (org, name pattern)
+# 5. Calls the generic multi-repo recipe from @recipes bundle
+#
+# Usage (all your activity today):
+#   amplifier run "execute recipe @amplifier:recipes/ecosystem-activity-report.yaml"
+#
+# Usage (all ecosystem activity since yesterday):
+#   amplifier run 'execute recipe @amplifier:recipes/ecosystem-activity-report.yaml with context {
+#     "author_filter": "",
+#     "date_range": "since yesterday"
+#   }'
+#
+# Usage (specific repos only):
+#   amplifier run 'execute recipe @amplifier:recipes/ecosystem-activity-report.yaml with context {
+#     "repo_filter": "amplifier-core|amplifier-foundation"
+#   }'
+#
+# Requirements:
+#   - gh CLI installed and authenticated
+#   - recipes bundle loaded (provides generic repo-activity-analysis recipe)
+
+context:
+  # Date range (natural language) - defaults to today
+  date_range: "today"
+  
+  # Filter to specific GitHub username (empty = discover current user, "all" = no filter)
+  author_filter: ""
+  
+  # Filter repos by regex pattern (applied to repo name)
+  # Examples: "amplifier-core", "amplifier-core|amplifier-foundation", "" (all)
+  repo_filter: ""
+  
+  # Filter repos by GitHub org (default: microsoft)
+  org_filter: "microsoft"
+  
+  # Working directory for intermediate files
+  working_dir: "./ai_working"
+  
+  # Output report filename
+  report_filename: "ecosystem-activity-report.md"
+  
+  # Default values for step outputs (prevents undefined variable errors)
+  user_info: {"username": "", "discovered": false}
+  parsed_date: {"original": "", "iso_since": "", "iso_until": "", "gh_format": ""}
+  modules_content: {"path": "", "content": "", "error": null}
+  discovered_repos: {"total": 0, "repos": []}
+  filtered_repos: {"count": 0, "repos": [], "dropped": []}
+
+steps:
+  # ==========================================================================
+  # Step 1: Discover current GitHub user
+  # ==========================================================================
+  - id: "discover-user"
+    agent: "foundation:modular-builder"
+    parse_json: true
+    prompt: |
+      Discover the current GitHub user for filtering activity.
+      
+      ## Input
+      
+      Author filter setting: "{{author_filter}}"
+      
+      ## Logic
+      
+      Create working directory:
+      ```bash
+      mkdir -p {{working_dir}}/discovery
+      ```
+      
+      If author_filter is "all" or "ALL":
+        - Return {"username": "", "discovered": false, "filter_mode": "all"}
+        - This means we won't filter by author
+      
+      If author_filter is empty or blank:
+        - Discover current user: `gh api user --jq '.login'`
+        - Return {"username": "<discovered>", "discovered": true, "filter_mode": "current_user"}
+      
+      Otherwise:
+        - Use the provided author_filter value
+        - Return {"username": "{{author_filter}}", "discovered": false, "filter_mode": "specified"}
+      
+      ## Output
+      
+      Return JSON:
+      {
+        "username": "the-username-or-empty",
+        "discovered": true|false,
+        "filter_mode": "all" | "current_user" | "specified"
+      }
+    output: "user_info"
+    timeout: 60
+
+  # ==========================================================================
+  # Step 2: Parse date range
+  # ==========================================================================
+  - id: "parse-date-range"
+    agent: "foundation:zen-architect"
+    mode: "ANALYZE"
+    parse_json: true
+    prompt: |
+      Parse the date range for GitHub API queries.
+      
+      ## Input
+      
+      Date range (natural language): "{{date_range}}"
+      Current date/time: Use current system time
+      
+      ## Parsing Rules
+      
+      Convert natural language to ISO 8601 format for GitHub:
+      
+      | Input | Interpretation |
+      |-------|---------------|
+      | "today" | From midnight today to now |
+      | "yesterday" | From midnight yesterday to midnight today |
+      | "since yesterday" | From midnight yesterday to now |
+      | "last 7 days" | From 7 days ago to now |
+      | "last week" | Same as "last 7 days" |
+      | "this week" | From Monday of current week to now |
+      | "last month" | Last 30 days |
+      | "since 2024-12-01" | From that date to now |
+      | "2024-12-01 to 2024-12-15" | That specific range |
+      
+      Get current date:
+      ```bash
+      date -u +%Y-%m-%dT%H:%M:%SZ
+      ```
+      
+      ## Output
+      
+      Return JSON:
+      {
+        "original": "{{date_range}}",
+        "iso_since": "2024-12-28T00:00:00Z",
+        "iso_until": "2024-12-28T23:59:59Z",
+        "gh_format": "2024-12-28",
+        "description": "human readable description"
+      }
+    output: "parsed_date"
+    timeout: 60
+
+  # ==========================================================================
+  # Step 3: Read MODULES.md
+  # ==========================================================================
+  - id: "read-modules-md"
+    agent: "foundation:modular-builder"
+    parse_json: true
+    prompt: |
+      Read the Amplifier MODULES.md file to discover ecosystem repos.
+      
+      ## Logic
+      
+      Try these locations in order:
+      
+      1. Check common local paths:
+      ```bash
+      for path in \
+        "./docs/MODULES.md" \
+        "./amplifier/docs/MODULES.md" \
+        "../amplifier/docs/MODULES.md" \
+        "~/repos/amplifier/docs/MODULES.md"; do
+        if [ -f "$path" ]; then
+          echo "FOUND: $path"
+          cat "$path"
+          exit 0
+        fi
+      done
+      ```
+      
+      2. If not found locally, fetch from GitHub API:
+      ```bash
+      gh api repos/microsoft/amplifier/contents/docs/MODULES.md \
+        --jq '.content' | base64 -d
+      ```
+      
+      3. Save content to {{working_dir}}/discovery/MODULES.md
+      
+      ## Output
+      
+      Return JSON:
+      {
+        "path": "source path or 'github-api'",
+        "content": "full file content",
+        "content_length": N,
+        "error": null
+      }
+    output: "modules_content"
+    timeout: 120
+
+  # ==========================================================================
+  # Step 4: Extract repos from MODULES.md
+  # ==========================================================================
+  - id: "extract-repos"
+    agent: "foundation:zen-architect"
+    mode: "ANALYZE"
+    parse_json: true
+    prompt: |
+      Extract all GitHub repository URLs from MODULES.md content.
+      
+      ## Input
+      
+      ```
+      {{modules_content.content}}
+      ```
+      
+      ## Extraction Rules
+      
+      Find all GitHub URLs matching patterns like:
+      - `https://github.com/owner/repo`
+      - `https://github.com/owner/repo.git`
+      - `git+https://github.com/owner/repo`
+      - `github.com/owner/repo`
+      
+      For each URL found:
+      1. Normalize to `https://github.com/owner/repo` format
+      2. Extract owner and repo name
+      3. Deduplicate (same repo may appear multiple times)
+      
+      ## Known Amplifier Ecosystem Repos
+      
+      These are the core repos to look for:
+      - amplifier (entry point)
+      - amplifier-core (kernel)
+      - amplifier-foundation (library)
+      - amplifier-app-cli (CLI application)
+      - amplifier-bundle-* (bundles)
+      - amplifier-module-* (modules)
+      
+      ## Output
+      
+      Save to {{working_dir}}/discovery/all-repos.json
+      
+      Return JSON:
+      {
+        "total": N,
+        "repos": [
+          {"owner": "microsoft", "name": "amplifier", "url": "https://github.com/microsoft/amplifier"},
+          {"owner": "microsoft", "name": "amplifier-core", "url": "https://github.com/microsoft/amplifier-core"},
+          ...
+        ]
+      }
+    output: "discovered_repos"
+    timeout: 120
+
+  # ==========================================================================
+  # Step 5: Filter repos
+  # ==========================================================================
+  - id: "filter-repos"
+    agent: "foundation:modular-builder"
+    parse_json: true
+    prompt: |
+      Filter discovered repos based on user criteria.
+      
+      ## Input
+      
+      All repos: {{discovered_repos.repos}}
+      Org filter: "{{org_filter}}"
+      Repo name filter (regex): "{{repo_filter}}"
+      
+      ## Filtering Logic
+      
+      1. If org_filter is not empty:
+         - Keep only repos where owner matches org_filter
+      
+      2. If repo_filter is not empty:
+         - Keep only repos where name matches the regex pattern
+         - Use case-insensitive matching
+      
+      3. If both filters are empty:
+         - Keep all repos (default org_filter is "microsoft")
+      
+      ## Output
+      
+      Save to {{working_dir}}/discovery/filtered-repos.json
+      
+      Return JSON:
+      {
+        "original_count": N,
+        "count": N,
+        "filters": {
+          "org": "{{org_filter}}",
+          "repo_pattern": "{{repo_filter}}"
+        },
+        "repos": [
+          {"owner": "...", "name": "...", "url": "..."},
+          ...
+        ],
+        "dropped": ["list of repo names filtered out"]
+      }
+    output: "filtered_repos"
+    timeout: 60
+
+  # ==========================================================================
+  # Step 6: Show discovery summary
+  # ==========================================================================
+  - id: "discovery-summary"
+    agent: "foundation:zen-architect"
+    mode: "ANALYZE"
+    prompt: |
+      Create a summary of what we're about to analyze.
+      
+      ## Discovery Results
+      
+      **User**: {{user_info.username}} ({{user_info.filter_mode}})
+      **Date Range**: {{parsed_date.description}} ({{parsed_date.iso_since}} to {{parsed_date.iso_until}})
+      **Source**: {{modules_content.path}}
+      **Total repos discovered**: {{discovered_repos.total}}
+      **Repos after filtering**: {{filtered_repos.count}}
+      
+      Repos to analyze:
+      {{filtered_repos.repos}}
+      
+      Dropped repos:
+      {{filtered_repos.dropped}}
+      
+      ## Create Summary
+      
+      Format as markdown and print to console:
+      
+      ```
+      ============================================================
+      AMPLIFIER ECOSYSTEM ACTIVITY REPORT
+      ============================================================
+      User:       {{user_info.username}} ({{user_info.filter_mode}})
+      Date Range: {{parsed_date.description}}
+      Repos:      {{filtered_repos.count}} of {{discovered_repos.total}}
+      ============================================================
+      
+      Analyzing: [list repo names]
+      
+      Estimated time: ~{{filtered_repos.count}} minutes
+      ============================================================
+      ```
+      
+      Return the summary text.
+    output: "summary"
+    timeout: 60
+
+  # ==========================================================================
+  # Step 7: Analyze each repo using generic recipe
+  # ==========================================================================
+  - id: "analyze-repos"
+    foreach: "{{filtered_repos.repos}}"
+    as: "repo"
+    parallel: false
+    collect: "repo_analyses"
+    type: "recipe"
+    recipe: "@recipes:examples/repo-activity-analysis.yaml"
+    context:
+      repo_url: "{{repo.url}}"
+      date_range: "{{parsed_date.description}}"
+      working_dir: "{{working_dir}}"
+      include_deep_dive: false
+    output: "single_repo_result"
+    timeout: 600
+    on_error: "continue"
+
+  # ==========================================================================
+  # Step 8: Synthesize final report
+  # ==========================================================================
+  - id: "synthesize-report"
+    agent: "foundation:zen-architect"
+    mode: "ARCHITECT"
+    prompt: |
+      Create the final Amplifier Ecosystem Activity Report.
+      
+      ## Input Data
+      
+      User: {{user_info.username}} ({{user_info.filter_mode}})
+      Date Range: {{parsed_date.description}}
+      Repos analyzed: {{filtered_repos.count}}
+      
+      Individual analyses: {{repo_analyses}}
+      
+      ## Report Structure
+      
+      Create comprehensive markdown report:
+      
+      ```markdown
+      # Amplifier Ecosystem Activity Report
+      
+      **Generated**: [current timestamp]
+      **User**: {{user_info.username}}
+      **Date Range**: {{parsed_date.description}}
+      **Repos Analyzed**: {{filtered_repos.count}}
+      
+      ---
+      
+      ## Executive Summary
+      
+      - **Total commits**: N
+      - **Total PRs**: N  
+      - **Repos with activity**: N of {{filtered_repos.count}}
+      
+      ### Key Highlights
+      
+      [2-3 bullet points of most significant changes]
+      
+      ---
+      
+      ## Activity by Repository
+      
+      [For each repo WITH activity, ordered by activity level:]
+      
+      ### {repo_name}
+      
+      **Commits**: N | **PRs**: N
+      
+      **Summary**: [1-2 sentence summary]
+      
+      **Key Changes**:
+      - [Notable changes]
+      
+      ---
+      
+      ## Cross-Cutting Observations
+      
+      [Patterns observed across repos - coordinated changes, themes]
+      
+      ## Repositories with No Activity
+      
+      [List repos with no changes in date range]
+      
+      ---
+      *Generated by @amplifier:recipes/ecosystem-activity-report.yaml*
+      ```
+      
+      ## Output
+      
+      Write report to: {{working_dir}}/reports/{{report_filename}}
+      
+      Also print the full report to console.
+      
+      Return the report content.
+    output: "final_report"
+    timeout: 600
+
+  # ==========================================================================
+  # Step 9: Completion
+  # ==========================================================================
+  - id: "complete"
+    agent: "foundation:modular-builder"
+    prompt: |
+      Finalize and show completion status.
+      
+      ## Actions
+      
+      1. Get absolute path to report:
+      ```bash
+      realpath {{working_dir}}/reports/{{report_filename}}
+      ```
+      
+      2. Print summary:
+      ```
+      ============================================================
+      REPORT COMPLETE
+      ============================================================
+      User:   {{user_info.username}}
+      Range:  {{parsed_date.description}}
+      Repos:  {{filtered_repos.count}}
+      Report: [absolute path]
+      ============================================================
+      ```
+      
+      Return the completion message.
+    output: "completion"
+    timeout: 60
