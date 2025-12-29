@@ -1,6 +1,6 @@
 name: "ecosystem-activity-report"
 description: "Analyze activity across the Amplifier ecosystem by discovering repos from MODULES.md"
-version: "1.0.0"
+version: "1.1.0"
 author: "Amplifier"
 tags: ["amplifier", "ecosystem", "github", "activity", "modules", "discovery"]
 
@@ -14,6 +14,9 @@ tags: ["amplifier", "ecosystem", "github", "activity", "modules", "discovery"]
 # 3. Reads MODULES.md to discover all ecosystem repos
 # 4. Filters repos based on criteria (org, name pattern)
 # 5. Calls the generic multi-repo recipe from @recipes bundle
+#
+# v1.1.0: Converted bash-heavy steps to type: "bash" for efficiency
+#         (no LLM overhead for deterministic shell commands)
 #
 # Usage (all your activity today):
 #   amplifier run "execute recipe @amplifier:recipes/ecosystem-activity-report.yaml"
@@ -64,29 +67,71 @@ context:
 
 steps:
   # ==========================================================================
+  # Step 0: Validate prerequisites (fail fast if tools missing)
+  # ==========================================================================
+  # BASH STEP - Check required tools before starting expensive operations
+  # Why bash: Deterministic checks, no LLM needed, fail fast on missing deps
+  - id: "validate-prerequisites"
+    type: "bash"
+    command: |
+      set -euo pipefail
+      
+      errors=""
+      warnings=""
+      
+      # Check gh CLI
+      if ! command -v gh &>/dev/null; then
+        errors="${errors}ERROR: gh CLI not found. Install: https://cli.github.com/\n"
+      elif ! gh auth status &>/dev/null; then
+        errors="${errors}ERROR: gh CLI not authenticated. Run: gh auth login\n"
+      fi
+      
+      # Check jq
+      if ! command -v jq &>/dev/null; then
+        errors="${errors}ERROR: jq not found. Install: brew install jq (macOS) or apt install jq (Linux)\n"
+      fi
+      
+      # Check base64 (usually available, but verify)
+      if ! command -v base64 &>/dev/null; then
+        errors="${errors}ERROR: base64 not found (required for decoding API responses)\n"
+      fi
+      
+      # Optional: Check for rate limiting issues
+      remaining=$(gh api rate_limit --jq '.resources.core.remaining' 2>/dev/null || echo "unknown")
+      if [ "$remaining" != "unknown" ] && [ "$remaining" -lt 100 ]; then
+        warnings="${warnings}WARNING: GitHub API rate limit low ($remaining remaining)\n"
+      fi
+      
+      # Output results
+      if [ -n "$errors" ]; then
+        printf "$errors" >&2
+        printf "$warnings" >&2
+        echo '{"valid": false, "errors": "Missing prerequisites - see stderr"}'
+        exit 1
+      else
+        if [ -n "$warnings" ]; then
+          printf "$warnings" >&2
+        fi
+        echo "{\"valid\": true, \"gh_version\": \"$(gh --version | head -1)\", \"jq_version\": \"$(jq --version)\", \"rate_limit_remaining\": \"$remaining\"}"
+      fi
+    output: "prerequisites"
+    timeout: 30
+    on_error: "fail"
+
+  # ==========================================================================
   # Step 1: Setup working directory and discover GitHub user
   # ==========================================================================
-  # Direct bash approach - no LLM reasoning needed for simple commands
+  # BASH STEP - No LLM needed for shell commands and API calls
+  # Why bash: mkdir, gh api user are deterministic operations
   - id: "setup-and-discover-user"
-    agent: "foundation:explorer"
-    parse_json: true
-    prompt: |
-      Setup working directory and discover GitHub user. Execute these commands directly.
+    type: "bash"
+    command: |
+      set -euo pipefail
       
-      ## Setup
-      
-      ```bash
       # Create all working directories upfront
       mkdir -p {{working_dir}}/{discovery,repos,reports}
-      ```
       
-      ## User Discovery
-      
-      Author filter setting: "{{author_filter}}"
-      
-      Execute this logic using bash:
-      
-      ```bash
+      # User Discovery
       author_filter="{{author_filter}}"
       
       if [ "$author_filter" = "all" ] || [ "$author_filter" = "ALL" ]; then
@@ -101,19 +146,15 @@ steps:
       else
         echo "{\"username\": \"$author_filter\", \"discovered\": false, \"filter_mode\": \"specified\"}"
       fi
-      ```
-      
-      Run the bash script and return its JSON output directly.
     output: "user_info"
     timeout: 60
 
   # ==========================================================================
   # Step 2: Parse date range (LLM for natural language flexibility)
   # ==========================================================================
-  # LLM handles natural language interpretation - supports flexible input
+  # AGENT STEP - LLM handles natural language interpretation
   - id: "parse-date-range"
     agent: "foundation:explorer"
-    parse_json: true
     prompt: |
       Parse the natural language date range into ISO 8601 format for GitHub API.
       
@@ -164,16 +205,13 @@ steps:
   # ==========================================================================
   # Step 3: Fetch MODULES.md
   # ==========================================================================
-  # Direct bash - fetch from GitHub API (most reliable source of truth)
+  # BASH STEP - Direct GitHub API fetch, no interpretation needed
+  # Why bash: gh api + base64 decode is deterministic, no reasoning required
   - id: "fetch-modules-md"
-    agent: "foundation:explorer"
-    parse_json: true
-    prompt: |
-      Fetch MODULES.md from GitHub and save to working directory.
+    type: "bash"
+    command: |
+      set -euo pipefail
       
-      ## Execute
-      
-      ```bash
       # Fetch from GitHub API (authoritative source)
       gh api repos/microsoft/amplifier/contents/docs/MODULES.md \
         --jq '.content' | base64 -d > {{working_dir}}/discovery/MODULES.md
@@ -185,31 +223,21 @@ steps:
       else
         echo '{"path": null, "saved_to": null, "content_length": 0, "error": "Failed to fetch MODULES.md"}'
       fi
-      ```
-      
-      Run the commands and return the JSON output.
     output: "modules_content"
     timeout: 120
 
   # ==========================================================================
   # Step 4: Extract repos using grep (reliable extraction)
   # ==========================================================================
-  # Uses grep/sed to extract ALL GitHub URLs - no LLM parsing
+  # BASH STEP - Regex extraction from structured markdown
+  # Why bash: grep/sed/sort are faster and more reliable than LLM for URL extraction
   - id: "extract-repos-grep"
-    agent: "foundation:explorer"
-    parse_json: true
-    prompt: |
-      Extract all GitHub repository URLs from MODULES.md using grep.
-      
-      ## Execute
-      
-      Run this bash script to extract and format repos:
-      
-      ```bash
+    type: "bash"
+    command: |
       cd {{working_dir}}/discovery
       
       # Extract all GitHub URLs, normalize, deduplicate, and format as JSON
-      grep -oE 'https://github\.com/[^/]+/[^/)\"'\''#@\` ]+' MODULES.md \
+      grep -oE 'https://github\.com/[^/]+/[^/)"'"'"'#@` ]+' MODULES.md \
         | sed 's/\.git$//' \
         | sed 's/[[:space:]]*$//' \
         | sort -u \
@@ -242,32 +270,17 @@ steps:
       echo "}" >> all-repos.json
       
       cat all-repos.json
-      ```
-      
-      Run the script and return the JSON output.
     output: "discovered_repos"
     timeout: 120
 
   # ==========================================================================
-  # Step 4b: Verify extraction (optional LLM check)
+  # Step 4b: Verify extraction
   # ==========================================================================
-  # LLM reviews grep output vs source to catch any issues
+  # BASH STEP - Sanity check that expected repos are present
+  # Why bash: Simple string matching, no semantic understanding needed
   - id: "verify-extraction"
-    agent: "foundation:explorer"
-    parse_json: true
-    prompt: |
-      Verify the grep extraction caught all repos correctly.
-      
-      ## Extracted Repos
-      
-      Total found: {{discovered_repos.total}}
-      Repos: {{discovered_repos.repos}}
-      
-      ## Quick Sanity Check
-      
-      Run a quick verification:
-      
-      ```bash
+    type: "bash"
+    command: |
       cd {{working_dir}}/discovery
       
       # Count GitHub URLs in source (rough check)
@@ -292,25 +305,16 @@ steps:
       else
         echo '{"verified": true, "source_mentions": '$source_count', "extracted_unique": '$extracted_count'}'
       fi
-      ```
-      
-      Run the verification and return the result.
     output: "extraction_verified"
     timeout: 60
 
   # ==========================================================================
   # Step 5: Filter repos using jq
   # ==========================================================================
-  # Direct bash/jq filtering - no LLM needed
+  # BASH STEP - jq filtering, no LLM needed
   - id: "filter-repos"
-    agent: "foundation:explorer"
-    parse_json: true
-    prompt: |
-      Filter discovered repos using jq.
-      
-      ## Execute
-      
-      ```bash
+    type: "bash"
+    command: |
       cd {{working_dir}}/discovery
       
       org_filter="{{org_filter}}"
@@ -356,40 +360,23 @@ steps:
         repos: .repos,
         dropped: $dropped
       }' filtered-repos.json
-      ```
-      
-      Run the script and return the JSON output.
     output: "filtered_repos"
     timeout: 60
 
   # ==========================================================================
-  # Step 6: Quick activity check (BATCH - single agent, bash loop)
+  # Step 6: Quick activity check (BATCH - bash loop with rate limiting)
   # ==========================================================================
-  # IMPORTANT: Don't use foreach here! It spawns N agents (N = repo count).
-  # Instead, use a single agent with an internal bash loop for batch API calls.
-  # This reduces 46 agent spawns → 1, and allows proper rate limiting.
+  # BASH STEP - Batch API calls to check for activity
+  # Why bash: gh api calls are deterministic, rate limiting is simple loop logic
   - id: "quick-activity-check"
-    agent: "foundation:explorer"
-    parse_json: true
-    prompt: |
-      Check activity for ALL repos in a single batch execution.
-      
-      ## Input
-      
-      Repos to check: {{filtered_repos.count}}
-      User: {{user_info.username}}
-      Filter mode: {{user_info.filter_mode}}
-      Since: {{parsed_date.iso_since}}
-      
-      ## Execute
-      
-      ```bash
+    type: "bash"
+    command: |
       cd {{working_dir}}/discovery
       
-      # Save repos for processing
-      cat > repos-to-check.json << 'REPOS_EOF'
+      # Save repos for processing (unique delimiter to avoid collision)
+      cat > repos-to-check.json << '___AMPLIFIER_JSON_EOF___'
       {{filtered_repos.repos}}
-      REPOS_EOF
+___AMPLIFIER_JSON_EOF___
       
       filter_mode="{{user_info.filter_mode}}"
       username="{{user_info.username}}"
@@ -439,35 +426,23 @@ steps:
       done
       
       echo "]"
-      ```
-      
-      Run the batch script and return the JSON array of activity results.
     output: "activity_checks"
     timeout: 600
 
   # ==========================================================================
   # Step 7: Filter to repos with activity
   # ==========================================================================
-  # Direct jq filtering of activity check results
+  # BASH STEP - Filter JSON array by boolean field
+  # Why bash: jq filtering is deterministic, no reasoning needed
   - id: "filter-to-active"
-    agent: "foundation:explorer"
-    parse_json: true
-    prompt: |
-      Filter activity check results using jq.
-      
-      ## Input
-      
-      Activity checks (JSON array): {{activity_checks}}
-      
-      ## Execute
-      
-      ```bash
+    type: "bash"
+    command: |
       cd {{working_dir}}/discovery
       
-      # Save activity checks to file for processing
-      cat > activity-checks.json << 'ACTIVITY_EOF'
+      # Save activity checks to file for processing (unique delimiter)
+      cat > activity-checks.json << '___AMPLIFIER_JSON_EOF___'
       {{activity_checks}}
-      ACTIVITY_EOF
+___AMPLIFIER_JSON_EOF___
       
       # Filter to active repos and build output
       jq '{
@@ -478,16 +453,14 @@ steps:
       }' activity-checks.json > active-repos.json
       
       cat active-repos.json
-      ```
-      
-      Run the script and return the JSON output.
     output: "active_repos"
     timeout: 60
 
   # ==========================================================================
   # Step 8: Show discovery summary (LLM for user-facing formatting)
   # ==========================================================================
-  # LLM creates a well-formatted, contextual summary for the user
+  # AGENT STEP - Create human-friendly summary with contextual messaging
+  # Why agent: Requires judgment about how to present info, adapt tone, group repos
   - id: "discovery-summary"
     agent: "foundation:explorer"
     prompt: |
@@ -542,7 +515,8 @@ steps:
   # ==========================================================================
   # Step 9: Analyze each repo using generic recipe
   # ==========================================================================
-  # Only analyzes repos that passed the quick activity check
+  # RECIPE STEP - Delegate detailed analysis to reusable sub-recipe
+  # Why recipe: Encapsulates complex per-repo analysis, enables parallel exec later
   - id: "analyze-repos"
     foreach: "{{active_repos.repos}}"
     as: "repo"
@@ -562,6 +536,8 @@ steps:
   # ==========================================================================
   # Step 10: Synthesize final report
   # ==========================================================================
+  # AGENT STEP - Synthesize findings into cohesive narrative report
+  # Why agent: Requires semantic understanding, prioritization, storytelling
   - id: "synthesize-report"
     agent: "foundation:zen-architect"
     mode: "ARCHITECT"
@@ -643,15 +619,11 @@ steps:
   # ==========================================================================
   # Step 11: Completion and cleanup
   # ==========================================================================
-  # Print summary, cleanup temp files, keep only final report
+  # BASH STEP - Print completion summary and remove temp files
+  # Why bash: echo/rm are deterministic, no reasoning needed for cleanup
   - id: "complete"
-    agent: "foundation:explorer"
-    prompt: |
-      Finalize, show completion status, and cleanup temp files.
-      
-      ## Execute
-      
-      ```bash
+    type: "bash"
+    command: |
       # Get report path
       report_path=$(realpath {{working_dir}}/reports/{{report_filename}} 2>/dev/null || echo "{{working_dir}}/reports/{{report_filename}}")
       
@@ -683,8 +655,5 @@ steps:
       
       echo ""
       echo '{"completed": true, "report_path": "'$report_path'", "cleanup": "done"}'
-      ```
-      
-      Run the script and return the JSON output.
     output: "completion"
     timeout: 60
