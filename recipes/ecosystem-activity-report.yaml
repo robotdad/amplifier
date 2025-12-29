@@ -108,80 +108,56 @@ steps:
     timeout: 60
 
   # ==========================================================================
-  # Step 2: Parse date range
+  # Step 2: Parse date range (LLM for natural language flexibility)
   # ==========================================================================
-  # Uses bash for date calculation, minimal LLM interpretation
+  # LLM handles natural language interpretation - supports flexible input
   - id: "parse-date-range"
     agent: "foundation:explorer"
     parse_json: true
     prompt: |
-      Parse the date range for GitHub API queries using bash date commands.
+      Parse the natural language date range into ISO 8601 format for GitHub API.
       
       ## Input
       
       Date range: "{{date_range}}"
       
-      ## Execute Date Parsing
-      
-      Run this bash script to calculate dates:
-      
+      First, get the current date/time:
       ```bash
-      date_range="{{date_range}}"
-      now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-      today=$(date -u +%Y-%m-%d)
-      
-      case "$date_range" in
-        "today")
-          since="${today}T00:00:00Z"
-          until="$now"
-          desc="today ($today)"
-          ;;
-        "yesterday")
-          yesterday=$(date -u -v-1d +%Y-%m-%d 2>/dev/null || date -u -d "yesterday" +%Y-%m-%d)
-          since="${yesterday}T00:00:00Z"
-          until="${yesterday}T23:59:59Z"
-          desc="yesterday ($yesterday)"
-          ;;
-        "since yesterday"|"past day"|"last day")
-          yesterday=$(date -u -v-1d +%Y-%m-%d 2>/dev/null || date -u -d "yesterday" +%Y-%m-%d)
-          since="${yesterday}T00:00:00Z"
-          until="$now"
-          desc="since yesterday ($yesterday to now)"
-          ;;
-        "last 7 days"|"last week"|"past week")
-          week_ago=$(date -u -v-7d +%Y-%m-%d 2>/dev/null || date -u -d "7 days ago" +%Y-%m-%d)
-          since="${week_ago}T00:00:00Z"
-          until="$now"
-          desc="last 7 days ($week_ago to now)"
-          ;;
-        "last 30 days"|"last month"|"past month")
-          month_ago=$(date -u -v-30d +%Y-%m-%d 2>/dev/null || date -u -d "30 days ago" +%Y-%m-%d)
-          since="${month_ago}T00:00:00Z"
-          until="$now"
-          desc="last 30 days ($month_ago to now)"
-          ;;
-        *)
-          # Default to today if unrecognized
-          since="${today}T00:00:00Z"
-          until="$now"
-          desc="today ($today) - unrecognized input, defaulting"
-          ;;
-      esac
-      
-      gh_format=$(echo "$since" | cut -d'T' -f1)
-      
-      cat <<EOF
-      {
-        "original": "$date_range",
-        "iso_since": "$since",
-        "iso_until": "$until",
-        "gh_format": "$gh_format",
-        "description": "$desc"
-      }
-      EOF
+      date -u +%Y-%m-%dT%H:%M:%SZ
       ```
       
-      Run the script and return its JSON output directly.
+      ## Interpretation Guidelines
+      
+      | Input | Interpretation |
+      |-------|---------------|
+      | "today" | From midnight today (00:00:00Z) to now |
+      | "yesterday" | From midnight yesterday to midnight today |
+      | "since yesterday" | From midnight yesterday to now |
+      | "past day", "last day", "last 24 hours" | Same as "since yesterday" |
+      | "last 7 days", "past week", "this week" | From 7 days ago to now |
+      | "last 2 weeks" | From 14 days ago to now |
+      | "last month", "past 30 days" | From 30 days ago to now |
+      | "this month" | From 1st of current month to now |
+      | "since Monday" | From most recent Monday to now |
+      | "since Dec 15" | From Dec 15 00:00:00Z to now |
+      | "Dec 15-20" | From Dec 15 to Dec 20 23:59:59Z |
+      | "since the 1st" | From 1st of current month to now |
+      
+      Handle variations gracefully:
+      - "the past few days" → interpret as ~3 days
+      - "recently" → interpret as last 7 days
+      - Typos like "yeterday" → interpret as "yesterday"
+      
+      ## Output
+      
+      Return JSON:
+      {
+        "original": "{{date_range}}",
+        "iso_since": "YYYY-MM-DDTHH:MM:SSZ",
+        "iso_until": "YYYY-MM-DDTHH:MM:SSZ",
+        "gh_format": "YYYY-MM-DD",
+        "description": "human readable description (e.g., 'since yesterday (2024-12-28 to now)')"
+      }
     output: "parsed_date"
     timeout: 60
 
@@ -471,45 +447,57 @@ steps:
     timeout: 60
 
   # ==========================================================================
-  # Step 8: Show discovery summary
+  # Step 8: Show discovery summary (LLM for user-facing formatting)
   # ==========================================================================
-  # Simple bash printf - no LLM needed for formatting
+  # LLM creates a well-formatted, contextual summary for the user
   - id: "discovery-summary"
     agent: "foundation:explorer"
     prompt: |
-      Print discovery summary using bash.
+      Create a clear, well-formatted discovery summary for the user.
       
-      ## Execute
+      ## Discovery Results
       
-      ```bash
-      cd {{working_dir}}/discovery
+      **User**: {{user_info.username}} ({{user_info.filter_mode}})
+      **Date Range**: {{parsed_date.description}}
+      **Total repos discovered**: {{discovered_repos.total}}
+      **After filtering**: {{filtered_repos.count}}
+      **With activity**: {{active_repos.count}}
+      **Skipped (no activity)**: {{active_repos.skipped_count}}
       
-      # Extract repo names for display
-      active_list=$(jq -r '.repos[] | "\(.name) (\(.commits)c/\(.prs)pr)"' active-repos.json 2>/dev/null | tr '\n' ', ' | sed 's/, $//')
-      skipped_list=$(jq -r '.skipped[]' active-repos.json 2>/dev/null | tr '\n' ', ' | sed 's/, $//')
+      Active repos to analyze:
+      {{active_repos.repos}}
       
-      cat << 'SUMMARY_EOF'
+      Skipped repos (no activity in date range):
+      {{active_repos.skipped}}
+      
+      ## Format Requirements
+      
+      Print a clear summary to the console:
+      
+      ```
       ============================================================
       AMPLIFIER ECOSYSTEM ACTIVITY REPORT
       ============================================================
-      User:       {{user_info.username}} ({{user_info.filter_mode}})
-      Date Range: {{parsed_date.description}}
-      Repos:      {{active_repos.count}} with activity ({{active_repos.skipped_count}} skipped)
+      User:       [username] ([filter mode])
+      Date Range: [human readable description]
+      
+      Discovery:  [total] repos found → [filtered] after org filter → [active] with activity
+      
+      Analyzing ([N] repos):
+        • [repo1] - [X commits, Y PRs]
+        • [repo2] - [X commits, Y PRs]
+        ...
+      
+      Skipped ([N] repos - no activity):
+        [repo1], [repo2], ...
+      
+      Estimated time: ~[N] minutes (1 min per repo)
       ============================================================
-      SUMMARY_EOF
-      
-      echo ""
-      echo "Analyzing: $active_list"
-      echo ""
-      echo "Skipped (no activity): $skipped_list"
-      echo ""
-      echo "Estimated time: ~{{active_repos.count}} minutes"
-      echo "============================================================"
-      
-      echo '{"displayed": true}'
       ```
       
-      Run the script, print the summary, and return success.
+      Make the output scannable and informative. Group repos logically if many.
+      
+      Return: {"displayed": true, "repos_to_analyze": [list of repo names]}
     output: "summary"
     timeout: 60
 
