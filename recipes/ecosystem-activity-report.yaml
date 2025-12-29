@@ -59,6 +59,8 @@ context:
   modules_content: {"path": "", "content": "", "error": null}
   discovered_repos: {"total": 0, "repos": []}
   filtered_repos: {"count": 0, "repos": [], "dropped": []}
+  activity_checks: []
+  active_repos: {"count": 0, "repos": [], "skipped": []}
 
 steps:
   # ==========================================================================
@@ -305,7 +307,103 @@ steps:
     timeout: 60
 
   # ==========================================================================
-  # Step 6: Show discovery summary
+  # Step 6: Quick activity check (pre-filter)
+  # ==========================================================================
+  # Uses direct APIs to quickly check if user has ANY activity in each repo
+  # before running the expensive full analysis. This filters out repos with
+  # no user activity, saving significant time.
+  #
+  # - Commits: Direct commits API (fresh, not search index)
+  # - PRs: Search API with "involves" (catches author, reviewer, commenter, etc.)
+  
+  - id: "quick-activity-check"
+    foreach: "{{filtered_repos.repos}}"
+    as: "repo"
+    parallel: true
+    collect: "activity_checks"
+    agent: "foundation:modular-builder"
+    parse_json: true
+    prompt: |
+      Quick check if user has ANY activity in this repo.
+      
+      ## Input
+      
+      Repo: {{repo.owner}}/{{repo.name}}
+      User: {{user_info.username}}
+      Filter mode: {{user_info.filter_mode}}
+      Since (ISO): {{parsed_date.iso_since}}
+      Since (date): {{parsed_date.gh_format}}
+      
+      ## Logic
+      
+      If filter_mode is "all", skip the activity check and return has_activity: true
+      (we want all repos when not filtering by user).
+      
+      Otherwise, run these commands to check for activity:
+      
+      ```bash
+      # Check commits (direct API - always fresh)
+      commits=$(gh api "repos/{{repo.owner}}/{{repo.name}}/commits?author={{user_info.username}}&since={{parsed_date.iso_since}}&per_page=1" --jq 'length' 2>/dev/null || echo "0")
+      
+      # Check PRs with any involvement (search API with involves)
+      prs=$(gh api "search/issues?q=involves:{{user_info.username}}+repo:{{repo.owner}}/{{repo.name}}+type:pr+updated:>{{parsed_date.gh_format}}" --jq '.total_count' 2>/dev/null || echo "0")
+      
+      echo "Commits: $commits, PRs: $prs"
+      ```
+      
+      ## Output
+      
+      Return JSON:
+      {
+        "repo": "{{repo.name}}",
+        "owner": "{{repo.owner}}",
+        "url": "{{repo.url}}",
+        "commits": <number>,
+        "prs": <number>,
+        "has_activity": true|false
+      }
+      
+      has_activity is true if commits > 0 OR prs > 0.
+    output: "activity_result"
+    timeout: 60
+    on_error: "continue"
+
+  # ==========================================================================
+  # Step 7: Filter to repos with activity
+  # ==========================================================================
+  - id: "filter-to-active"
+    agent: "foundation:modular-builder"
+    parse_json: true
+    prompt: |
+      Filter the activity check results to only repos with activity.
+      
+      ## Input
+      
+      Activity checks: {{activity_checks}}
+      
+      ## Logic
+      
+      1. Filter to only items where has_activity is true
+      2. Count how many were skipped (has_activity is false)
+      3. Build list of active repos with their preliminary counts
+      
+      ## Output
+      
+      Return JSON:
+      {
+        "count": <number of active repos>,
+        "repos": [
+          {"owner": "...", "name": "...", "url": "...", "commits": N, "prs": N},
+          ...
+        ],
+        "skipped": ["repo1", "repo2", ...],
+        "skipped_count": <number>
+      }
+    output: "active_repos"
+    timeout: 60
+
+  # ==========================================================================
+  # Step 8: Show discovery summary
   # ==========================================================================
   - id: "discovery-summary"
     agent: "foundation:zen-architect"
@@ -319,13 +417,15 @@ steps:
       **Date Range**: {{parsed_date.description}} ({{parsed_date.iso_since}} to {{parsed_date.iso_until}})
       **Source**: {{modules_content.path}}
       **Total repos discovered**: {{discovered_repos.total}}
-      **Repos after filtering**: {{filtered_repos.count}}
+      **Repos after pattern filter**: {{filtered_repos.count}}
+      **Repos with activity**: {{active_repos.count}}
+      **Repos skipped (no activity)**: {{active_repos.skipped_count}}
       
-      Repos to analyze:
-      {{filtered_repos.repos}}
+      Repos to analyze (have activity):
+      {{active_repos.repos}}
       
-      Dropped repos:
-      {{filtered_repos.dropped}}
+      Skipped repos (no activity in date range):
+      {{active_repos.skipped}}
       
       ## Create Summary
       
@@ -337,12 +437,14 @@ steps:
       ============================================================
       User:       {{user_info.username}} ({{user_info.filter_mode}})
       Date Range: {{parsed_date.description}}
-      Repos:      {{filtered_repos.count}} of {{discovered_repos.total}}
+      Repos:      {{active_repos.count}} with activity ({{active_repos.skipped_count}} skipped)
       ============================================================
       
-      Analyzing: [list repo names]
+      Analyzing: [list repo names with preliminary commit/PR counts]
       
-      Estimated time: ~{{filtered_repos.count}} minutes
+      Skipped (no activity): [list skipped repo names]
+      
+      Estimated time: ~{{active_repos.count}} minutes
       ============================================================
       ```
       
@@ -351,10 +453,11 @@ steps:
     timeout: 60
 
   # ==========================================================================
-  # Step 7: Analyze each repo using generic recipe
+  # Step 9: Analyze each repo using generic recipe
   # ==========================================================================
+  # Only analyzes repos that passed the quick activity check
   - id: "analyze-repos"
-    foreach: "{{filtered_repos.repos}}"
+    foreach: "{{active_repos.repos}}"
     as: "repo"
     parallel: false
     collect: "repo_analyses"
@@ -370,7 +473,7 @@ steps:
     on_error: "continue"
 
   # ==========================================================================
-  # Step 8: Synthesize final report
+  # Step 10: Synthesize final report
   # ==========================================================================
   - id: "synthesize-report"
     agent: "foundation:zen-architect"
@@ -382,7 +485,8 @@ steps:
       
       User: {{user_info.username}} ({{user_info.filter_mode}})
       Date Range: {{parsed_date.description}}
-      Repos analyzed: {{filtered_repos.count}}
+      Repos analyzed: {{active_repos.count}}
+      Repos skipped (no activity): {{active_repos.skipped}}
       
       Individual analyses: {{repo_analyses}}
       
@@ -396,7 +500,7 @@ steps:
       **Generated**: [current timestamp]
       **User**: {{user_info.username}}
       **Date Range**: {{parsed_date.description}}
-      **Repos Analyzed**: {{filtered_repos.count}}
+      **Repos Analyzed**: {{active_repos.count}}
       
       ---
       
@@ -404,7 +508,7 @@ steps:
       
       - **Total commits**: N
       - **Total PRs**: N  
-      - **Repos with activity**: N of {{filtered_repos.count}}
+      - **Repos with activity**: N of {{active_repos.count}}
       
       ### Key Highlights
       
@@ -450,7 +554,7 @@ steps:
     timeout: 600
 
   # ==========================================================================
-  # Step 9: Completion
+  # Step 11: Completion
   # ==========================================================================
   - id: "complete"
     agent: "foundation:modular-builder"
@@ -471,7 +575,7 @@ steps:
       ============================================================
       User:   {{user_info.username}}
       Range:  {{parsed_date.description}}
-      Repos:  {{filtered_repos.count}}
+      Repos:  {{active_repos.count}} analyzed, {{active_repos.skipped_count}} skipped
       Report: [absolute path]
       ============================================================
       ```
