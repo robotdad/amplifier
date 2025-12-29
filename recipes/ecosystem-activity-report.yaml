@@ -363,49 +363,87 @@ steps:
     timeout: 60
 
   # ==========================================================================
-  # Step 6: Quick activity check (pre-filter)
+  # Step 6: Quick activity check (BATCH - single agent, bash loop)
   # ==========================================================================
-  # Direct bash/gh API calls - no LLM reasoning needed
+  # IMPORTANT: Don't use foreach here! It spawns N agents (N = repo count).
+  # Instead, use a single agent with an internal bash loop for batch API calls.
+  # This reduces 46 agent spawns → 1, and allows proper rate limiting.
   - id: "quick-activity-check"
-    foreach: "{{filtered_repos.repos}}"
-    as: "repo"
-    parallel: true
-    collect: "activity_checks"
     agent: "foundation:explorer"
     parse_json: true
     prompt: |
-      Quick activity check using direct API calls.
+      Check activity for ALL repos in a single batch execution.
+      
+      ## Input
+      
+      Repos to check: {{filtered_repos.count}}
+      User: {{user_info.username}}
+      Filter mode: {{user_info.filter_mode}}
+      Since: {{parsed_date.iso_since}}
       
       ## Execute
       
       ```bash
-      filter_mode="{{user_info.filter_mode}}"
+      cd {{working_dir}}/discovery
       
-      if [ "$filter_mode" = "all" ]; then
-        # No user filter - mark all as active
-        echo '{"repo": "{{repo.name}}", "owner": "{{repo.owner}}", "url": "{{repo.url}}", "commits": -1, "prs": -1, "has_activity": true, "skipped_check": true}'
-      else
-        # Check commits (direct API - always fresh)
-        commits=$(gh api "repos/{{repo.owner}}/{{repo.name}}/commits?author={{user_info.username}}&since={{parsed_date.iso_since}}&per_page=100" --jq 'length' 2>/dev/null || echo "0")
+      # Save repos for processing
+      cat > repos-to-check.json << 'REPOS_EOF'
+      {{filtered_repos.repos}}
+      REPOS_EOF
+      
+      filter_mode="{{user_info.filter_mode}}"
+      username="{{user_info.username}}"
+      since_iso="{{parsed_date.iso_since}}"
+      gh_date="{{parsed_date.gh_format}}"
+      
+      # Process all repos in a bash loop with rate limiting
+      echo "["
+      first=true
+      
+      jq -c '.[]' repos-to-check.json | while read repo_json; do
+        owner=$(echo "$repo_json" | jq -r '.owner')
+        name=$(echo "$repo_json" | jq -r '.name')
+        url=$(echo "$repo_json" | jq -r '.url')
         
-        # Check PRs with any involvement
-        prs=$(gh api "search/issues?q=involves:{{user_info.username}}+repo:{{repo.owner}}/{{repo.name}}+type:pr+updated:>{{parsed_date.gh_format}}" --jq '.total_count' 2>/dev/null || echo "0")
-        
-        # Determine activity
-        if [ "$commits" -gt 0 ] || [ "$prs" -gt 0 ]; then
-          has_activity=true
+        # Comma handling for JSON array
+        if [ "$first" = "true" ]; then
+          first=false
         else
-          has_activity=false
+          echo ","
+          # Rate limiting: small delay between repos to avoid API limits
+          sleep 0.5
         fi
         
-        echo "{\"repo\": \"{{repo.name}}\", \"owner\": \"{{repo.owner}}\", \"url\": \"{{repo.url}}\", \"commits\": $commits, \"prs\": $prs, \"has_activity\": $has_activity}"
-      fi
+        if [ "$filter_mode" = "all" ]; then
+          # No user filter - mark all as active (skip API calls)
+          echo "{\"repo\": \"$name\", \"owner\": \"$owner\", \"url\": \"$url\", \"commits\": -1, \"prs\": -1, \"has_activity\": true, \"skipped_check\": true}"
+        else
+          # Check commits
+          commits=$(gh api "repos/$owner/$name/commits?author=$username&since=$since_iso&per_page=100" --jq 'length' 2>/dev/null || echo "0")
+          
+          # Brief pause between API calls
+          sleep 0.3
+          
+          # Check PRs - use simpler query to avoid search API rate limits
+          prs=$(gh api "repos/$owner/$name/pulls?state=all&per_page=100" --jq "[.[] | select(.user.login == \"$username\" and .updated_at >= \"$since_iso\")] | length" 2>/dev/null || echo "0")
+          
+          # Determine activity
+          if [ "$commits" -gt 0 ] 2>/dev/null || [ "$prs" -gt 0 ] 2>/dev/null; then
+            has_activity=true
+          else
+            has_activity=false
+          fi
+          
+          echo "{\"repo\": \"$name\", \"owner\": \"$owner\", \"url\": \"$url\", \"commits\": $commits, \"prs\": $prs, \"has_activity\": $has_activity}"
+        fi
+      done
+      
+      echo "]"
       ```
       
-      Run the script and return the JSON output directly.
-    output: "activity_result"
-    timeout: 60
-    on_error: "continue"
+      Run the batch script and return the JSON array of activity results.
+    output: "activity_checks"
+    timeout: 600
 
   # ==========================================================================
   # Step 7: Filter to repos with activity
