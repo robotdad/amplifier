@@ -200,6 +200,7 @@ steps:
         "description": "human readable description (e.g., 'since yesterday (2024-12-28 to now)')"
       }
     output: "parsed_date"
+    parse_json: true
     timeout: 60
 
   # ==========================================================================
@@ -506,6 +507,7 @@ steps:
       
       Return: {"displayed": true, "repos_to_analyze": [list of repo names]}
     output: "summary"
+    parse_json: true
     timeout: 60
 
   # ==========================================================================
