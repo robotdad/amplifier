@@ -64,256 +64,332 @@ context:
 
 steps:
   # ==========================================================================
-  # Step 1: Discover current GitHub user
+  # Step 1: Setup working directory and discover GitHub user
   # ==========================================================================
-  - id: "discover-user"
+  # Direct bash approach - no LLM reasoning needed for simple commands
+  - id: "setup-and-discover-user"
     agent: "foundation:explorer"
     parse_json: true
     prompt: |
-      Discover the current GitHub user for filtering activity.
+      Setup working directory and discover GitHub user. Execute these commands directly.
       
-      ## Input
+      ## Setup
+      
+      ```bash
+      # Create all working directories upfront
+      mkdir -p {{working_dir}}/{discovery,repos,reports}
+      ```
+      
+      ## User Discovery
       
       Author filter setting: "{{author_filter}}"
       
-      ## Logic
+      Execute this logic using bash:
       
-      Create working directory:
       ```bash
-      mkdir -p {{working_dir}}/discovery
+      author_filter="{{author_filter}}"
+      
+      if [ "$author_filter" = "all" ] || [ "$author_filter" = "ALL" ]; then
+        echo '{"username": "", "discovered": false, "filter_mode": "all"}'
+      elif [ -z "$author_filter" ]; then
+        username=$(gh api user --jq '.login' 2>/dev/null)
+        if [ -n "$username" ]; then
+          echo "{\"username\": \"$username\", \"discovered\": true, \"filter_mode\": \"current_user\"}"
+        else
+          echo '{"username": "", "discovered": false, "filter_mode": "all", "error": "Could not discover user"}'
+        fi
+      else
+        echo "{\"username\": \"$author_filter\", \"discovered\": false, \"filter_mode\": \"specified\"}"
+      fi
       ```
       
-      If author_filter is "all" or "ALL":
-        - Return {"username": "", "discovered": false, "filter_mode": "all"}
-        - This means we won't filter by author
-      
-      If author_filter is empty or blank:
-        - Discover current user: `gh api user --jq '.login'`
-        - Return {"username": "<discovered>", "discovered": true, "filter_mode": "current_user"}
-      
-      Otherwise:
-        - Use the provided author_filter value
-        - Return {"username": "{{author_filter}}", "discovered": false, "filter_mode": "specified"}
-      
-      ## Output
-      
-      Return JSON:
-      {
-        "username": "the-username-or-empty",
-        "discovered": true|false,
-        "filter_mode": "all" | "current_user" | "specified"
-      }
+      Run the bash script and return its JSON output directly.
     output: "user_info"
     timeout: 60
 
   # ==========================================================================
   # Step 2: Parse date range
   # ==========================================================================
+  # Uses bash for date calculation, minimal LLM interpretation
   - id: "parse-date-range"
     agent: "foundation:explorer"
     parse_json: true
     prompt: |
-      Parse the date range for GitHub API queries.
+      Parse the date range for GitHub API queries using bash date commands.
       
       ## Input
       
-      Date range (natural language): "{{date_range}}"
-      Current date/time: Use current system time
+      Date range: "{{date_range}}"
       
-      ## Parsing Rules
+      ## Execute Date Parsing
       
-      Convert natural language to ISO 8601 format for GitHub:
+      Run this bash script to calculate dates:
       
-      | Input | Interpretation |
-      |-------|---------------|
-      | "today" | From midnight today to now |
-      | "yesterday" | From midnight yesterday to midnight today |
-      | "since yesterday" | From midnight yesterday to now |
-      | "last 7 days" | From 7 days ago to now |
-      | "last week" | Same as "last 7 days" |
-      | "this week" | From Monday of current week to now |
-      | "last month" | Last 30 days |
-      | "since 2024-12-01" | From that date to now |
-      | "2024-12-01 to 2024-12-15" | That specific range |
-      
-      Get current date:
       ```bash
-      date -u +%Y-%m-%dT%H:%M:%SZ
+      date_range="{{date_range}}"
+      now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+      today=$(date -u +%Y-%m-%d)
+      
+      case "$date_range" in
+        "today")
+          since="${today}T00:00:00Z"
+          until="$now"
+          desc="today ($today)"
+          ;;
+        "yesterday")
+          yesterday=$(date -u -v-1d +%Y-%m-%d 2>/dev/null || date -u -d "yesterday" +%Y-%m-%d)
+          since="${yesterday}T00:00:00Z"
+          until="${yesterday}T23:59:59Z"
+          desc="yesterday ($yesterday)"
+          ;;
+        "since yesterday"|"past day"|"last day")
+          yesterday=$(date -u -v-1d +%Y-%m-%d 2>/dev/null || date -u -d "yesterday" +%Y-%m-%d)
+          since="${yesterday}T00:00:00Z"
+          until="$now"
+          desc="since yesterday ($yesterday to now)"
+          ;;
+        "last 7 days"|"last week"|"past week")
+          week_ago=$(date -u -v-7d +%Y-%m-%d 2>/dev/null || date -u -d "7 days ago" +%Y-%m-%d)
+          since="${week_ago}T00:00:00Z"
+          until="$now"
+          desc="last 7 days ($week_ago to now)"
+          ;;
+        "last 30 days"|"last month"|"past month")
+          month_ago=$(date -u -v-30d +%Y-%m-%d 2>/dev/null || date -u -d "30 days ago" +%Y-%m-%d)
+          since="${month_ago}T00:00:00Z"
+          until="$now"
+          desc="last 30 days ($month_ago to now)"
+          ;;
+        *)
+          # Default to today if unrecognized
+          since="${today}T00:00:00Z"
+          until="$now"
+          desc="today ($today) - unrecognized input, defaulting"
+          ;;
+      esac
+      
+      gh_format=$(echo "$since" | cut -d'T' -f1)
+      
+      cat <<EOF
+      {
+        "original": "$date_range",
+        "iso_since": "$since",
+        "iso_until": "$until",
+        "gh_format": "$gh_format",
+        "description": "$desc"
+      }
+      EOF
       ```
       
-      ## Output
-      
-      Return JSON:
-      {
-        "original": "{{date_range}}",
-        "iso_since": "2024-12-28T00:00:00Z",
-        "iso_until": "2024-12-28T23:59:59Z",
-        "gh_format": "2024-12-28",
-        "description": "human readable description"
-      }
+      Run the script and return its JSON output directly.
     output: "parsed_date"
     timeout: 60
 
   # ==========================================================================
-  # Step 3: Read MODULES.md
+  # Step 3: Fetch MODULES.md
   # ==========================================================================
-  - id: "read-modules-md"
+  # Direct bash - fetch from GitHub API (most reliable source of truth)
+  - id: "fetch-modules-md"
     agent: "foundation:explorer"
     parse_json: true
     prompt: |
-      Read the Amplifier MODULES.md file to discover ecosystem repos.
+      Fetch MODULES.md from GitHub and save to working directory.
       
-      ## Logic
+      ## Execute
       
-      Try these locations in order:
-      
-      1. Check common local paths:
       ```bash
-      for path in \
-        "./docs/MODULES.md" \
-        "./amplifier/docs/MODULES.md" \
-        "../amplifier/docs/MODULES.md" \
-        "~/repos/amplifier/docs/MODULES.md"; do
-        if [ -f "$path" ]; then
-          echo "FOUND: $path"
-          cat "$path"
-          exit 0
-        fi
-      done
-      ```
-      
-      2. If not found locally, fetch from GitHub API:
-      ```bash
+      # Fetch from GitHub API (authoritative source)
       gh api repos/microsoft/amplifier/contents/docs/MODULES.md \
-        --jq '.content' | base64 -d
+        --jq '.content' | base64 -d > {{working_dir}}/discovery/MODULES.md
+      
+      # Get file info
+      if [ -f "{{working_dir}}/discovery/MODULES.md" ]; then
+        len=$(wc -c < "{{working_dir}}/discovery/MODULES.md" | tr -d ' ')
+        echo "{\"path\": \"github-api\", \"saved_to\": \"{{working_dir}}/discovery/MODULES.md\", \"content_length\": $len, \"error\": null}"
+      else
+        echo '{"path": null, "saved_to": null, "content_length": 0, "error": "Failed to fetch MODULES.md"}'
+      fi
       ```
       
-      3. Save content to {{working_dir}}/discovery/MODULES.md
-      
-      ## Output
-      
-      Return JSON:
-      {
-        "path": "source path or 'github-api'",
-        "content": "full file content",
-        "content_length": N,
-        "error": null
-      }
+      Run the commands and return the JSON output.
     output: "modules_content"
     timeout: 120
 
   # ==========================================================================
-  # Step 4: Extract repos from MODULES.md
+  # Step 4: Extract repos using grep (reliable extraction)
   # ==========================================================================
-  - id: "extract-repos"
+  # Uses grep/sed to extract ALL GitHub URLs - no LLM parsing
+  - id: "extract-repos-grep"
     agent: "foundation:explorer"
     parse_json: true
     prompt: |
-      Extract all GitHub repository URLs from MODULES.md content.
+      Extract all GitHub repository URLs from MODULES.md using grep.
       
-      ## Input
+      ## Execute
       
+      Run this bash script to extract and format repos:
+      
+      ```bash
+      cd {{working_dir}}/discovery
+      
+      # Extract all GitHub URLs, normalize, deduplicate, and format as JSON
+      grep -oE 'https://github\.com/[^/]+/[^/)\"'\''#@\` ]+' MODULES.md \
+        | sed 's/\.git$//' \
+        | sed 's/[[:space:]]*$//' \
+        | sort -u \
+        | while read url; do
+            owner=$(echo "$url" | cut -d'/' -f4)
+            repo=$(echo "$url" | cut -d'/' -f5)
+            echo "{\"owner\": \"$owner\", \"name\": \"$repo\", \"url\": \"$url\"}"
+          done > repos-extracted.jsonl
+      
+      # Count and format as JSON array
+      count=$(wc -l < repos-extracted.jsonl | tr -d ' ')
+      
+      # Build final JSON
+      echo "{" > all-repos.json
+      echo "  \"total\": $count," >> all-repos.json
+      echo "  \"repos\": [" >> all-repos.json
+      
+      # Add each repo with proper comma handling
+      i=0
+      while read line; do
+        i=$((i + 1))
+        if [ $i -eq $count ]; then
+          echo "    $line" >> all-repos.json
+        else
+          echo "    $line," >> all-repos.json
+        fi
+      done < repos-extracted.jsonl
+      
+      echo "  ]" >> all-repos.json
+      echo "}" >> all-repos.json
+      
+      cat all-repos.json
       ```
-      {{modules_content.content}}
-      ```
       
-      ## Extraction Rules
-      
-      Find all GitHub URLs matching patterns like:
-      - `https://github.com/owner/repo`
-      - `https://github.com/owner/repo.git`
-      - `git+https://github.com/owner/repo`
-      - `github.com/owner/repo`
-      
-      For each URL found:
-      1. Normalize to `https://github.com/owner/repo` format
-      2. Extract owner and repo name
-      3. Deduplicate (same repo may appear multiple times)
-      
-      ## Known Amplifier Ecosystem Repos
-      
-      These are the core repos to look for:
-      - amplifier (entry point)
-      - amplifier-core (kernel)
-      - amplifier-foundation (library)
-      - amplifier-app-cli (CLI application)
-      - amplifier-bundle-* (bundles)
-      - amplifier-module-* (modules)
-      
-      ## Output
-      
-      Save to {{working_dir}}/discovery/all-repos.json
-      
-      Return JSON:
-      {
-        "total": N,
-        "repos": [
-          {"owner": "microsoft", "name": "amplifier", "url": "https://github.com/microsoft/amplifier"},
-          {"owner": "microsoft", "name": "amplifier-core", "url": "https://github.com/microsoft/amplifier-core"},
-          ...
-        ]
-      }
+      Run the script and return the JSON output.
     output: "discovered_repos"
     timeout: 120
 
   # ==========================================================================
-  # Step 5: Filter repos
+  # Step 4b: Verify extraction (optional LLM check)
   # ==========================================================================
+  # LLM reviews grep output vs source to catch any issues
+  - id: "verify-extraction"
+    agent: "foundation:explorer"
+    parse_json: true
+    prompt: |
+      Verify the grep extraction caught all repos correctly.
+      
+      ## Extracted Repos
+      
+      Total found: {{discovered_repos.total}}
+      Repos: {{discovered_repos.repos}}
+      
+      ## Quick Sanity Check
+      
+      Run a quick verification:
+      
+      ```bash
+      cd {{working_dir}}/discovery
+      
+      # Count GitHub URLs in source (rough check)
+      source_count=$(grep -c 'github.com/' MODULES.md || echo "0")
+      extracted_count={{discovered_repos.total}}
+      
+      echo "Source mentions: $source_count"
+      echo "Extracted unique: $extracted_count"
+      
+      # Check for key repos we expect to find
+      expected="amplifier amplifier-core amplifier-foundation amplifier-app-cli"
+      missing=""
+      for repo in $expected; do
+        if ! grep -q "\"name\": \"$repo\"" all-repos.json; then
+          missing="$missing $repo"
+        fi
+      done
+      
+      if [ -n "$missing" ]; then
+        echo "WARNING: Missing expected repos:$missing"
+        echo '{"verified": false, "issue": "missing_expected", "missing": "'$missing'"}'
+      else
+        echo '{"verified": true, "source_mentions": '$source_count', "extracted_unique": '$extracted_count'}'
+      fi
+      ```
+      
+      Run the verification and return the result.
+    output: "extraction_verified"
+    timeout: 60
+
+  # ==========================================================================
+  # Step 5: Filter repos using jq
+  # ==========================================================================
+  # Direct bash/jq filtering - no LLM needed
   - id: "filter-repos"
     agent: "foundation:explorer"
     parse_json: true
     prompt: |
-      Filter discovered repos based on user criteria.
+      Filter discovered repos using jq.
       
-      ## Input
+      ## Execute
       
-      All repos: {{discovered_repos.repos}}
-      Org filter: "{{org_filter}}"
-      Repo name filter (regex): "{{repo_filter}}"
+      ```bash
+      cd {{working_dir}}/discovery
       
-      ## Filtering Logic
+      org_filter="{{org_filter}}"
+      repo_filter="{{repo_filter}}"
       
-      1. If org_filter is not empty:
-         - Keep only repos where owner matches org_filter
+      # Start with all repos
+      cp all-repos.json filtered-repos.json
       
-      2. If repo_filter is not empty:
-         - Keep only repos where name matches the regex pattern
-         - Use case-insensitive matching
+      # Apply org filter if set
+      if [ -n "$org_filter" ]; then
+        jq --arg org "$org_filter" '{
+          total: ([.repos[] | select(.owner == $org)] | length),
+          repos: [.repos[] | select(.owner == $org)]
+        }' all-repos.json > filtered-repos.json
+      fi
       
-      3. If both filters are empty:
-         - Keep all repos (default org_filter is "microsoft")
+      # Apply repo name filter if set (grep-style regex)
+      if [ -n "$repo_filter" ]; then
+        jq --arg pattern "$repo_filter" '{
+          total: ([.repos[] | select(.name | test($pattern; "i"))] | length),
+          repos: [.repos[] | select(.name | test($pattern; "i"))]
+        }' filtered-repos.json > filtered-repos-tmp.json
+        mv filtered-repos-tmp.json filtered-repos.json
+      fi
       
-      ## Output
+      # Build output with dropped repos
+      original=$(jq '.total' all-repos.json)
+      filtered=$(jq '.total' filtered-repos.json)
       
-      Save to {{working_dir}}/discovery/filtered-repos.json
+      # Get dropped repo names
+      dropped=$(jq -r '.repos[].name' all-repos.json | while read name; do
+        if ! jq -e --arg n "$name" '.repos[] | select(.name == $n)' filtered-repos.json >/dev/null 2>&1; then
+          echo "$name"
+        fi
+      done | jq -R -s 'split("\n") | map(select(length > 0))')
       
-      Return JSON:
-      {
-        "original_count": N,
-        "count": N,
-        "filters": {
-          "org": "{{org_filter}}",
-          "repo_pattern": "{{repo_filter}}"
-        },
-        "repos": [
-          {"owner": "...", "name": "...", "url": "..."},
-          ...
-        ],
-        "dropped": ["list of repo names filtered out"]
-      }
+      # Final output
+      jq --argjson orig "$original" --argjson dropped "$dropped" \
+        --arg org "$org_filter" --arg pattern "$repo_filter" '{
+        original_count: $orig,
+        count: .total,
+        filters: {org: $org, repo_pattern: $pattern},
+        repos: .repos,
+        dropped: $dropped
+      }' filtered-repos.json
+      ```
+      
+      Run the script and return the JSON output.
     output: "filtered_repos"
     timeout: 60
 
   # ==========================================================================
   # Step 6: Quick activity check (pre-filter)
   # ==========================================================================
-  # Uses direct APIs to quickly check if user has ANY activity in each repo
-  # before running the expensive full analysis. This filters out repos with
-  # no user activity, saving significant time.
-  #
-  # - Commits: Direct commits API (fresh, not search index)
-  # - PRs: Search API with "involves" (catches author, reviewer, commenter, etc.)
-  
+  # Direct bash/gh API calls - no LLM reasoning needed
   - id: "quick-activity-check"
     foreach: "{{filtered_repos.repos}}"
     as: "repo"
@@ -322,46 +398,35 @@ steps:
     agent: "foundation:explorer"
     parse_json: true
     prompt: |
-      Quick check if user has ANY activity in this repo.
+      Quick activity check using direct API calls.
       
-      ## Input
-      
-      Repo: {{repo.owner}}/{{repo.name}}
-      User: {{user_info.username}}
-      Filter mode: {{user_info.filter_mode}}
-      Since (ISO): {{parsed_date.iso_since}}
-      Since (date): {{parsed_date.gh_format}}
-      
-      ## Logic
-      
-      If filter_mode is "all", skip the activity check and return has_activity: true
-      (we want all repos when not filtering by user).
-      
-      Otherwise, run these commands to check for activity:
+      ## Execute
       
       ```bash
-      # Check commits (direct API - always fresh)
-      commits=$(gh api "repos/{{repo.owner}}/{{repo.name}}/commits?author={{user_info.username}}&since={{parsed_date.iso_since}}&per_page=1" --jq 'length' 2>/dev/null || echo "0")
+      filter_mode="{{user_info.filter_mode}}"
       
-      # Check PRs with any involvement (search API with involves)
-      prs=$(gh api "search/issues?q=involves:{{user_info.username}}+repo:{{repo.owner}}/{{repo.name}}+type:pr+updated:>{{parsed_date.gh_format}}" --jq '.total_count' 2>/dev/null || echo "0")
-      
-      echo "Commits: $commits, PRs: $prs"
+      if [ "$filter_mode" = "all" ]; then
+        # No user filter - mark all as active
+        echo '{"repo": "{{repo.name}}", "owner": "{{repo.owner}}", "url": "{{repo.url}}", "commits": -1, "prs": -1, "has_activity": true, "skipped_check": true}'
+      else
+        # Check commits (direct API - always fresh)
+        commits=$(gh api "repos/{{repo.owner}}/{{repo.name}}/commits?author={{user_info.username}}&since={{parsed_date.iso_since}}&per_page=100" --jq 'length' 2>/dev/null || echo "0")
+        
+        # Check PRs with any involvement
+        prs=$(gh api "search/issues?q=involves:{{user_info.username}}+repo:{{repo.owner}}/{{repo.name}}+type:pr+updated:>{{parsed_date.gh_format}}" --jq '.total_count' 2>/dev/null || echo "0")
+        
+        # Determine activity
+        if [ "$commits" -gt 0 ] || [ "$prs" -gt 0 ]; then
+          has_activity=true
+        else
+          has_activity=false
+        fi
+        
+        echo "{\"repo\": \"{{repo.name}}\", \"owner\": \"{{repo.owner}}\", \"url\": \"{{repo.url}}\", \"commits\": $commits, \"prs\": $prs, \"has_activity\": $has_activity}"
+      fi
       ```
       
-      ## Output
-      
-      Return JSON:
-      {
-        "repo": "{{repo.name}}",
-        "owner": "{{repo.owner}}",
-        "url": "{{repo.url}}",
-        "commits": <number>,
-        "prs": <number>,
-        "has_activity": true|false
-      }
-      
-      has_activity is true if commits > 0 OR prs > 0.
+      Run the script and return the JSON output directly.
     output: "activity_result"
     timeout: 60
     on_error: "continue"
@@ -369,66 +434,61 @@ steps:
   # ==========================================================================
   # Step 7: Filter to repos with activity
   # ==========================================================================
+  # Direct jq filtering of activity check results
   - id: "filter-to-active"
     agent: "foundation:explorer"
     parse_json: true
     prompt: |
-      Filter the activity check results to only repos with activity.
+      Filter activity check results using jq.
       
       ## Input
       
-      Activity checks: {{activity_checks}}
+      Activity checks (JSON array): {{activity_checks}}
       
-      ## Logic
+      ## Execute
       
-      1. Filter to only items where has_activity is true
-      2. Count how many were skipped (has_activity is false)
-      3. Build list of active repos with their preliminary counts
+      ```bash
+      cd {{working_dir}}/discovery
       
-      ## Output
+      # Save activity checks to file for processing
+      cat > activity-checks.json << 'ACTIVITY_EOF'
+      {{activity_checks}}
+      ACTIVITY_EOF
       
-      Return JSON:
-      {
-        "count": <number of active repos>,
-        "repos": [
-          {"owner": "...", "name": "...", "url": "...", "commits": N, "prs": N},
-          ...
-        ],
-        "skipped": ["repo1", "repo2", ...],
-        "skipped_count": <number>
-      }
+      # Filter to active repos and build output
+      jq '{
+        count: ([.[] | select(.has_activity == true)] | length),
+        repos: [.[] | select(.has_activity == true) | {owner, name: .repo, url, commits, prs}],
+        skipped: [.[] | select(.has_activity == false) | .repo],
+        skipped_count: ([.[] | select(.has_activity == false)] | length)
+      }' activity-checks.json > active-repos.json
+      
+      cat active-repos.json
+      ```
+      
+      Run the script and return the JSON output.
     output: "active_repos"
     timeout: 60
 
   # ==========================================================================
   # Step 8: Show discovery summary
   # ==========================================================================
+  # Simple bash printf - no LLM needed for formatting
   - id: "discovery-summary"
     agent: "foundation:explorer"
     prompt: |
-      Create a summary of what we're about to analyze.
+      Print discovery summary using bash.
       
-      ## Discovery Results
+      ## Execute
       
-      **User**: {{user_info.username}} ({{user_info.filter_mode}})
-      **Date Range**: {{parsed_date.description}} ({{parsed_date.iso_since}} to {{parsed_date.iso_until}})
-      **Source**: {{modules_content.path}}
-      **Total repos discovered**: {{discovered_repos.total}}
-      **Repos after pattern filter**: {{filtered_repos.count}}
-      **Repos with activity**: {{active_repos.count}}
-      **Repos skipped (no activity)**: {{active_repos.skipped_count}}
+      ```bash
+      cd {{working_dir}}/discovery
       
-      Repos to analyze (have activity):
-      {{active_repos.repos}}
+      # Extract repo names for display
+      active_list=$(jq -r '.repos[] | "\(.name) (\(.commits)c/\(.prs)pr)"' active-repos.json 2>/dev/null | tr '\n' ', ' | sed 's/, $//')
+      skipped_list=$(jq -r '.skipped[]' active-repos.json 2>/dev/null | tr '\n' ', ' | sed 's/, $//')
       
-      Skipped repos (no activity in date range):
-      {{active_repos.skipped}}
-      
-      ## Create Summary
-      
-      Format as markdown and print to console:
-      
-      ```
+      cat << 'SUMMARY_EOF'
       ============================================================
       AMPLIFIER ECOSYSTEM ACTIVITY REPORT
       ============================================================
@@ -436,16 +496,20 @@ steps:
       Date Range: {{parsed_date.description}}
       Repos:      {{active_repos.count}} with activity ({{active_repos.skipped_count}} skipped)
       ============================================================
+      SUMMARY_EOF
       
-      Analyzing: [list repo names with preliminary commit/PR counts]
+      echo ""
+      echo "Analyzing: $active_list"
+      echo ""
+      echo "Skipped (no activity): $skipped_list"
+      echo ""
+      echo "Estimated time: ~{{active_repos.count}} minutes"
+      echo "============================================================"
       
-      Skipped (no activity): [list skipped repo names]
-      
-      Estimated time: ~{{active_repos.count}} minutes
-      ============================================================
+      echo '{"displayed": true}'
       ```
       
-      Return the summary text.
+      Run the script, print the summary, and return success.
     output: "summary"
     timeout: 60
 
@@ -551,32 +615,50 @@ steps:
     timeout: 600
 
   # ==========================================================================
-  # Step 11: Completion
+  # Step 11: Completion and cleanup
   # ==========================================================================
+  # Print summary, cleanup temp files, keep only final report
   - id: "complete"
     agent: "foundation:explorer"
     prompt: |
-      Finalize and show completion status.
+      Finalize, show completion status, and cleanup temp files.
       
-      ## Actions
+      ## Execute
       
-      1. Get absolute path to report:
       ```bash
-      realpath {{working_dir}}/reports/{{report_filename}}
-      ```
+      # Get report path
+      report_path=$(realpath {{working_dir}}/reports/{{report_filename}} 2>/dev/null || echo "{{working_dir}}/reports/{{report_filename}}")
       
-      2. Print summary:
-      ```
+      # Print completion summary
+      cat << 'COMPLETE_EOF'
       ============================================================
       REPORT COMPLETE
       ============================================================
-      User:   {{user_info.username}}
-      Range:  {{parsed_date.description}}
-      Repos:  {{active_repos.count}} analyzed, {{active_repos.skipped_count}} skipped
-      Report: [absolute path]
-      ============================================================
+      COMPLETE_EOF
+      echo "User:   {{user_info.username}}"
+      echo "Range:  {{parsed_date.description}}"
+      echo "Repos:  {{active_repos.count}} analyzed, {{active_repos.skipped_count}} skipped"
+      echo "Report: $report_path"
+      echo "============================================================"
+      
+      # Cleanup temporary files (keep reports/)
+      echo ""
+      echo "Cleaning up temporary files..."
+      
+      # Remove discovery intermediate files
+      rm -rf {{working_dir}}/discovery
+      
+      # Remove any cloned repos (if any were created)
+      rm -rf {{working_dir}}/repos
+      
+      # Show what remains
+      echo "Remaining in {{working_dir}}:"
+      ls -la {{working_dir}}/
+      
+      echo ""
+      echo '{"completed": true, "report_path": "'$report_path'", "cleanup": "done"}'
       ```
       
-      Return the completion message.
+      Run the script and return the JSON output.
     output: "completion"
     timeout: 60
