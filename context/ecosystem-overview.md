@@ -50,6 +50,19 @@ Composable configuration packages combining:
 - Agents (specialized personas)
 - Context files
 
+### Recipes (requires recipes bundle)
+Multi-step AI agent orchestration for repeatable workflows:
+- Declarative YAML workflow definitions
+- Context accumulation across agent handoffs
+- Approval gates for human-in-loop checkpoints
+- Resumability after interruption
+
+**Generic recipes available in the recipes bundle:**
+- `repo-activity-analysis.yaml` - Analyze any GitHub repo (defaults to current directory, since yesterday)
+- `multi-repo-activity-report.yaml` - Analyze multiple repos and synthesize a report
+
+**Amplifier ecosystem usage:** See @amplifier:context/recipes-usage.md for how to use these recipes with MODULES.md to analyze Amplifier ecosystem repos.
+
 ## The Philosophy
 
 ### Mechanism, Not Policy

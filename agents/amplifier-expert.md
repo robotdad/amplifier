@@ -134,6 +134,27 @@ Multi-step AI agent orchestration for repeatable workflows.
 **Recipe Examples:**
 @recipes:examples/
 
+**Generic Recipes in recipes bundle:**
+
+The `recipes` bundle provides reusable, generic recipes:
+
+- **repo-activity-analysis.yaml** - Analyze any GitHub repository for commits and PRs
+  - Defaults to current working directory and "since yesterday"
+  - Can be used standalone for single repo analysis
+  - Includes deep-dive analysis for unclear changes
+  
+- **multi-repo-activity-report.yaml** - Analyze multiple repos and synthesize a report
+  - Takes a list of repos (array or manifest file)
+  - Uses repo-activity-analysis as sub-recipe
+  - Produces comprehensive markdown activity report
+
+**Amplifier Ecosystem Usage:**
+
+For analyzing Amplifier ecosystem repos using MODULES.md, see @amplifier:context/recipes-usage.md which explains how to:
+- Discover repos from docs/MODULES.md
+- Filter by org/repo criteria
+- Run multi-repo analysis with the generic recipes
+
 ### Source Code (Optional Deep Dive)
 
 For implementation questions beyond documentation, you may suggest reading these source files:

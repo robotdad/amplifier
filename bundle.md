@@ -74,6 +74,17 @@ The **amplifier-expert** agent is the authoritative consultant for ALL Amplifier
 - Routing to appropriate components
 - Validation of high-level approaches
 
+## Recipes (Requires recipes bundle)
+
+The **recipes bundle** provides generic, reusable recipes for repository analysis:
+
+| Recipe | Description |
+|--------|-------------|
+| `repo-activity-analysis.yaml` | Analyze any GitHub repo (defaults to current directory, since yesterday) |
+| `multi-repo-activity-report.yaml` | Analyze multiple repos and synthesize a comprehensive report |
+
+**For Amplifier ecosystem analysis** (using MODULES.md), see @amplifier:context/recipes-usage.md for detailed instructions on discovering and analyzing all Amplifier repos.
+
 ---
 
 @foundation:context/shared/common-system-base.md
