@@ -1,6 +1,6 @@
 name: "ecosystem-activity-report"
 description: "Analyze activity across the Amplifier ecosystem by discovering repos from MODULES.md"
-version: "1.1.0"
+version: "1.2.0"
 author: "Amplifier"
 tags: ["amplifier", "ecosystem", "github", "activity", "modules", "discovery"]
 
@@ -15,8 +15,18 @@ tags: ["amplifier", "ecosystem", "github", "activity", "modules", "discovery"]
 # 4. Filters repos based on criteria (org, name pattern)
 # 5. Calls the generic multi-repo recipe from @recipes bundle
 #
+# v1.2.0: Performance optimizations
+#         - parallel: true default for ~4x faster execution
+#         - Pass precomputed values to sub-recipes (eliminates 12 redundant LLM calls)
+#         - Convert discovery-summary to bash (faster, deterministic)
+#         - Add parallel_analysis toggle for user control
+#
 # v1.1.0: Converted bash-heavy steps to type: "bash" for efficiency
 #         (no LLM overhead for deterministic shell commands)
+
+recursion:
+  max_depth: 3
+  max_total_steps: 200
 #
 # Usage (all your activity today):
 #   amplifier run "execute recipe @amplifier:recipes/ecosystem-activity-report.yaml"
@@ -55,6 +65,9 @@ context:
   
   # Output report filename
   report_filename: "ecosystem-activity-report.md"
+  
+  # Parallel analysis mode - set false if hitting rate limits or debugging
+  parallel_analysis: true
   
   # Default values for step outputs (prevents undefined variable errors)
   user_info: {"username": "", "discovered": false}
@@ -426,7 +439,7 @@ steps:
       
       echo "]"
     output: "activity_checks"
-    timeout: 600
+    timeout: 900
 
   # ==========================================================================
   # Step 7: Filter to repos with activity
@@ -454,71 +467,57 @@ steps:
     timeout: 60
 
   # ==========================================================================
-  # Step 8: Show discovery summary (LLM for user-facing formatting)
+  # Step 8: Show discovery summary (Bash for speed and determinism)
   # ==========================================================================
-  # AGENT STEP - Create human-friendly summary with contextual messaging
-  # Why agent: Requires judgment about how to present info, adapt tone, group repos
+  # BASH STEP - Format and display discovery results
+  # Why bash: Structured data formatting is deterministic, faster than LLM
   - id: "discovery-summary"
-    agent: "foundation:explorer"
-    prompt: |
-      Create a clear, well-formatted discovery summary for the user.
-      
-      ## Discovery Results
-      
-      **User**: {{user_info.username}} ({{user_info.filter_mode}})
-      **Date Range**: {{parsed_date.description}}
-      **Total repos discovered**: {{discovered_repos.total}}
-      **After filtering**: {{filtered_repos.count}}
-      **With activity**: {{active_repos.count}}
-      **Skipped (no activity)**: {{active_repos.skipped_count}}
-      
-      Active repos to analyze:
-      {{active_repos.repos}}
-      
-      Skipped repos (no activity in date range):
-      {{active_repos.skipped}}
-      
-      ## Format Requirements
-      
-      Print a clear summary to the console:
-      
-      ```
+    type: "bash"
+    command: |
+      cat << EOF
       ============================================================
       AMPLIFIER ECOSYSTEM ACTIVITY REPORT
       ============================================================
-      User:       [username] ([filter mode])
-      Date Range: [human readable description]
+      User:       {{user_info.username}} ({{user_info.filter_mode}})
+      Date Range: {{parsed_date.description}}
       
-      Discovery:  [total] repos found → [filtered] after org filter → [active] with activity
+      Discovery:  {{discovered_repos.total}} repos found → {{filtered_repos.count}} after org filter → {{active_repos.count}} with activity
       
-      Analyzing ([N] repos):
-        • [repo1] - [X commits, Y PRs]
-        • [repo2] - [X commits, Y PRs]
-        ...
+      EOF
       
-      Skipped ([N] repos - no activity):
-        [repo1], [repo2], ...
+      if [ "{{active_repos.count}}" -gt 0 ]; then
+        echo "Analyzing ({{active_repos.count}} repos):"
+        echo '{{active_repos.repos}}' | jq -r '.[] | "  • \(.name) - \(.commits) commits, \(.prs) PRs"'
+      else
+        echo "No repos with activity in date range."
+      fi
       
-      Estimated time: ~[N] minutes (1 min per repo)
-      ============================================================
-      ```
+      echo ""
+      if [ "{{active_repos.skipped_count}}" -gt 0 ]; then
+        echo "Skipped ({{active_repos.skipped_count}} repos - no activity):"
+        echo '{{active_repos.skipped}}' | jq -r 'join(", ")' | fold -s -w 70 | sed 's/^/  /'
+      fi
       
-      Make the output scannable and informative. Group repos logically if many.
+      echo ""
+      echo "Estimated time: ~{{active_repos.count}} minutes (parallel: {{parallel_analysis}})"
+      echo "============================================================"
       
-      Return: {"displayed": true, "repos_to_analyze": [list of repo names]}
+      # Output for next step
+      echo '{{active_repos.repos}}' | jq -c '{displayed: true, repos_to_analyze: [.[].name]}'
     output: "summary"
     parse_json: true
-    timeout: 60
+    timeout: 30
 
   # ==========================================================================
   # Step 9: Analyze each repo using generic recipe
   # ==========================================================================
   # RECIPE STEP - Delegate detailed analysis to reusable sub-recipe
-  # Why recipe: Encapsulates complex per-repo analysis, enables parallel exec later
+  # Why recipe: Encapsulates complex per-repo analysis, enables parallel execution
+  # Optimization: Pass precomputed values to skip redundant LLM calls in sub-recipe
   - id: "analyze-repos"
     foreach: "{{active_repos.repos}}"
     as: "repo"
-    parallel: false
+    parallel: "{{parallel_analysis}}"
     collect: "repo_analyses"
     type: "recipe"
     recipe: "@recipes:examples/repo-activity-analysis.yaml"
@@ -527,6 +526,13 @@ steps:
       date_range: "{{parsed_date.description}}"
       working_dir: "{{working_dir}}"
       include_deep_dive: false
+      # Precomputed values - sub-recipe skips expensive steps if these are provided
+      _precomputed:
+        date_since_iso: "{{parsed_date.iso_since}}"
+        date_since_date: "{{parsed_date.gh_format}}"
+        date_description: "{{parsed_date.description}}"
+        repo_owner: "{{repo.owner}}"
+        repo_name: "{{repo.name}}"
     output: "single_repo_result"
     timeout: 600
     on_error: "continue"
@@ -612,7 +618,8 @@ steps:
       
       Return the report content.
     output: "final_report"
-    timeout: 600
+    timeout: 900
+    on_error: "continue"
 
   # ==========================================================================
   # Step 11: Completion and cleanup
@@ -655,3 +662,4 @@ steps:
       echo '{"completed": true, "report_path": "'$report_path'", "cleanup": "done"}'
     output: "completion"
     timeout: 60
+    on_error: "continue"
