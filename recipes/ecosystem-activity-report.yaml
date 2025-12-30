@@ -1,6 +1,6 @@
 name: "ecosystem-activity-report"
 description: "Analyze activity across the Amplifier ecosystem by discovering repos from MODULES.md"
-version: "1.2.0"
+version: "1.3.0"
 author: "Amplifier"
 tags: ["amplifier", "ecosystem", "github", "activity", "modules", "discovery"]
 
@@ -15,6 +15,11 @@ tags: ["amplifier", "ecosystem", "github", "activity", "modules", "discovery"]
 # 4. Filters repos based on criteria (org, name pattern)
 # 5. Calls the generic multi-repo recipe from @recipes bundle
 #
+# v1.3.0: Natural language activity scope
+#         - Replace author_filter with activity_scope (natural language)
+#         - Support: "my activity", "all", "bkrabach", "me and robotdad", etc.
+#         - LLM interprets scope request into structured filter
+#
 # v1.2.0: Performance optimizations
 #         - parallel: true default for ~4x faster execution
 #         - Pass precomputed values to sub-recipes (eliminates 12 redundant LLM calls)
@@ -28,18 +33,24 @@ recursion:
   max_depth: 3
   max_total_steps: 200
 #
-# Usage (all your activity today):
+# Usage (your activity today - default):
 #   amplifier run "execute recipe @amplifier:recipes/ecosystem-activity-report.yaml"
 #
 # Usage (all ecosystem activity since yesterday):
-#   amplifier run 'execute recipe @amplifier:recipes/ecosystem-activity-report.yaml with context {
-#     "author_filter": "",
+#   amplifier run 'execute recipe ... with context {
+#     "activity_scope": "all activity",
 #     "date_range": "since yesterday"
 #   }'
 #
-# Usage (specific repos only):
-#   amplifier run 'execute recipe @amplifier:recipes/ecosystem-activity-report.yaml with context {
-#     "repo_filter": "amplifier-core|amplifier-foundation"
+# Usage (specific user):
+#   amplifier run 'execute recipe ... with context {
+#     "activity_scope": "robotdad",
+#     "date_range": "last week"
+#   }'
+#
+# Usage (multiple users):
+#   amplifier run 'execute recipe ... with context {
+#     "activity_scope": "me and robotdad"
 #   }'
 #
 # Requirements:
@@ -50,8 +61,14 @@ context:
   # Date range (natural language) - defaults to today
   date_range: "today"
   
-  # Filter to specific GitHub username (empty = discover current user, "all" = no filter)
-  author_filter: ""
+  # Activity scope (natural language) - who's activity to show
+  # Examples:
+  #   "my activity" or "" (default) - current authenticated user
+  #   "all activity" or "everyone" - no author filter
+  #   "bkrabach" or "activity from bkrabach" - specific user
+  #   "me and robotdad" - multiple users
+  #   "the team" - attempts to discover team from recent contributors
+  activity_scope: ""
   
   # Filter repos by regex pattern (applied to repo name)
   # Examples: "amplifier-core", "amplifier-core|amplifier-foundation", "" (all)
@@ -132,11 +149,10 @@ steps:
     on_error: "fail"
 
   # ==========================================================================
-  # Step 1: Setup working directory and discover GitHub user
+  # Step 1: Setup and check if activity scope needs LLM interpretation
   # ==========================================================================
-  # BASH STEP - No LLM needed for shell commands and API calls
-  # Why bash: mkdir, gh api user are deterministic operations
-  - id: "setup-and-discover-user"
+  # BASH STEP - Handle simple cases without LLM, flag complex cases for LLM
+  - id: "setup-and-check-scope"
     type: "bash"
     command: |
       set -euo pipefail
@@ -144,23 +160,116 @@ steps:
       # Create all working directories upfront
       mkdir -p {{working_dir}}/{discovery,repos,reports}
       
-      # User Discovery
-      author_filter="{{author_filter}}"
+      # Get current user for context
+      current_user=$(gh api user --jq '.login' 2>/dev/null || echo "")
       
-      if [ "$author_filter" = "all" ] || [ "$author_filter" = "ALL" ]; then
-        echo '{"username": "", "discovered": false, "filter_mode": "all"}'
-      elif [ -z "$author_filter" ]; then
-        username=$(gh api user --jq '.login' 2>/dev/null)
-        if [ -n "$username" ]; then
-          echo "{\"username\": \"$username\", \"discovered\": true, \"filter_mode\": \"current_user\"}"
-        else
-          echo '{"username": "", "discovered": false, "filter_mode": "all", "error": "Could not discover user"}'
-        fi
+      scope="{{activity_scope}}"
+      scope_lower=$(echo "$scope" | tr '[:upper:]' '[:lower:]')
+      
+      # Check for simple cases that don't need LLM
+      if [ -z "$scope" ] || [ "$scope_lower" = "my activity" ] || [ "$scope_lower" = "mine" ] || [ "$scope_lower" = "me" ]; then
+        # Current user - no LLM needed
+        jq -n --arg user "$current_user" '{
+          needs_llm: "false",
+          filter_mode: "current_user",
+          usernames: [$user],
+          description: ("your activity (" + $user + ")"),
+          original: "{{activity_scope}}"
+        }'
+      elif [ "$scope_lower" = "all" ] || [ "$scope_lower" = "everyone" ] || [ "$scope_lower" = "all activity" ]; then
+        # All activity - no LLM needed
+        echo '{"needs_llm": "false", "filter_mode": "all", "usernames": [], "description": "all activity", "original": "{{activity_scope}}"}'
+      elif echo "$scope" | grep -qE '^@?[a-zA-Z0-9_-]+$'; then
+        # Simple username (no spaces, "and", etc.) - no LLM needed
+        username=$(echo "$scope" | sed 's/^@//' | tr '[:upper:]' '[:lower:]')
+        jq -n --arg user "$username" '{
+          needs_llm: "false",
+          filter_mode: "specific_users",
+          usernames: [$user],
+          description: ("activity from " + $user),
+          original: "{{activity_scope}}"
+        }'
       else
-        echo "{\"username\": \"$author_filter\", \"discovered\": false, \"filter_mode\": \"specified\"}"
+        # Complex case - needs LLM interpretation
+        jq -n --arg scope "$scope" --arg user "$current_user" '{
+          needs_llm: "true",
+          activity_scope: $scope,
+          current_user: $user
+        }'
       fi
-    output: "user_info"
+    output: "scope_check"
+    parse_json: true
     timeout: 60
+
+  # ==========================================================================
+  # Step 1b: Interpret activity scope (LLM - only for complex cases)
+  # ==========================================================================
+  # AGENT STEP - LLM interprets complex natural language requests
+  - id: "interpret-activity-scope-llm"
+    condition: "{{scope_check.needs_llm}} == 'true'"
+    agent: "foundation:explorer"
+    prompt: |
+      Interpret the activity scope request to determine whose GitHub activity to show.
+      
+      ## Input
+      
+      Activity scope request: "{{scope_check.activity_scope}}"
+      Current authenticated user: "{{scope_check.current_user}}"
+      
+      ## Interpretation Guidelines
+      
+      | Input | Interpretation |
+      |-------|---------------|
+      | "me and robotdad" | Multiple users: [current_user, robotdad] |
+      | "bkrabach and robotdad" | Multiple users: [bkrabach, robotdad] |
+      | "activity from john" | Specific user: john |
+      | "john's activity" | Specific user: john |
+      | "the team", "our team" | Use current_user (can't auto-discover team) |
+      
+      Handle variations gracefully:
+      - Case insensitive: "BKRABACH" → "bkrabach"
+      - With/without @: "@john" → "john"
+      - Possessive: "john's activity" → "john"
+      - Pronouns: "my", "mine", "me" → current_user
+      
+      ## Output
+      
+      Return JSON:
+      {
+        "filter_mode": "current_user" | "all" | "specific_users",
+        "usernames": ["list", "of", "usernames"],
+        "description": "human readable (e.g., 'activity from bkrabach and robotdad')",
+        "original": "{{scope_check.activity_scope}}"
+      }
+    output: "user_info_llm"
+    parse_json: true
+    timeout: 60
+
+  # ==========================================================================
+  # Step 1c: Use precomputed scope (only runs if LLM was skipped)
+  # ==========================================================================
+  - id: "use-precomputed-scope"
+    condition: "{{scope_check.needs_llm}} == 'false'"
+    type: "bash"
+    command: |
+      echo '{{scope_check}}' | jq 'del(.needs_llm)'
+    output: "user_info"
+    parse_json: true
+    timeout: 10
+
+  # ==========================================================================
+  # Step 1d: Use LLM scope (only runs if LLM step ran)
+  # ==========================================================================
+  - id: "use-llm-scope"
+    condition: "{{scope_check.needs_llm}} == 'true'"
+    type: "bash"
+    command: |
+      cat << 'SCOPEEOF'
+      {{user_info_llm}}
+      SCOPEEOF
+    output: "user_info"
+    parse_json: true
+    timeout: 10
 
   # ==========================================================================
   # Step 2: Parse date range (LLM for natural language flexibility)
@@ -391,9 +500,11 @@ steps:
       printf '%s\n' '{{filtered_repos.repos}}' > repos-to-check.json
       
       filter_mode="{{user_info.filter_mode}}"
-      username="{{user_info.username}}"
       since_iso="{{parsed_date.iso_since}}"
       gh_date="{{parsed_date.gh_format}}"
+      
+      # Save usernames for processing (may be multiple)
+      printf '%s\n' '{{user_info.usernames}}' > usernames.json
       
       # Process all repos in a bash loop with rate limiting
       echo "["
@@ -417,23 +528,31 @@ steps:
           # No user filter - mark all as active (skip API calls)
           echo "{\"repo\": \"$name\", \"owner\": \"$owner\", \"url\": \"$url\", \"commits\": -1, \"prs\": -1, \"has_activity\": true, \"skipped_check\": true}"
         else
-          # Check commits
-          commits=$(gh api "repos/$owner/$name/commits?author=$username&since=$since_iso&per_page=100" --jq 'length' 2>/dev/null || echo "0")
+          # Check commits and PRs for each username in the list
+          total_commits=0
+          total_prs=0
           
-          # Brief pause between API calls
-          sleep 0.3
-          
-          # Check PRs - use simpler query to avoid search API rate limits
-          prs=$(gh api "repos/$owner/$name/pulls?state=all&per_page=100" --jq "[.[] | select(.user.login == \"$username\" and .updated_at >= \"$since_iso\")] | length" 2>/dev/null || echo "0")
+          for username in $(jq -r '.[]' usernames.json); do
+            # Check commits for this user
+            user_commits=$(gh api "repos/$owner/$name/commits?author=$username&since=$since_iso&per_page=100" --jq 'length' 2>/dev/null || echo "0")
+            total_commits=$((total_commits + user_commits))
+            
+            # Brief pause between API calls
+            sleep 0.3
+            
+            # Check PRs for this user
+            user_prs=$(gh api "repos/$owner/$name/pulls?state=all&per_page=100" --jq "[.[] | select(.user.login == \"$username\" and .updated_at >= \"$since_iso\")] | length" 2>/dev/null || echo "0")
+            total_prs=$((total_prs + user_prs))
+          done
           
           # Determine activity
-          if [ "$commits" -gt 0 ] 2>/dev/null || [ "$prs" -gt 0 ] 2>/dev/null; then
+          if [ "$total_commits" -gt 0 ] 2>/dev/null || [ "$total_prs" -gt 0 ] 2>/dev/null; then
             has_activity=true
           else
             has_activity=false
           fi
           
-          echo "{\"repo\": \"$name\", \"owner\": \"$owner\", \"url\": \"$url\", \"commits\": $commits, \"prs\": $prs, \"has_activity\": $has_activity}"
+          echo "{\"repo\": \"$name\", \"owner\": \"$owner\", \"url\": \"$url\", \"commits\": $total_commits, \"prs\": $total_prs, \"has_activity\": $has_activity}"
         fi
       done
       
@@ -478,7 +597,7 @@ steps:
       ============================================================
       AMPLIFIER ECOSYSTEM ACTIVITY REPORT
       ============================================================
-      User:       {{user_info.username}} ({{user_info.filter_mode}})
+      Scope:      {{user_info.description}}
       Date Range: {{parsed_date.description}}
       
       Discovery:  {{discovered_repos.total}} repos found → {{filtered_repos.count}} after org filter → {{active_repos.count}} with activity
@@ -520,7 +639,7 @@ steps:
     parallel: "{{parallel_analysis}}"
     collect: "repo_analyses"
     type: "recipe"
-    recipe: "@recipes:examples/repo-activity-analysis.yaml"
+    recipe: "/Users/brkrabac/tmp-recipe-work/amplifier-bundle-recipes/examples/repo-activity-analysis.yaml"
     context:
       repo_url: "{{repo.url}}"
       date_range: "{{parsed_date.description}}"
@@ -550,7 +669,7 @@ steps:
       
       ## Input Data
       
-      User: {{user_info.username}} ({{user_info.filter_mode}})
+      Scope: {{user_info.description}}
       Date Range: {{parsed_date.description}}
       Repos analyzed: {{active_repos.count}}
       Repos skipped (no activity): {{active_repos.skipped}}
@@ -565,7 +684,7 @@ steps:
       # Amplifier Ecosystem Activity Report
       
       **Generated**: [current timestamp]
-      **User**: {{user_info.username}}
+      **Scope**: {{user_info.description}}
       **Date Range**: {{parsed_date.description}}
       **Repos Analyzed**: {{active_repos.count}}
       
@@ -638,7 +757,7 @@ steps:
       REPORT COMPLETE
       ============================================================
       COMPLETE_EOF
-      echo "User:   {{user_info.username}}"
+      echo "Scope:  {{user_info.description}}"
       echo "Range:  {{parsed_date.description}}"
       echo "Repos:  {{active_repos.count}} analyzed, {{active_repos.skipped_count}} skipped"
       echo "Report: $report_path"
