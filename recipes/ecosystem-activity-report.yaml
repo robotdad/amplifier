@@ -639,7 +639,7 @@ steps:
     parallel: "{{parallel_analysis}}"
     collect: "repo_analyses"
     type: "recipe"
-    recipe: "/Users/brkrabac/tmp-recipe-work/amplifier-bundle-recipes/examples/repo-activity-analysis.yaml"
+    recipe: "@recipes:examples/repo-activity-analysis.yaml"
     context:
       repo_url: "{{repo.url}}"
       date_range: "{{parsed_date.description}}"
