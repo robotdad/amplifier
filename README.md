@@ -391,7 +391,7 @@ Profiles configure your Amplifier environment with providers, tools, agents, and
 
 Agents are specialized AI personas for focused tasks.
 
-**→ [Agent Authoring Guide](https://github.com/microsoft/amplifier-profiles/blob/main/docs/AGENT_AUTHORING.md)** - Complete guide to creating agents
+**→ [Agent Authoring Guide](https://github.com/microsoft/amplifier-foundation/blob/main/docs/AGENT_AUTHORING.md)** - Complete guide to creating agents
 
 ---
 

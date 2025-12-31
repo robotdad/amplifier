@@ -18,7 +18,7 @@ audience: all
 
 - [USER_ONBOARDING.md](./USER_ONBOARDING.md) — **Start here!** Complete getting started guide
 - **[Profile Authoring](https://github.com/microsoft/amplifier-profiles/blob/main/docs/PROFILE_AUTHORING.md)** — Customize your environment
-- **[Agent Authoring](https://github.com/microsoft/amplifier-profiles/blob/main/docs/AGENT_AUTHORING.md)** — Create specialized agents
+- **[Agent Authoring](https://github.com/microsoft/amplifier-foundation/blob/main/docs/AGENT_AUTHORING.md)** — Create specialized agents
 - **[Collections User Guide](https://github.com/microsoft/amplifier-collections/blob/main/docs/USER_GUIDE.md)** — Using collections
 - **[Collection Authoring](https://github.com/microsoft/amplifier-collections/blob/main/docs/AUTHORING.md)** — Creating collections
 - [SCENARIO_TOOLS_GUIDE.md](./SCENARIO_TOOLS_GUIDE.md) — Building sophisticated CLI tools

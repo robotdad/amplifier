@@ -635,7 +635,7 @@ When no scope specified, commands prompt interactively.
 - **[Collection Authoring](https://github.com/microsoft/amplifier-collections/blob/main/docs/AUTHORING.md)** - Creating collections
 - [SCENARIO_TOOLS_GUIDE.md](SCENARIO_TOOLS_GUIDE.md) - Building sophisticated CLI tools
 - **[Profile Authoring](https://github.com/microsoft/amplifier-profiles/blob/main/docs/PROFILE_AUTHORING.md)** - Create custom profiles
-- **[Agent Authoring](https://github.com/microsoft/amplifier-profiles/blob/main/docs/AGENT_AUTHORING.md)** - Create custom agents
+- **[Agent Authoring](https://github.com/microsoft/amplifier-foundation/blob/main/docs/AGENT_AUTHORING.md)** - Create custom agents
 - **[Profile System Design](https://github.com/microsoft/amplifier-profiles/blob/main/docs/DESIGN.md)** - Profile system architecture
 - **[Module Resolution](https://github.com/microsoft/amplifier-module-resolution/blob/main/docs/USER_GUIDE.md)** - Module source management
 - [TOOLKIT_GUIDE.md](TOOLKIT_GUIDE.md) - Toolkit utilities for building tools
