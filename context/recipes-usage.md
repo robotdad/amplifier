@@ -8,7 +8,7 @@ Ensure the `recipes` bundle is loaded. The recipes bundle provides the `tool-rec
 
 ## Available Generic Recipes
 
-The recipes bundle includes these generic recipes in `@recipes:examples/`:
+The recipes bundle includes these generic recipes in `recipes:examples/`:
 
 | Recipe | Description | Default |
 |--------|-------------|---------|
@@ -21,10 +21,10 @@ The simplest use case - analyze the repo you're currently in:
 
 ```bash
 # Analyze current repo since yesterday
-amplifier recipes execute @recipes:examples/repo-activity-analysis.yaml
+amplifier recipes execute recipes:examples/repo-activity-analysis.yaml
 
 # Analyze with custom date range
-amplifier recipes execute @recipes:examples/repo-activity-analysis.yaml \
+amplifier recipes execute recipes:examples/repo-activity-analysis.yaml \
   --context '{"date_range": "last 7 days"}'
 ```
 
@@ -52,7 +52,7 @@ grep -oE 'https://github.com/[^)>\s"]+' docs/MODULES.md | \
 Or have an agent discover them:
 
 ```
-Discover all GitHub repository URLs in @amplifier:docs/MODULES.md.
+Discover all GitHub repository URLs in amplifier:docs/MODULES.md.
 Extract owner and name for each, and write to repos-manifest.json as:
 [{"owner": "...", "name": "...", "url": "..."}, ...]
 ```
@@ -72,14 +72,14 @@ jq '[.[] | select(.name | test("amplifier-core|amplifier-foundation"))]' repos-m
 ### Step 3: Run Multi-Repo Analysis
 
 ```bash
-amplifier recipes execute @recipes:examples/multi-repo-activity-report.yaml \
+amplifier recipes execute recipes:examples/multi-repo-activity-report.yaml \
   --context '{"repos_manifest": "./repos-manifest.json", "date_range": "since yesterday"}'
 ```
 
 Or with an inline repos array:
 
 ```bash
-amplifier recipes execute @recipes:examples/multi-repo-activity-report.yaml \
+amplifier recipes execute recipes:examples/multi-repo-activity-report.yaml \
   --context '{
     "repos": [
       {"owner": "microsoft", "name": "amplifier-core"},
@@ -106,7 +106,7 @@ grep -oE 'https://github.com/microsoft/[^)>\s"]+' amplifier/docs/MODULES.md | \
   > amplifier-repos.json
 
 # 3. Run the multi-repo analysis
-amplifier recipes execute @recipes:examples/multi-repo-activity-report.yaml \
+amplifier recipes execute recipes:examples/multi-repo-activity-report.yaml \
   --context '{"repos_manifest": "./amplifier-repos.json", "date_range": "since yesterday"}'
 
 # 4. Find the report
@@ -161,3 +161,10 @@ ai_working/
 4. **Approval gates**: The multi-repo recipe has an approval gate after discovery - review the plan before committing to a long analysis.
 
 5. **Parallel vs sequential**: The multi-repo recipe runs sequentially by default to avoid rate limits. Set `parallel: true` in the recipe for faster execution if you have higher rate limits.
+
+## Need Help with Recipes?
+
+For recipe authoring assistance, delegate to `recipes:recipe-author` which has direct access to:
+- `recipes:docs/RECIPE_SCHEMA.md` - Complete schema reference
+- `recipes:docs/BEST_PRACTICES.md` - Patterns and anti-patterns
+- `recipes:docs/EXAMPLES_CATALOG.md` - Working examples
