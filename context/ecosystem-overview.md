@@ -57,11 +57,30 @@ Multi-step AI agent orchestration for repeatable workflows:
 - Approval gates for human-in-loop checkpoints
 - Resumability after interruption
 
-**Generic recipes available in the recipes bundle:**
-- `repo-activity-analysis.yaml` - Analyze any GitHub repo (defaults to current directory, since yesterday)
-- `multi-repo-activity-report.yaml` - Analyze multiple repos and synthesize a report
+## Ecosystem Activity Report
 
-**Amplifier ecosystem usage:** See @amplifier:context/recipes-usage.md for how to use these recipes with MODULES.md to analyze Amplifier ecosystem repos.
+**Want to know what's been happening across the Amplifier ecosystem?** Use the ecosystem activity report recipe:
+
+```bash
+# Your activity today (default)
+amplifier recipes execute @amplifier:recipes/ecosystem-activity-report.yaml
+
+# All ecosystem activity since yesterday
+amplifier recipes execute @amplifier:recipes/ecosystem-activity-report.yaml \
+  --context '{"activity_scope": "all", "date_range": "since yesterday"}'
+
+# Specific user's activity last week
+amplifier recipes execute @amplifier:recipes/ecosystem-activity-report.yaml \
+  --context '{"activity_scope": "robotdad", "date_range": "last week"}'
+```
+
+This recipe automatically:
+- Discovers all repos from @amplifier:docs/MODULES.md
+- Filters to repos with activity in the date range
+- Analyzes commits and PRs across the ecosystem
+- Generates a comprehensive markdown report
+
+See @amplifier:recipes/ecosystem-activity-report.yaml for full options.
 
 ## The Philosophy
 
