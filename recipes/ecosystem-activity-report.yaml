@@ -1,6 +1,6 @@
 name: "ecosystem-activity-report"
 description: "Analyze activity across the Amplifier ecosystem by discovering repos from MODULES.md"
-version: "1.4.0"
+version: "1.5.0"
 author: "Amplifier"
 tags: ["amplifier", "ecosystem", "github", "activity", "modules", "discovery"]
 
@@ -14,6 +14,11 @@ tags: ["amplifier", "ecosystem", "github", "activity", "modules", "discovery"]
 # 3. Reads MODULES.md to discover all ecosystem repos
 # 4. Filters repos based on criteria (org, name pattern)
 # 5. Calls the generic multi-repo recipe from @recipes bundle
+#
+# v1.5.0: Timezone and date handling fixes
+#         - Use LOCAL timezone for date parsing (not UTC)
+#         - No end date for "since X" queries (prevents missing recent commits)
+#         - Explicit timezone detection and display in description
 #
 # v1.4.0: Reliability and completeness improvements
 #         - Fix "all activity" mode to actually check repos for commits (was skipping)
@@ -281,6 +286,7 @@ steps:
   # Step 2: Parse date range (LLM for natural language flexibility)
   # ==========================================================================
   # AGENT STEP - LLM handles natural language interpretation
+  # CRITICAL: Uses LOCAL timezone, NOT UTC. No end date for "since X" queries.
   - id: "parse-date-range"
     agent: "foundation:explorer"
     prompt: |
@@ -290,32 +296,42 @@ steps:
       
       Date range: "{{date_range}}"
       
-      First, get the current date/time:
+      ## CRITICAL: Use LOCAL Timezone
+      
+      First, get the current date/time IN THE USER'S LOCAL TIMEZONE:
       ```bash
-      date -u +%Y-%m-%dT%H:%M:%SZ
+      # Get local time AND timezone offset
+      date '+%Y-%m-%d %H:%M:%S %Z (UTC%:z)'
       ```
+      
+      The user's request is in THEIR local time. "Tuesday 3pm" means 3pm in their
+      timezone, not UTC. You must:
+      1. Determine the start time in the user's local timezone
+      2. Convert to UTC (with Z suffix) for the GitHub API
+      
+      ## CRITICAL: No End Date for Open-Ended Queries
+      
+      When the query is "since X" or "from X" without an explicit end date:
+      - Set iso_until to "" (empty string)
+      - Do NOT set an end date - we want ALL commits since the start time
+      - This prevents timezone edge cases from missing recent commits
+      
+      Only set iso_until when there's an EXPLICIT end date like "Dec 15-20".
       
       ## Interpretation Guidelines
       
-      | Input | Interpretation |
-      |-------|---------------|
-      | "today" | From midnight today (00:00:00Z) to now |
-      | "yesterday" | From midnight yesterday to midnight today |
-      | "since yesterday" | From midnight yesterday to now |
-      | "past day", "last day", "last 24 hours" | Same as "since yesterday" |
-      | "last 7 days", "past week", "this week" | From 7 days ago to now |
-      | "last 2 weeks" | From 14 days ago to now |
-      | "last month", "past 30 days" | From 30 days ago to now |
-      | "this month" | From 1st of current month to now |
-      | "since Monday" | From most recent Monday to now |
-      | "since Dec 15" | From Dec 15 00:00:00Z to now |
-      | "Dec 15-20" | From Dec 15 to Dec 20 23:59:59Z |
-      | "since the 1st" | From 1st of current month to now |
+      | Input | Start (local time) | End |
+      |-------|-------------------|-----|
+      | "today" | Midnight today | "" (none - open ended) |
+      | "since yesterday" | Midnight yesterday | "" (none) |
+      | "since Tuesday 3pm" | Tuesday 15:00 local | "" (none) |
+      | "last 7 days" | 7 days ago midnight | "" (none) |
+      | "Dec 15-20" | Dec 15 00:00 local | Dec 20 23:59:59 local (explicit range) |
       
       Handle variations gracefully:
-      - "the past few days" → interpret as ~3 days
-      - "recently" → interpret as last 7 days
-      - Typos like "yeterday" → interpret as "yesterday"
+      - "the past few days" → ~3 days ago, no end date
+      - "recently" → 7 days ago, no end date
+      - Any "since X", "from X", "after X" → no end date
       
       ## Output
       
@@ -323,10 +339,13 @@ steps:
       {
         "original": "{{date_range}}",
         "iso_since": "YYYY-MM-DDTHH:MM:SSZ",
-        "iso_until": "YYYY-MM-DDTHH:MM:SSZ",
+        "iso_until": "",
         "gh_format": "YYYY-MM-DD",
-        "description": "human readable description (e.g., 'since yesterday (2024-12-28 to now)')"
+        "local_timezone": "detected timezone (e.g., PST, EST, UTC-8)",
+        "description": "human readable (e.g., 'since Tuesday 3pm PST (2024-12-31T23:00:00Z)')"
       }
+      
+      IMPORTANT: iso_until should be "" (empty) unless an explicit end date was given.
     output: "parsed_date"
     parse_json: true
     timeout: 60
