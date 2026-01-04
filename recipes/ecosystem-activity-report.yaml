@@ -1,6 +1,6 @@
 name: "ecosystem-activity-report"
 description: "Analyze activity across the Amplifier ecosystem by discovering repos from MODULES.md"
-version: "1.5.0"
+version: "1.6.0"
 author: "Amplifier"
 tags: ["amplifier", "ecosystem", "github", "activity", "modules", "discovery"]
 
@@ -14,6 +14,12 @@ tags: ["amplifier", "ecosystem", "github", "activity", "modules", "discovery"]
 # 3. Reads MODULES.md to discover all ecosystem repos
 # 4. Filters repos based on criteria (org, name pattern)
 # 5. Calls the generic multi-repo recipe from @recipes bundle
+#
+# v1.6.0: Recipe quality improvements from recipe-author review
+#         - Add api_delay_seconds configurable rate limiting (was hardcoded 0.5s)
+#         - Add api_retry_attempts for resilient GitHub API calls
+#         - Replace manual JSON construction with jq -n (safer)
+#         - Standardize on printf over heredoc for YAML safety
 #
 # v1.5.0: Timezone and date handling fixes
 #         - Use LOCAL timezone for date parsing (not UTC)
@@ -96,6 +102,14 @@ context:
   
   # Parallel analysis mode - set false if hitting rate limits or debugging
   parallel_analysis: true
+  
+  # Rate limiting: delay between GitHub API calls (seconds)
+  # Increase if hitting rate limits, decrease if you have higher limits
+  api_delay_seconds: 0.5
+  
+  # Retry configuration for GitHub API calls
+  # Set to 1 for no retries, higher for more resilience to transient failures
+  api_retry_attempts: 3
   
   # Default values for step outputs (prevents undefined variable errors)
   user_info: {"username": "", "discovered": false}
@@ -395,27 +409,9 @@ steps:
             echo "{\"owner\": \"$owner\", \"name\": \"$repo\", \"url\": \"$url\"}"
           done > repos-extracted.jsonl
       
-      # Count and format as JSON array
-      count=$(wc -l < repos-extracted.jsonl | tr -d ' ')
-      
-      # Build final JSON
-      echo "{" > all-repos.json
-      echo "  \"total\": $count," >> all-repos.json
-      echo "  \"repos\": [" >> all-repos.json
-      
-      # Add each repo with proper comma handling
-      i=0
-      while read line; do
-        i=$((i + 1))
-        if [ $i -eq $count ]; then
-          echo "    $line" >> all-repos.json
-        else
-          echo "    $line," >> all-repos.json
-        fi
-      done < repos-extracted.jsonl
-      
-      echo "  ]" >> all-repos.json
-      echo "}" >> all-repos.json
+      # Build final JSON using jq -n (safer than manual construction)
+      jq -n --slurpfile repos <(jq -s '.' repos-extracted.jsonl) \
+        '{total: ($repos[0] | length), repos: $repos[0]}' > all-repos.json
       
       cat all-repos.json
     output: "discovered_repos"
@@ -531,6 +527,26 @@ steps:
       # Save usernames for processing (may be multiple)
       printf '%s\n' '{{user_info.usernames}}' > usernames.json
       
+      # Configurable rate limiting and retry settings
+      api_delay={{api_delay_seconds}}
+      max_retries={{api_retry_attempts}}
+      
+      # Helper function: gh API call with retry logic
+      gh_api_retry() {
+        local endpoint="$1"
+        local jq_filter="$2"
+        local attempt=1
+        local result=""
+        
+        while [ $attempt -le $max_retries ]; do
+          result=$(gh api "$endpoint" --jq "$jq_filter" 2>/dev/null) && break
+          attempt=$((attempt + 1))
+          [ $attempt -le $max_retries ] && sleep $((attempt * 2))  # Exponential backoff
+        done
+        
+        echo "${result:-0}"
+      }
+      
       # Process all repos in a bash loop with rate limiting
       echo "["
       first=true
@@ -545,26 +561,29 @@ steps:
           first=false
         else
           echo ","
-          # Rate limiting: small delay between repos to avoid API limits
-          sleep 0.5
+          # Rate limiting: configurable delay between repos
+          sleep $api_delay
         fi
         
         if [ "$filter_mode" = "all" ]; then
           # Check if repo has ANY commits in date range (don't skip!)
-          all_commits=$(gh api "repos/$owner/$name/commits?since=$since_iso&per_page=1" --jq 'length' 2>/dev/null || echo "0")
+          all_commits=$(gh_api_retry "repos/$owner/$name/commits?since=$since_iso&per_page=1" 'length')
           
           if [ "${all_commits:-0}" -gt 0 ]; then
             # Get actual commit count for repos with activity
-            actual_count=$(gh api "repos/$owner/$name/commits?since=$since_iso&per_page=100" --jq 'length' 2>/dev/null || echo "$all_commits")
-            echo "{\"repo\": \"$name\", \"owner\": \"$owner\", \"url\": \"$url\", \"commits\": $actual_count, \"prs\": -1, \"has_activity\": true}"
+            actual_count=$(gh_api_retry "repos/$owner/$name/commits?since=$since_iso&per_page=100" 'length')
+            jq -n --arg repo "$name" --arg owner "$owner" --arg url "$url" --argjson commits "$actual_count" \
+              '{repo: $repo, owner: $owner, url: $url, commits: $commits, prs: -1, has_activity: true}'
           else
             # Also check PRs - repo might have PR-only activity
-            all_prs=$(gh api "repos/$owner/$name/pulls?state=all&per_page=100" \
-              --jq "[.[] | select(.created_at >= \"$since_iso\" or .merged_at >= \"$since_iso\")] | length" 2>/dev/null || echo "0")
+            all_prs=$(gh_api_retry "repos/$owner/$name/pulls?state=all&per_page=100" \
+              "[.[] | select(.created_at >= \"$since_iso\" or .merged_at >= \"$since_iso\")] | length")
             if [ "${all_prs:-0}" -gt 0 ]; then
-              echo "{\"repo\": \"$name\", \"owner\": \"$owner\", \"url\": \"$url\", \"commits\": 0, \"prs\": $all_prs, \"has_activity\": true}"
+              jq -n --arg repo "$name" --arg owner "$owner" --arg url "$url" --argjson prs "$all_prs" \
+                '{repo: $repo, owner: $owner, url: $url, commits: 0, prs: $prs, has_activity: true}'
             else
-              echo "{\"repo\": \"$name\", \"owner\": \"$owner\", \"url\": \"$url\", \"commits\": 0, \"prs\": 0, \"has_activity\": false}"
+              jq -n --arg repo "$name" --arg owner "$owner" --arg url "$url" \
+                '{repo: $repo, owner: $owner, url: $url, commits: 0, prs: 0, has_activity: false}'
             fi
           fi
         else
@@ -573,26 +592,29 @@ steps:
           total_prs=0
           
           for username in $(jq -r '.[]' usernames.json); do
-            # Check commits for this user
-            user_commits=$(gh api "repos/$owner/$name/commits?author=$username&since=$since_iso&per_page=100" --jq 'length' 2>/dev/null || echo "0")
+            # Check commits for this user (with retry)
+            user_commits=$(gh_api_retry "repos/$owner/$name/commits?author=$username&since=$since_iso&per_page=100" 'length')
             total_commits=$((total_commits + user_commits))
             
-            # Brief pause between API calls
-            sleep 0.3
+            # Rate limiting between API calls
+            sleep $api_delay
             
-            # Check PRs for this user
-            user_prs=$(gh api "repos/$owner/$name/pulls?state=all&per_page=100" --jq "[.[] | select(.user.login == \"$username\" and (.created_at >= \"$since_iso\" or .merged_at >= \"$since_iso\"))] | length" 2>/dev/null || echo "0")
+            # Check PRs for this user (with retry)
+            user_prs=$(gh_api_retry "repos/$owner/$name/pulls?state=all&per_page=100" \
+              "[.[] | select(.user.login == \"$username\" and (.created_at >= \"$since_iso\" or .merged_at >= \"$since_iso\"))] | length")
             total_prs=$((total_prs + user_prs))
           done
           
-          # Determine activity
+          # Determine activity and output using jq -n (safer JSON construction)
           if [ "$total_commits" -gt 0 ] 2>/dev/null || [ "$total_prs" -gt 0 ] 2>/dev/null; then
-            has_activity=true
+            jq -n --arg repo "$name" --arg owner "$owner" --arg url "$url" \
+              --argjson commits "$total_commits" --argjson prs "$total_prs" \
+              '{repo: $repo, owner: $owner, url: $url, commits: $commits, prs: $prs, has_activity: true}'
           else
-            has_activity=false
+            jq -n --arg repo "$name" --arg owner "$owner" --arg url "$url" \
+              --argjson commits "$total_commits" --argjson prs "$total_prs" \
+              '{repo: $repo, owner: $owner, url: $url, commits: $commits, prs: $prs, has_activity: false}'
           fi
-          
-          echo "{\"repo\": \"$name\", \"owner\": \"$owner\", \"url\": \"$url\", \"commits\": $total_commits, \"prs\": $total_prs, \"has_activity\": $has_activity}"
         fi
       done
       
@@ -633,36 +655,35 @@ steps:
   - id: "discovery-summary"
     type: "bash"
     command: |
-      cat << EOF
-      ============================================================
-      AMPLIFIER ECOSYSTEM ACTIVITY REPORT
-      ============================================================
-      Scope:      {{user_info.description}}
-      Date Range: {{parsed_date.description}}
-      
-      Discovery:  {{discovered_repos.total}} repos found → {{filtered_repos.count}} after org filter → {{active_repos.count}} with activity
-      
-      EOF
+      # Use printf instead of heredoc for YAML safety
+      printf '%s\n' "============================================================"
+      printf '%s\n' "AMPLIFIER ECOSYSTEM ACTIVITY REPORT"
+      printf '%s\n' "============================================================"
+      printf '%s\n' "Scope:      {{user_info.description}}"
+      printf '%s\n' "Date Range: {{parsed_date.description}}"
+      printf '%s\n' ""
+      printf '%s\n' "Discovery:  {{discovered_repos.total}} repos found → {{filtered_repos.count}} after org filter → {{active_repos.count}} with activity"
+      printf '%s\n' ""
       
       if [ "{{active_repos.count}}" -gt 0 ]; then
-        echo "Analyzing ({{active_repos.count}} repos):"
-        echo '{{active_repos.repos}}' | jq -r '.[] | "  • \(.name) - \(.commits) commits, \(.prs) PRs"'
+        printf '%s\n' "Analyzing ({{active_repos.count}} repos):"
+        printf '%s\n' '{{active_repos.repos}}' | jq -r '.[] | "  • \(.name) - \(.commits) commits, \(.prs) PRs"'
       else
-        echo "No repos with activity in date range."
+        printf '%s\n' "No repos with activity in date range."
       fi
       
-      echo ""
+      printf '%s\n' ""
       if [ "{{active_repos.skipped_count}}" -gt 0 ]; then
-        echo "Skipped ({{active_repos.skipped_count}} repos - no activity):"
-        echo '{{active_repos.skipped}}' | jq -r 'join(", ")' | fold -s -w 70 | sed 's/^/  /'
+        printf '%s\n' "Skipped ({{active_repos.skipped_count}} repos - no activity):"
+        printf '%s\n' '{{active_repos.skipped}}' | jq -r 'join(", ")' | fold -s -w 70 | sed 's/^/  /'
       fi
       
-      echo ""
-      echo "Estimated time: ~{{active_repos.count}} minutes (parallel: {{parallel_analysis}})"
-      echo "============================================================"
+      printf '%s\n' ""
+      printf '%s\n' "Estimated time: ~{{active_repos.count}} minutes (parallel: {{parallel_analysis}})"
+      printf '%s\n' "============================================================"
       
       # Output for next step
-      echo '{{active_repos.repos}}' | jq -c '{displayed: true, repos_to_analyze: [.[].name]}'
+      printf '%s\n' '{{active_repos.repos}}' | jq -c '{displayed: true, repos_to_analyze: [.[].name]}'
     output: "summary"
     parse_json: true
     timeout: 30
@@ -821,21 +842,19 @@ steps:
       # Get report path
       report_path=$(realpath {{working_dir}}/reports/{{report_filename}} 2>/dev/null || echo "{{working_dir}}/reports/{{report_filename}}")
       
-      # Print completion summary
-      cat << 'COMPLETE_EOF'
-      ============================================================
-      REPORT COMPLETE
-      ============================================================
-      COMPLETE_EOF
-      echo "Scope:  {{user_info.description}}"
-      echo "Range:  {{parsed_date.description}}"
-      echo "Repos:  {{active_repos.count}} analyzed, {{active_repos.skipped_count}} skipped"
-      echo "Report: $report_path"
-      echo "============================================================"
+      # Print completion summary using printf (standardized over heredoc)
+      printf '%s\n' "============================================================"
+      printf '%s\n' "REPORT COMPLETE"
+      printf '%s\n' "============================================================"
+      printf '%s\n' "Scope:  {{user_info.description}}"
+      printf '%s\n' "Range:  {{parsed_date.description}}"
+      printf '%s\n' "Repos:  {{active_repos.count}} analyzed, {{active_repos.skipped_count}} skipped"
+      printf '%s\n' "Report: $report_path"
+      printf '%s\n' "============================================================"
       
       # Cleanup temporary files (keep reports/)
-      echo ""
-      echo "Cleaning up temporary files..."
+      printf '%s\n' ""
+      printf '%s\n' "Cleaning up temporary files..."
       
       # Remove discovery intermediate files
       rm -rf {{working_dir}}/discovery
@@ -844,11 +863,12 @@ steps:
       rm -rf {{working_dir}}/repos
       
       # Show what remains
-      echo "Remaining in {{working_dir}}:"
+      printf '%s\n' "Remaining in {{working_dir}}:"
       ls -la {{working_dir}}/
       
-      echo ""
-      echo '{"completed": true, "report_path": "'$report_path'", "cleanup": "done"}'
+      printf '%s\n' ""
+      # Use jq -n for safe JSON construction
+      jq -n --arg path "$report_path" '{completed: true, report_path: $path, cleanup: "done"}'
     output: "completion"
     timeout: 60
     on_error: "continue"
