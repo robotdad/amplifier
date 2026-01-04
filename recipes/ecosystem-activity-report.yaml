@@ -1,6 +1,6 @@
 name: "ecosystem-activity-report"
 description: "Analyze activity across the Amplifier ecosystem by discovering repos from MODULES.md"
-version: "1.3.0"
+version: "1.4.0"
 author: "Amplifier"
 tags: ["amplifier", "ecosystem", "github", "activity", "modules", "discovery"]
 
@@ -14,6 +14,12 @@ tags: ["amplifier", "ecosystem", "github", "activity", "modules", "discovery"]
 # 3. Reads MODULES.md to discover all ecosystem repos
 # 4. Filters repos based on criteria (org, name pattern)
 # 5. Calls the generic multi-repo recipe from @recipes bundle
+#
+# v1.4.0: Reliability and completeness improvements
+#         - Fix "all activity" mode to actually check repos for commits (was skipping)
+#         - Fix PR detection to use created_at/merged_at (not updated_at)
+#         - Add explicit write-report step (LLM file writes are non-deterministic)
+#         - Change synthesize-report on_error to "fail" (critical step)
 #
 # v1.3.0: Natural language activity scope
 #         - Replace author_filter with activity_scope (natural language)
@@ -525,8 +531,23 @@ steps:
         fi
         
         if [ "$filter_mode" = "all" ]; then
-          # No user filter - mark all as active (skip API calls)
-          echo "{\"repo\": \"$name\", \"owner\": \"$owner\", \"url\": \"$url\", \"commits\": -1, \"prs\": -1, \"has_activity\": true, \"skipped_check\": true}"
+          # Check if repo has ANY commits in date range (don't skip!)
+          all_commits=$(gh api "repos/$owner/$name/commits?since=$since_iso&per_page=1" --jq 'length' 2>/dev/null || echo "0")
+          
+          if [ "${all_commits:-0}" -gt 0 ]; then
+            # Get actual commit count for repos with activity
+            actual_count=$(gh api "repos/$owner/$name/commits?since=$since_iso&per_page=100" --jq 'length' 2>/dev/null || echo "$all_commits")
+            echo "{\"repo\": \"$name\", \"owner\": \"$owner\", \"url\": \"$url\", \"commits\": $actual_count, \"prs\": -1, \"has_activity\": true}"
+          else
+            # Also check PRs - repo might have PR-only activity
+            all_prs=$(gh api "repos/$owner/$name/pulls?state=all&per_page=100" \
+              --jq "[.[] | select(.created_at >= \"$since_iso\" or .merged_at >= \"$since_iso\")] | length" 2>/dev/null || echo "0")
+            if [ "${all_prs:-0}" -gt 0 ]; then
+              echo "{\"repo\": \"$name\", \"owner\": \"$owner\", \"url\": \"$url\", \"commits\": 0, \"prs\": $all_prs, \"has_activity\": true}"
+            else
+              echo "{\"repo\": \"$name\", \"owner\": \"$owner\", \"url\": \"$url\", \"commits\": 0, \"prs\": 0, \"has_activity\": false}"
+            fi
+          fi
         else
           # Check commits and PRs for each username in the list
           total_commits=0
@@ -541,7 +562,7 @@ steps:
             sleep 0.3
             
             # Check PRs for this user
-            user_prs=$(gh api "repos/$owner/$name/pulls?state=all&per_page=100" --jq "[.[] | select(.user.login == \"$username\" and .updated_at >= \"$since_iso\")] | length" 2>/dev/null || echo "0")
+            user_prs=$(gh api "repos/$owner/$name/pulls?state=all&per_page=100" --jq "[.[] | select(.user.login == \"$username\" and (.created_at >= \"$since_iso\" or .merged_at >= \"$since_iso\"))] | length" 2>/dev/null || echo "0")
             total_prs=$((total_prs + user_prs))
           done
           
@@ -731,14 +752,44 @@ steps:
       
       ## Output
       
-      Write report to: {{working_dir}}/reports/{{report_filename}}
-      
-      Also print the full report to console.
-      
-      Return the report content.
+      Return the complete markdown report content.
+      DO NOT write to files - the next step handles file writing.
+      Just return the report as your response.
     output: "final_report"
     timeout: 900
-    on_error: "continue"
+    on_error: "fail"
+
+  # ==========================================================================
+  # Step 10b: Write report to file (GUARANTEED file write)
+  # ==========================================================================
+  # BASH STEP - Explicit file write since LLM file writes are non-deterministic
+  # Why bash: Guarantees file is written, verifies success, atomic operation
+  - id: "write-report"
+    type: "bash"
+    command: |
+      set -euo pipefail
+      
+      mkdir -p {{working_dir}}/reports
+      
+      # Write the report content to file using printf (safer than heredoc)
+      # Write to temp file first, then move (atomic write)
+      printf '%s\n' '{{final_report}}' > {{working_dir}}/reports/{{report_filename}}.tmp
+      mv {{working_dir}}/reports/{{report_filename}}.tmp {{working_dir}}/reports/{{report_filename}}
+      
+      # Verify the write succeeded
+      if [ -s "{{working_dir}}/reports/{{report_filename}}" ]; then
+        size=$(wc -c < "{{working_dir}}/reports/{{report_filename}}" | tr -d ' ')
+        echo "Report written: {{working_dir}}/reports/{{report_filename}} ($size bytes)"
+        echo "{\"written\": true, \"path\": \"{{working_dir}}/reports/{{report_filename}}\", \"size\": $size}"
+      else
+        echo "ERROR: Failed to write report" >&2
+        echo "{\"written\": false, \"error\": \"File empty or missing\"}"
+        exit 1
+      fi
+    output: "report_written"
+    parse_json: true
+    timeout: 60
+    on_error: "fail"
 
   # ==========================================================================
   # Step 11: Completion and cleanup
