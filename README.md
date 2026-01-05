@@ -52,18 +52,18 @@ amplifier run "Explain async/await in Python"
 amplifier
 ```
 
-### Step 4: Add collections (optional, highly recommended)
+### Step 4: Add bundles (optional)
 
 ```bash
-amplifier collection add git+https://github.com/microsoft/amplifier-collection-toolkit@main
-amplifier collection add git+https://github.com/microsoft/amplifier-collection-design-intelligence@main
+# Add additional capability bundles
+amplifier bundle add git+https://github.com/microsoft/amplifier-bundle-recipes@main
+amplifier bundle add git+https://github.com/microsoft/amplifier-bundle-design-intelligence@main
 
-# Explore their profiles
-amplifier profile use toolkit-dev
-amplifier profile use designer
+# Use a bundle
+amplifier bundle use recipes
 ```
 
-Both collections also ship focused agents you can invoke from any profile by name, use `/agents` in chat and look for the ones with `toolkit:` or `design-intelligence:` prefixes .
+Bundles ship focused agents you can invoke by name. Use `/agents` in chat to see available agents like `recipes:recipe-author` or `design-intelligence:component-designer`.
 
 **First time? Quick setup wizard:**
 
@@ -77,11 +77,10 @@ API key: ••••••••
   Get one: https://console.anthropic.com/settings/keys
 ✓ Saved
 
-Model? [1] claude-sonnet-4-5 [2] claude-opus-4-1 [3] custom: 1
+Model? [1] claude-sonnet-4-5 [2] claude-opus-4-5 [3] custom: 1
 ✓ Using claude-sonnet-4-5
 
-Profile? [1] dev [2] base [3] full: 1
-✓ Using 'dev' profile
+Ready! Starting chat...
 
 Ready! Starting chat...
 >
@@ -102,12 +101,9 @@ Authentication? [1] API key [2] Azure CLI (az login): 2
 ✓ Using DefaultAzureCredential
   (Works with 'az login' locally or managed identity in Azure)
 
-Deployment name: gpt-5.1-codex
+Deployment name: gpt-5.2
   Note: Use your Azure deployment name, not model name
 ✓ Configured
-
-Profile? [1] dev [2] base [3] full: 1
-✓ Using 'dev' profile
 
 Ready! Starting chat...
 >
@@ -125,11 +121,8 @@ API key: ••••••••
   Get one: https://platform.openai.com/api-keys
 ✓ Saved
 
-Model? [1] gpt-5.1 [2] gpt-5-mini [3] gpt-5.1-codex [4] o1 [5] custom: 1
-✓ Using gpt-5.1
-
-Profile? [1] dev [2] base [3] full: 1
-✓ Using 'dev' profile
+Model? [1] gpt-5.2 [2] gpt-5.1-codex [3] gpt-5.2-pro [4] custom: 1
+✓ Using gpt-5.2
 
 Ready! Starting chat...
 >
@@ -149,9 +142,6 @@ Model? [1] llama3 [2] codellama [3] mistral [4] custom: 1
 Make sure Ollama is running:
   ollama serve
   ollama pull llama3
-
-Profile? [1] dev [2] base [3] full: 1
-✓ Using 'dev' profile
 
 Ready! Starting chat...
 >
@@ -174,9 +164,9 @@ First of all, this is still VERY early and we have not brought _most_ of our fea
 **Key features:**
 
 - **Modular**: Swap AI providers, tools, and behaviors like LEGO bricks
-- **Profile-based**: Pre-configured capability sets for different scenarios
+- **Bundle-based**: Composable configuration packages for different scenarios
 - **Session persistence**: Pick up where you left off, even across projects
-- **Extensible**: Build your own modules, interfaces, or entire custom experiences
+- **Extensible**: Build your own modules, bundles, or entire custom experiences
 
 **Developer Tools:**
 
@@ -194,8 +184,8 @@ amplifier-log-viewer
 
 Amplifier works with multiple AI providers:
 
-- **Anthropic Claude** - Recommended, most tested (Sonnet 4.5, Opus models)
-- **OpenAI** - Good alternative (GPT-5, GPT-5-Mini, GPT-5-Codex)
+- **Anthropic Claude** - Recommended, most tested (Sonnet 4.5, Opus 4.5, Haiku 4.5)
+- **OpenAI** - Good alternative (GPT-5.2, GPT-5.2-Pro, GPT-5.1-Codex)
 - **Azure OpenAI** - Enterprise users with Azure subscriptions (supports managed identity)
 - **Ollama** - Local, free, no API key needed (llama3, codellama, etc.)
 
@@ -206,8 +196,8 @@ Switch providers anytime:
 amplifier provider use openai
 
 # Or explicit
-amplifier provider use anthropic --model claude-opus-4-1
-amplifier provider use azure-openai --deployment gpt-5.1-codex
+amplifier provider use anthropic --model claude-opus-4-5
+amplifier provider use azure-openai --deployment gpt-5.2
 ```
 
 > **Note**: We've done most of our early testing with Anthropic Claude. Other providers are supported but may have rough edges we're actively smoothing out.
@@ -247,28 +237,31 @@ amplifier run "Create a REST API for a todo app with FastAPI"
 amplifier run "Why does this code throw a TypeError: [paste code]"
 ```
 
-### Using Profiles
+### Using Bundles
 
-Profiles are pre-configured capability sets for different scenarios:
+Bundles are composable configuration packages that define tools, providers, agents, and behaviors:
 
 ```bash
-# See available profiles
-amplifier profile list
+# See current bundle (foundation is the default)
+amplifier bundle current
 
-# Use a specific profile
-amplifier run --profile dev "Your prompt"
+# List available bundles
+amplifier bundle list
+
+# Use a specific bundle for one command
+amplifier run --bundle recipes "Your prompt"
 
 # Set as default
-amplifier profile use dev
+amplifier bundle use foundation
 ```
 
-**Bundled profiles:**
+**The `foundation` bundle** is the default and includes:
 
-- `foundation` - Absolute minimum (provider + orchestrator only)
-- `base` - Essential tools (filesystem, bash, logging)
-- `dev` - Full development setup (web, search, agents) — **default & recommended**
-- `test` - Focused testing utilities layered on top of `base`
-- `full` - Showcase build with nearly every module enabled; great for demos, less optimal for day-to-day work
+- **Tools**: filesystem, bash, web, search, task delegation
+- **Agents**: 14 specialized agents (zen-architect, bug-hunter, git-ops, web-research, explorer, etc.)
+- **Behaviors**: logging, redaction, streaming UI, todo tracking
+
+Most users never need to change bundles—foundation provides everything for development work.
 
 ### Working with Agents
 
@@ -287,7 +280,7 @@ amplifier run "Use bug-hunter to debug this error: [paste error]"
 
 - **zen-architect** - System design with ruthless simplicity
 - **bug-hunter** - Systematic debugging
-- **researcher** - Content research and synthesis
+- **web-research** - Web research and content fetching
 - **modular-builder** - Code implementation
 - **explorer** - Breadth-first exploration of local code, docs, and other files with citation-ready summaries
 
@@ -333,33 +326,37 @@ Sessions are project-scoped—when you're in `/home/user/myapp`, you see only `m
 amplifier provider use openai
 
 # Or explicit
-amplifier provider use anthropic --model claude-opus-4-1
+amplifier provider use anthropic --model claude-opus-4-5
 
 # Azure OpenAI (needs endpoint + deployment)
 amplifier provider use azure-openai
   Azure endpoint: https://my-resource.openai.azure.com/
   Auth? [1] API key [2] Azure CLI: 2
-  Deployment: gpt-5.1-codex
+  Deployment: gpt-5.2
 
 # Configure where to save
-amplifier provider use openai --model gpt-5.1 --local      # Just you
-amplifier provider use anthropic --model claude-opus-4-1 --project  # Team
+amplifier provider use openai --model gpt-5.2 --local      # Just you
+amplifier provider use anthropic --model claude-opus-4-5 --project  # Team
 
 # See what's active
 amplifier provider current
 ```
 
-### Switching Profiles
+### Switching Bundles
 
 ```bash
-# Switch profile
-amplifier profile use dev
-amplifier profile use base
-amplifier profile use test
-amplifier profile use foundation
+# See current bundle
+amplifier bundle current
+
+# Switch bundle
+amplifier bundle use foundation
+amplifier bundle use recipes
+
+# Add external bundles
+amplifier bundle add git+https://github.com/microsoft/amplifier-bundle-recipes@main
 
 # See what's active
-amplifier profile current
+amplifier bundle list
 ```
 
 ### Adding Capabilities
@@ -379,13 +376,11 @@ See [docs/USER_ONBOARDING.md#quick-reference](docs/USER_ONBOARDING.md#quick-refe
 
 ## Customizing Amplifier
 
-### Creating Custom Profiles
+### Creating Custom Bundles
 
-Profiles configure your Amplifier environment with providers, tools, agents, and settings.
+Bundles configure your Amplifier environment with providers, tools, agents, and behaviors.
 
-**→ [Profile Authoring Guide](https://github.com/microsoft/amplifier-profiles/blob/main/docs/PROFILE_AUTHORING.md)** - Complete guide to creating profiles
-
-**API Reference**: [amplifier-profiles](https://github.com/microsoft/amplifier-profiles)
+**→ [Bundle Authoring Guide](https://github.com/microsoft/amplifier-foundation/blob/main/docs/BUNDLE_GUIDE.md)** - Complete guide to creating bundles
 
 ### Creating Custom Agents
 
@@ -401,11 +396,8 @@ Agents are specialized AI personas for focused tasks.
 
 **Core Libraries**:
 
-- **[amplifier-core](https://github.com/microsoft/amplifier-core)** - Kernel mechanisms and contracts
-- **[amplifier-profiles](https://github.com/microsoft/amplifier-profiles)** - Profile/agent loading and compilation
-- **[amplifier-collections](https://github.com/microsoft/amplifier-collections)** - Collections system
-- **[amplifier-config](https://github.com/microsoft/amplifier-config)** - Configuration management
-- **[amplifier-module-resolution](https://github.com/microsoft/amplifier-module-resolution)** - Module source resolution
+- **[amplifier-core](https://github.com/microsoft/amplifier-core)** - Ultra-thin kernel (~2,600 lines) providing module protocols, session lifecycle, and hooks
+- **[amplifier-foundation](https://github.com/microsoft/amplifier-foundation)** - Bundle composition library + the default `foundation` bundle
 
 **Reference Implementation**:
 
@@ -414,7 +406,7 @@ Agents are specialized AI personas for focused tasks.
 **Architecture**:
 
 - **[Repository Rules](docs/REPOSITORY_RULES.md)** - Where docs go, what references what
-- **[Module Catalog](#modules)** - Available providers, tools, hooks, orchestrators
+- **[Module Catalog](docs/MODULES.md)** - Available providers, tools, hooks, orchestrators
 
 ---
 
@@ -452,7 +444,7 @@ This is an **early preview release**:
 **What works today:**
 
 - ✅ Core AI interactions (Anthropic Claude)
-- ✅ Profile-based configuration
+- ✅ Bundle-based configuration
 - ✅ Agent delegation
 - ✅ Session persistence
 - ✅ Module loading from git sources
