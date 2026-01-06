@@ -1,6 +1,6 @@
 name: "ecosystem-activity-report"
 description: "Analyze activity across the Amplifier ecosystem by discovering repos from MODULES.md"
-version: "1.6.0"
+version: "1.9.0"
 author: "Amplifier"
 tags: ["amplifier", "ecosystem", "github", "activity", "modules", "discovery"]
 
@@ -14,6 +14,12 @@ tags: ["amplifier", "ecosystem", "github", "activity", "modules", "discovery"]
 # 3. Reads MODULES.md to discover all ecosystem repos
 # 4. Filters repos based on criteria (org, name pattern)
 # 5. Calls the generic multi-repo recipe from @recipes bundle
+#
+# v1.7.0: Context overflow fix
+#         - Sub-recipe now returns compact synthesis_input for aggregation
+#         - Added reduce-analyses step with token budget enforcement
+#         - Synthesis step uses reduced data instead of raw repo_analyses
+#         - Full analysis details preserved in ai_working/analyses/ files
 #
 # v1.6.0: Recipe quality improvements from recipe-author review
 #         - Add api_delay_seconds configurable rate limiting (was hardcoded 0.5s)
@@ -119,6 +125,10 @@ context:
   filtered_repos: {"count": 0, "repos": [], "dropped": []}
   activity_checks: []
   active_repos: {"count": 0, "repos": [], "skipped": []}
+  
+  # v1.9.0: Validation defaults for analysis completeness tracking
+  analysis_validation: {"expected_repos": 0, "analyzed_repos": 0, "missing_count": 0, "missing_repos": [], "lost_commits": 0, "lost_prs": 0, "complete": true}
+  final_validation: {"all_recovered": true, "still_missing": 0, "repos": []}
 
 steps:
   # ==========================================================================
@@ -700,7 +710,7 @@ steps:
     parallel: "{{parallel_analysis}}"
     collect: "repo_analyses"
     type: "recipe"
-    recipe: "@recipes:examples/repo-activity-analysis.yaml"
+    recipe: "./repo-activity-analysis.yaml"
     context:
       repo_url: "{{repo.url}}"
       date_range: "{{parsed_date.description}}"
@@ -718,111 +728,597 @@ steps:
     on_error: "continue"
 
   # ==========================================================================
-  # Step 10: Synthesize final report
+  # Step 9b: Save analyses to file (handles large JSON safely)
   # ==========================================================================
-  # AGENT STEP - Synthesize findings into cohesive narrative report
-  # Why agent: Requires semantic understanding, prioritization, storytelling
-  - id: "synthesize-report"
+  # AGENT STEP - Write repo_analyses to file (avoids bash JSON escaping issues)
+  # v1.7.0: Agents handle JSON natively; bash template substitution breaks on large JSON
+  - id: "save-analyses-to-file"
+    agent: "foundation:file-ops"
+    prompt: |
+      Write the following JSON array to file: {{working_dir}}/collected-analyses.json
+      
+      Content to write:
+      {{repo_analyses}}
+      
+      Just write the file. Return {"saved": true, "path": "{{working_dir}}/collected-analyses.json"} when done.
+    output: "analyses_saved"
+    parse_json: true
+    timeout: 120
+
+  # ==========================================================================
+  # Step 9c: Reduce analyses (process from file)
+  # ==========================================================================
+  # BASH STEP - Read from file and create compact summary
+  # v1.7.0: Process from file to avoid template substitution issues
+  #         Sanitize JSON to fix unescaped newlines from LLM output
+  - id: "reduce-analyses"
+    type: "bash"
+    command: |
+      set -euo pipefail
+      
+      cd {{working_dir}}
+      
+      # Build compact summaries from the analysis files
+      # Each repo has a -analysis.json file with full details
+      echo "[" > reduced-analyses.json
+      first=true
+      for f in analyses/*-analysis.json; do
+        [ -f "$f" ] || continue
+        
+        # Sanitize JSON: replace literal newlines in strings with escaped \n
+        # This fixes LLM output that has unescaped newlines in string values
+        sanitized=$(cat "$f" | tr '\n' ' ' | sed 's/  */ /g')
+        
+        # Try to extract compact summary; skip file if it fails
+        compact=$(echo "$sanitized" | jq -c '{
+          repo: (.repo // .repo_summary.repo // "unknown"),
+          commits: (.activity_summary.commits // .repo_summary.activity_summary.commits // 0),
+          prs: (.activity_summary.prs_total // .repo_summary.activity_summary.prs_total // 0),
+          impact: (.impact_assessment.overall // .repo_summary.impact_assessment.overall // "unknown"),
+          summary: (
+            if .themes then (.themes[:2] | join("; "))
+            elif .repo_summary.themes then (.repo_summary.themes[:2] | join("; "))
+            else "Activity detected"
+            end
+          ),
+          highlights: (
+            if .key_changes then [.key_changes[:3][] | .description[:80]]
+            elif .repo_summary.key_changes then [.repo_summary.key_changes[:3][] | .description[:80]]
+            else []
+            end
+          ),
+          risks: (
+            if .risks and (.risks | length) > 0 then [.risks[:2][] | .[:60]]
+            elif .repo_summary.risks and (.repo_summary.risks | length) > 0 then [.repo_summary.risks[:2][] | .[:60]]
+            else []
+            end
+          )
+        }' 2>/dev/null) || continue
+        
+        if [ "$first" = true ]; then
+          first=false
+        else
+          echo "," >> reduced-analyses.json
+        fi
+        echo "$compact" >> reduced-analyses.json
+      done
+      echo "]" >> reduced-analyses.json
+      
+      # Count and report
+      count=$(jq 'length' reduced-analyses.json)
+      bytes=$(wc -c < reduced-analyses.json | tr -d ' ')
+      echo "Reduced $count repos to $bytes bytes" >&2
+      
+      cat reduced-analyses.json
+    output: "reduced_analyses"
+    parse_json: true
+    timeout: 120
+
+  # ==========================================================================
+  # Step 9d: Validate analysis completeness
+  # ==========================================================================
+  # BASH STEP - Check that all expected repos have analysis files
+  # v1.9.0: Detect and report repos that failed during analysis
+  - id: "validate-analysis-completeness"
+    type: "bash"
+    command: |
+      set -euo pipefail
+      
+      cd {{working_dir}}
+      
+      # Get expected repos from active_repos
+      printf '%s\n' '{{active_repos.repos}}' | jq -r '.[].name' | sort > expected-repos.txt
+      
+      # Get actual analysis files
+      ls -1 analyses/*-analysis.json 2>/dev/null | \
+        xargs -I {} basename {} -analysis.json | sort > analyzed-repos.txt || \
+        touch analyzed-repos.txt
+      
+      # Find missing repos
+      missing=$(comm -23 expected-repos.txt analyzed-repos.txt || true)
+      missing_count=$(echo "$missing" | grep -c . || true)
+      missing_count=${missing_count:-0}
+      analyzed_count=$(wc -l < analyzed-repos.txt | xargs)
+      expected_count=$(wc -l < expected-repos.txt | xargs)
+      
+      # Build missing repos detail with their expected commit counts
+      missing_details="[]"
+      lost_commits=0
+      lost_prs=0
+      if [ "$missing_count" -gt 0 ] && [ -n "$missing" ]; then
+        missing_details=$(echo "$missing" | while read -r repo; do
+          [ -z "$repo" ] && continue
+          # Find commit count from commits file if it exists
+          commits=0
+          prs=0
+          if [ -f "analyses/${repo}-commits.json" ]; then
+            commits=$(jq 'length' "analyses/${repo}-commits.json" 2>/dev/null || echo 0)
+          fi
+          if [ -f "analyses/${repo}-prs.json" ]; then
+            prs=$(jq 'length' "analyses/${repo}-prs.json" 2>/dev/null || echo 0)
+          fi
+          echo "{\"repo\": \"$repo\", \"expected_commits\": $commits, \"expected_prs\": $prs}"
+        done | jq -s '.')
+        
+        lost_commits=$(echo "$missing_details" | jq '[.[].expected_commits] | add // 0')
+        lost_prs=$(echo "$missing_details" | jq '[.[].expected_prs] | add // 0')
+      fi
+      
+      # Report
+      echo "Analysis validation: $analyzed_count/$expected_count repos completed" >&2
+      if [ "$missing_count" -gt 0 ]; then
+        echo "WARNING: $missing_count repos FAILED analysis:" >&2
+        echo "$missing" | grep -v '^$' | sed 's/^/  - /' >&2
+        echo "Lost data: $lost_commits commits, $lost_prs PRs" >&2
+      fi
+      
+      # Output for downstream steps
+      jq -n \
+        --argjson expected "$expected_count" \
+        --argjson analyzed "$analyzed_count" \
+        --argjson missing_count "$missing_count" \
+        --argjson missing_details "$missing_details" \
+        --argjson lost_commits "$lost_commits" \
+        --argjson lost_prs "$lost_prs" \
+        '{
+          expected_repos: $expected,
+          analyzed_repos: $analyzed,
+          missing_count: $missing_count,
+          missing_repos: $missing_details,
+          lost_commits: $lost_commits,
+          lost_prs: $lost_prs,
+          complete: ($missing_count == 0)
+        }'
+    output: "analysis_validation"
+    parse_json: true
+    timeout: 60
+
+  # ==========================================================================
+  # Step 9e: Final validation (copy analysis_validation to final_validation)
+  # ==========================================================================
+  # v1.9.0: Set final_validation = analysis_validation (no retry in this version)
+  - id: "set-final-validation"
+    type: "bash"
+    command: |
+      set -euo pipefail
+      
+      cd {{working_dir}}
+      
+      # Recount
+      expected=$(wc -l < expected-repos.txt | tr -d ' ')
+      analyzed=$(ls -1 analyses/*-analysis.json 2>/dev/null | wc -l | tr -d ' ')
+      still_missing=$((expected - analyzed))
+      
+      if [ "$still_missing" -eq 0 ]; then
+        echo '{"all_complete": true, "still_missing": 0, "repos": []}' 
+      else
+        # Find missing repos
+        ls -1 analyses/*-analysis.json 2>/dev/null | \
+          xargs -I {} basename {} -analysis.json | sort > analyzed-repos-final.txt
+        missing=$(comm -23 expected-repos.txt analyzed-repos-final.txt || true)
+        echo "Final validation: $still_missing repos missing" >&2
+        echo "$missing" | grep -v '^$' | sed 's/^/  - /' >&2
+        
+        missing_json=$(echo "$missing" | grep -v '^$' | jq -R -s 'split("\n") | map(select(length > 0))')
+        jq -n --argjson m "$missing_json" --argjson c "$still_missing" \
+          '{"all_complete": false, "still_missing": $c, "repos": $m}'
+      fi
+    output: "final_validation"
+    parse_json: true
+    timeout: 60
+
+  # ==========================================================================
+  # Step 10a: Calculate report statistics (DETERMINISTIC)
+  # ==========================================================================
+  # BASH STEP - All numeric calculations done here, guaranteed accurate
+  # Why bash: LLMs are unreliable at math; jq gives exact results
+  # v1.8.0: Split synthesis into focused steps for reliability
+  - id: "calculate-stats"
+    type: "bash"
+    command: |
+      set -euo pipefail
+      
+      cd {{working_dir}}
+      
+      # reduced_analyses is already in reduced-analyses.json from previous step
+      
+      # Calculate all statistics using jq
+      jq -n --slurpfile data reduced-analyses.json '
+        # Define impact level ordering for sorting
+        def impact_order:
+          if . == "breaking" then 0
+          elif . == "significant" then 1
+          elif . == "moderate" then 2
+          elif . == "minor" then 3
+          elif . == "trivial" then 4
+          else 5
+          end;
+        
+        # Input data
+        ($data[0] // []) as $repos |
+        
+        # Calculate totals
+        ($repos | map(.commits // 0) | add // 0) as $total_commits |
+        ($repos | map(.prs // 0) | add // 0) as $total_prs |
+        ($repos | length) as $total_repos |
+        
+        # Count by impact level (from_entries needs {key, value} not {key, count})
+        ($repos | group_by(.impact) | map({key: .[0].impact, value: length}) | from_entries) as $impact_counts |
+        
+        # Sort repos by impact level (breaking first, then significant, etc.)
+        ($repos | sort_by(.impact | impact_order)) as $sorted_repos |
+        
+        # Identify repos with risks
+        ($repos | map(select(.risks and (.risks | length) > 0)) | map(.repo)) as $repos_with_risks |
+        
+        # Build output
+        {
+          totals: {
+            repos: $total_repos,
+            commits: $total_commits,
+            prs: $total_prs
+          },
+          impact_distribution: {
+            breaking: ($impact_counts.breaking // 0),
+            significant: ($impact_counts.significant // 0),
+            moderate: ($impact_counts.moderate // 0),
+            minor: ($impact_counts.minor // 0),
+            trivial: ($impact_counts.trivial // 0),
+            unknown: ($impact_counts.unknown // 0)
+          },
+          repos_sorted_by_impact: $sorted_repos,
+          repos_with_risks: $repos_with_risks,
+          risk_count: ($repos_with_risks | length)
+        }
+      ' > report-stats.json
+      
+      cat report-stats.json
+    output: "report_stats"
+    parse_json: true
+    timeout: 60
+
+  # ==========================================================================
+  # Step 10b: Write executive summary and highlights (QUALITATIVE)
+  # ==========================================================================
+  # AGENT STEP - Qualitative synthesis only; NO calculations
+  # Why agent: Pattern recognition, prioritization, narrative synthesis
+  # v1.8.0: Focused prompt - LLM only does what it's good at
+  - id: "write-executive-summary"
+    agent: "foundation:zen-architect"
+    mode: "ANALYZE"
+    prompt: |
+      Write the Executive Summary section for the Amplifier Ecosystem Activity Report.
+      
+      ## Pre-Calculated Statistics (USE THESE EXACTLY - DO NOT RECALCULATE)
+      
+      - Total repos with activity: {{report_stats.totals.repos}}
+      - Total commits: {{report_stats.totals.commits}}
+      - Total PRs: {{report_stats.totals.prs}}
+      - Impact distribution:
+        - Breaking: {{report_stats.impact_distribution.breaking}}
+        - Significant: {{report_stats.impact_distribution.significant}}
+        - Moderate: {{report_stats.impact_distribution.moderate}}
+        - Minor: {{report_stats.impact_distribution.minor}}
+      - Repos with risks: {{report_stats.risk_count}}
+      
+      ## Repo Summaries (for qualitative analysis)
+      
+      {{report_stats.repos_sorted_by_impact}}
+      
+      ## Your Task
+      
+      Write ONLY the executive summary content. Focus on:
+      
+      1. **Key Highlights** (2-3 bullets): What are the most significant changes?
+         - Identify the most impactful work across repos
+         - Highlight notable patterns or achievements
+         
+      2. **Ecosystem Health Assessment** (1-2 sentences):
+         - Based on the impact distribution and risk count
+         - Note any concerns if breaking changes or risks are present
+      
+      ## Output Format
+      
+      Return a JSON object:
+      ```json
+      {
+        "key_highlights": [
+          "First highlight describing most significant change",
+          "Second highlight about another important pattern",
+          "Third highlight if warranted"
+        ],
+        "ecosystem_health": "Brief assessment of ecosystem health based on impact distribution and risks."
+      }
+      ```
+      
+      IMPORTANT:
+      - Do NOT include any statistics in your output - they will be injected by the assembly step
+      - Focus purely on qualitative observations and synthesis
+      - Keep highlights concise but informative
+    output: "executive_summary"
+    parse_json: true
+    timeout: 300
+
+  # ==========================================================================
+  # Step 10c: Write per-repo sections and cross-cutting observations
+  # ==========================================================================
+  # AGENT STEP - Format repo sections and identify patterns
+  # Why agent: Narrative formatting, pattern recognition across repos
+  # v1.8.0: Focused on narrative only; stats injected by assembly step
+  - id: "write-repo-sections"
     agent: "foundation:zen-architect"
     mode: "ARCHITECT"
     prompt: |
-      Create the final Amplifier Ecosystem Activity Report.
+      Write the per-repository sections and cross-cutting observations for the activity report.
       
-      ## Input Data
+      ## Pre-Calculated Data (stats will be injected - focus on narrative)
       
-      Scope: {{user_info.description}}
-      Date Range: {{parsed_date.description}}
-      Repos analyzed: {{active_repos.count}}
-      Repos skipped (no activity): {{active_repos.skipped}}
+      Repos sorted by impact (breaking → trivial):
+      {{report_stats.repos_sorted_by_impact}}
       
-      Individual analyses: {{repo_analyses}}
+      ## Repos Skipped (no activity)
       
-      ## Report Structure
+      {{active_repos.skipped}}
       
-      Create comprehensive markdown report:
+      ## Your Task
       
-      ```markdown
-      # Amplifier Ecosystem Activity Report
+      ### Part 1: Per-Repository Sections
       
-      **Generated**: [current timestamp]
-      **Scope**: {{user_info.description}}
-      **Date Range**: {{parsed_date.description}}
-      **Repos Analyzed**: {{active_repos.count}}
+      For EACH repo in the sorted list, write a section. The stats (commits/PRs/impact) 
+      will be injected by the assembly step - focus only on narrative content.
       
-      ---
+      ### Part 2: Cross-Cutting Observations
       
-      ## Executive Summary
+      Identify 2-4 patterns observed ACROSS multiple repos:
+      - Coordinated changes (same feature touched in multiple repos)
+      - Common themes (testing, documentation, refactoring)
+      - Ecosystem-wide trends (new capabilities, deprecations)
+      - Dependencies or integration points
       
-      - **Total commits**: N
-      - **Total PRs**: N  
-      - **Repos with activity**: N of {{active_repos.count}}
+      ## Output Format
       
-      ### Key Highlights
-      
-      [2-3 bullet points of most significant changes]
-      
-      ---
-      
-      ## Activity by Repository
-      
-      [For each repo WITH activity, ordered by activity level:]
-      
-      ### {repo_name}
-      
-      **Commits**: N | **PRs**: N
-      
-      **Summary**: [1-2 sentence summary]
-      
-      **Key Changes**:
-      - [Notable changes]
-      
-      ---
-      
-      ## Cross-Cutting Observations
-      
-      [Patterns observed across repos - coordinated changes, themes]
-      
-      ## Repositories with No Activity
-      
-      [List repos with no changes in date range]
-      
-      ---
-      *Generated by @amplifier:recipes/ecosystem-activity-report.yaml*
+      Return a JSON object:
+      ```json
+      {
+        "repo_sections": {
+          "repo-name-1": {
+            "summary_expanded": "One paragraph expanding on the summary",
+            "highlights_formatted": "- First highlight\\n- Second highlight",
+            "risks_formatted": "- Risk one\\n- Risk two"
+          },
+          "repo-name-2": { ... }
+        },
+        "cross_cutting_observations": [
+          "First observation about patterns across repos",
+          "Second observation about ecosystem trends"
+        ]
+      }
       ```
       
-      ## Output
-      
-      Return the complete markdown report content.
-      DO NOT write to files - the next step handles file writing.
-      Just return the report as your response.
-    output: "final_report"
-    timeout: 900
-    on_error: "fail"
+      For repos with no risks, set risks_formatted to null or empty string.
+    output: "repo_sections"
+    parse_json: true
+    timeout: 600
 
   # ==========================================================================
-  # Step 10b: Write report to file (GUARANTEED file write)
+  # Step 10d: Assemble final report (DETERMINISTIC)
   # ==========================================================================
-  # BASH STEP - Explicit file write since LLM file writes are non-deterministic
-  # Why bash: Guarantees file is written, verifies success, atomic operation
+  # BASH STEP - Combine all sections with guaranteed correct statistics
+  # Why bash: Template assembly is deterministic; stats injected exactly
+  # v1.8.0: All numbers come from calculate-stats step (guaranteed accurate)
+  - id: "assemble-report"
+    type: "bash"
+    command: |
+      set -euo pipefail
+      
+      cd {{working_dir}}
+      
+      # Save inputs to files for processing
+      cat > exec-summary.json << 'EXECEOF'
+      {{executive_summary}}
+      EXECEOF
+      
+      cat > repo-sections.json << 'REPOEOF'
+      {{repo_sections}}
+      REPOEOF
+      
+      # Get current timestamp
+      timestamp=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+      
+      # Start building the report
+      cat > final-report.md << HEADEREOF
+      # Amplifier Ecosystem Activity Report
+
+      **Generated**: $timestamp
+      **Scope**: {{user_info.description}}
+      **Date Range**: {{parsed_date.description}}
+      **Repos Analyzed**: {{report_stats.totals.repos}}
+
+      ---
+
+      ## Executive Summary
+
+      | Metric | Count |
+      |--------|-------|
+      | Total Commits | {{report_stats.totals.commits}} |
+      | Total PRs | {{report_stats.totals.prs}} |
+      | Repos with Activity | {{report_stats.totals.repos}} |
+
+      **Impact Distribution**: {{report_stats.impact_distribution.breaking}} breaking, {{report_stats.impact_distribution.significant}} significant, {{report_stats.impact_distribution.moderate}} moderate, {{report_stats.impact_distribution.minor}} minor
+
+      HEADEREOF
+      
+      # v1.9.0: Add data gap warning if any repos failed analysis
+      still_missing={{final_validation.still_missing}}
+      if [ "$still_missing" -gt 0 ]; then
+        lost_commits={{analysis_validation.lost_commits}}
+        lost_prs={{analysis_validation.lost_prs}}
+        echo "" >> final-report.md
+        echo "> **Data Gap Warning**: $still_missing repos failed analysis even after retry. Approximately $lost_commits commits and $lost_prs PRs may be missing. See Failed Analyses section below." >> final-report.md
+        echo "" >> final-report.md
+      fi
+      
+      echo "### Key Highlights" >> final-report.md
+      echo "" >> final-report.md
+      
+      # Add key highlights from LLM
+      jq -r '.key_highlights[]' exec-summary.json | while read -r highlight; do
+        echo "- $highlight" >> final-report.md
+      done
+      
+      # Add ecosystem health
+      cat >> final-report.md << 'HEALTHEOF'
+
+      ### Ecosystem Health
+
+      HEALTHEOF
+      jq -r '.ecosystem_health' exec-summary.json >> final-report.md
+      
+      cat >> final-report.md << 'REPOHEADEREOF'
+
+      ---
+
+      ## Activity by Repository
+
+      REPOHEADEREOF
+      
+      # Add per-repo sections with injected stats
+      jq -c '.[]' report-stats.json 2>/dev/null | head -1 > /dev/null || true
+      jq -c '.repos_sorted_by_impact[]' report-stats.json | while read -r repo_data; do
+        repo_name=$(echo "$repo_data" | jq -r '.repo')
+        commits=$(echo "$repo_data" | jq -r '.commits')
+        prs=$(echo "$repo_data" | jq -r '.prs')
+        impact=$(echo "$repo_data" | jq -r '.impact')
+        
+        # Get the LLM-written section for this repo
+        summary=$(jq -r --arg repo "$repo_name" '.repo_sections[$repo].summary_expanded // "Activity detected in this repository."' repo-sections.json)
+        highlights=$(jq -r --arg repo "$repo_name" '.repo_sections[$repo].highlights_formatted // "- See commit history for details"' repo-sections.json)
+        risks=$(jq -r --arg repo "$repo_name" '.repo_sections[$repo].risks_formatted // empty' repo-sections.json)
+        
+        # Write the section with exact stats
+        echo "### $repo_name" >> final-report.md
+        echo "" >> final-report.md
+        echo "**Commits**: $commits | **PRs**: $prs | **Impact**: $impact" >> final-report.md
+        echo "" >> final-report.md
+        echo "$summary" >> final-report.md
+        echo "" >> final-report.md
+        echo "**Highlights**:" >> final-report.md
+        echo "$highlights" >> final-report.md
+        echo "" >> final-report.md
+        
+        # Add risks only if present
+        if [ -n "$risks" ] && [ "$risks" != "null" ]; then
+          echo "**Risks**:" >> final-report.md
+          echo "$risks" >> final-report.md
+          echo "" >> final-report.md
+        fi
+        
+        echo "---" >> final-report.md
+        echo "" >> final-report.md
+      done
+      
+      # Add cross-cutting observations
+      echo "## Cross-Cutting Observations" >> final-report.md
+      echo "" >> final-report.md
+      
+      jq -r '.cross_cutting_observations[]' repo-sections.json | while read -r obs; do
+        echo "- $obs" >> final-report.md
+      done
+      
+      # v1.9.0: Add Failed Analyses section if any repos still missing after retry
+      still_missing={{final_validation.still_missing}}
+      if [ "$still_missing" -gt 0 ]; then
+        echo "" >> final-report.md
+        echo "---" >> final-report.md
+        echo "" >> final-report.md
+        echo "## Failed Analyses" >> final-report.md
+        echo "" >> final-report.md
+        echo "The following repos had activity detected but analysis failed (even after retry):" >> final-report.md
+        echo "" >> final-report.md
+        echo "| Repository | Expected Commits | Expected PRs | Status |" >> final-report.md
+        echo "|------------|-----------------|--------------|--------|" >> final-report.md
+        
+        # Add rows for each missing repo
+        printf '%s\n' '{{analysis_validation.missing_repos}}' | \
+          jq -r '.[] | "| \(.repo) | \(.expected_commits) | \(.expected_prs) | Failed |"' >> final-report.md
+        
+        echo "" >> final-report.md
+        echo "**Possible causes**: LLM timeout, GitHub API rate limiting, context overflow for large repos." >> final-report.md
+        echo "**Recommendation**: Re-run recipe with parallel_analysis: false for more stable execution." >> final-report.md
+        echo "" >> final-report.md
+      fi
+      
+      # Add skipped repos section
+      echo "" >> final-report.md
+      echo "---" >> final-report.md
+      echo "" >> final-report.md
+      echo "## Repositories with No Activity" >> final-report.md
+      echo "" >> final-report.md
+      
+      skipped_repos='{{active_repos.skipped}}'
+      if [ "$skipped_repos" != "[]" ] && [ -n "$skipped_repos" ]; then
+        echo "$skipped_repos" | jq -r '.[]' | while read -r repo; do
+          echo "- $repo" >> final-report.md
+        done
+      else
+        echo "_All discovered repos had activity in the specified date range._" >> final-report.md
+      fi
+      
+      # Add footer (use echo to avoid heredoc --- breaking YAML)
+      echo "" >> final-report.md
+      echo "---" >> final-report.md
+      echo "" >> final-report.md
+      echo "*Generated by @amplifier:recipes/ecosystem-activity-report.yaml*" >> final-report.md
+      
+      # Move report to final location (assemble writes directly to avoid escaping issues)
+      mkdir -p reports
+      mv final-report.md reports/{{report_filename}}
+      
+      # Output status (NOT the report content - that breaks bash escaping)
+      size=$(wc -c < "reports/{{report_filename}}" | tr -d ' ')
+      echo "{\"assembled\": true, \"path\": \"{{working_dir}}/reports/{{report_filename}}\", \"size\": $size}"
+    output: "final_report"
+    parse_json: true
+    timeout: 120
+
+  # ==========================================================================
+  # Step 10e: Verify report was written
+  # ==========================================================================
+  # BASH STEP - Verify the assembled report exists
+  # v1.8.0: Assembly step now writes directly; this step just verifies
   - id: "write-report"
     type: "bash"
     command: |
       set -euo pipefail
       
-      mkdir -p {{working_dir}}/reports
-      
-      # Write the report content to file using printf (safer than heredoc)
-      # Write to temp file first, then move (atomic write)
-      printf '%s\n' '{{final_report}}' > {{working_dir}}/reports/{{report_filename}}.tmp
-      mv {{working_dir}}/reports/{{report_filename}}.tmp {{working_dir}}/reports/{{report_filename}}
-      
-      # Verify the write succeeded
+      # Verify the report was written by assemble step
       if [ -s "{{working_dir}}/reports/{{report_filename}}" ]; then
         size=$(wc -c < "{{working_dir}}/reports/{{report_filename}}" | tr -d ' ')
-        echo "Report written: {{working_dir}}/reports/{{report_filename}} ($size bytes)"
-        echo "{\"written\": true, \"path\": \"{{working_dir}}/reports/{{report_filename}}\", \"size\": $size}"
+        lines=$(wc -l < "{{working_dir}}/reports/{{report_filename}}" | tr -d ' ')
+        echo "Report verified: {{working_dir}}/reports/{{report_filename}} ($size bytes, $lines lines)" >&2
+        echo "{\"written\": true, \"path\": \"{{working_dir}}/reports/{{report_filename}}\", \"size\": $size, \"lines\": $lines}"
       else
-        echo "ERROR: Failed to write report" >&2
+        echo "ERROR: Report not found at {{working_dir}}/reports/{{report_filename}}" >&2
         echo "{\"written\": false, \"error\": \"File empty or missing\"}"
         exit 1
       fi
