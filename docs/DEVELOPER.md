@@ -311,11 +311,6 @@ Add your module to [MODULES.md](./MODULES.md) in the Community Modules section!
 **Core Technical Documentation:**
 
 - [amplifier-core](https://github.com/microsoft/amplifier-core) - Kernel interfaces and protocols
-- [amplifier-dev/docs](https://github.com/microsoft/amplifier-dev/tree/main/docs) - Architecture guides and ADRs
-
-**Reference Implementations:**
-
-- [amplifier-dev](https://github.com/microsoft/amplifier-dev) - All reference modules
 
 **Module Development:**
 

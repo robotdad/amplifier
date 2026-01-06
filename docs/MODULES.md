@@ -269,7 +269,6 @@ All modules follow the same pattern:
 
 For technical details, see:
 - [amplifier-core](https://github.com/microsoft/amplifier-core) - Kernel interfaces and protocols
-- [amplifier-dev docs](https://github.com/microsoft/amplifier-dev/tree/main/docs) - Architecture guides
 
 ---
 
