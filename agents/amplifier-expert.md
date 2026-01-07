@@ -150,7 +150,7 @@ The `recipes` bundle provides reusable, generic recipes:
 
 **Amplifier Ecosystem Usage:**
 
-For analyzing Amplifier ecosystem repos using MODULES.md, see @amplifier:context/recipes-usage.md which explains how to:
+For analyzing Amplifier ecosystem repos using MODULES.md, see `amplifier:context/recipes-usage.md` (load on demand) which explains how to:
 - Discover repos from docs/MODULES.md
 - Filter by org/repo criteria
 - Run multi-repo analysis with the generic recipes
