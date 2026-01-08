@@ -1,6 +1,6 @@
 name: "ecosystem-activity-report"
 description: "Analyze activity across the Amplifier ecosystem by discovering repos from MODULES.md"
-version: "1.13.0"
+version: "1.14.0"
 author: "Amplifier"
 tags: ["amplifier", "ecosystem", "github", "activity", "modules", "discovery"]
 
@@ -14,6 +14,11 @@ tags: ["amplifier", "ecosystem", "github", "activity", "modules", "discovery"]
 # 3. Reads MODULES.md to discover all ecosystem repos
 # 4. Filters repos based on criteria (org, name pattern)
 # 5. Calls the generic multi-repo recipe from @recipes bundle
+#
+# v1.14.0: Orchestrator-level rate limiting
+#         - Added orchestrator config with min_delay_between_calls_ms: 500
+#         - This paces API calls WITHIN each agent's agentic loop
+#         - Combined with recipe-level rate_limiting for comprehensive coverage
 #
 # v1.13.0: Maximum reliability configuration
 #         - parallel_analysis: 2 → 1 (sequential repo analysis)
@@ -80,10 +85,17 @@ recursion:
   max_depth: 3
   max_total_steps: 200
 
+# v1.14.0: Orchestrator-level rate limiting for agent loops
+# Paces API calls WITHIN each spawned agent's agentic loop
+# Complements recipe-level rate_limiting (which controls task spawning)
+orchestrator:
+  config:
+    min_delay_between_calls_ms: 500  # 500ms between API calls in agent loops
+
 # v1.10.0: Rate limiting to be a good API citizen
 # v1.12.0: More conservative settings to avoid rate limit failures
 # v1.13.0: Even more conservative - sequential LLM calls for reliability
-# Controls global LLM concurrency across the entire recipe tree
+# Controls global LLM concurrency across the entire recipe tree (task spawning)
 rate_limiting:
   max_concurrent_llm: 1      # Strictly sequential LLM calls (reduced from 2)
   min_delay_ms: 3000         # 3s minimum between call completions (increased from 1.5s)
