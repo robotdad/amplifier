@@ -1,6 +1,6 @@
 name: "repo-activity-analysis"
 description: "Analyze a GitHub repository for commits and PRs in a date range. Defaults to current repo since yesterday."
-version: "1.6.0"
+version: "2.0.0"
 author: "Amplifier Recipes"
 tags: ["github", "analysis", "commits", "prs", "git", "activity"]
 
@@ -8,6 +8,20 @@ tags: ["github", "analysis", "commits", "prs", "git", "activity"]
 #
 # Analyzes a single GitHub repository for commits and PRs in a date range.
 # Defaults to the current working directory's repo and "since yesterday".
+#
+# v2.0.0: Token-based chunking for large repos (BREAKING)
+#         - fetch-commits now creates token-budgeted chunks (~6000 tokens each)
+#         - analyze-commit-chunks uses foreach to analyze each chunk independently
+#         - synthesize-commit-analysis combines chunk results into unified analysis
+#         - Handles repos with 500+ commits without context overflow
+#         - Replaces truncation approach from v1.8.0
+#
+# v1.8.0: Context overflow fix - smart commit truncation (superseded by v2.0.0)
+#
+# v1.7.0: Pagination fixes for repos with >100 commits/PRs
+#         - fetch-commits now uses --paginate flag to get ALL commits
+#         - fetch-prs now uses gh api --paginate instead of gh pr list
+#         - Fixes data loss issue where only first 100 items were fetched
 #
 # v1.4.0: Timezone handling improvements
 #         - Emphasize LOCAL timezone in date parsing prompt
@@ -66,6 +80,7 @@ context:
     repo_name: ""           # e.g., "amplifier-core"
   
   # Default values for conditional step outputs (prevents undefined variable errors)
+  chunk_analyses: []  # Collected from foreach in analyze-commit-chunks
   commit_analysis: {"total_analyzed": 0, "by_impact": {}, "summaries": [], "needs_deep_dive": [], "themes": [], "skipped": true}
   deep_dive_results: {"deep_dives": [], "skipped": true}
   pr_analysis: {"total_prs": 0, "merged": 0, "open": 0, "by_category": {}, "notable_prs": [], "themes": [], "skipped": true}
@@ -210,45 +225,150 @@ steps:
     timeout: 10
 
   # ==========================================================================
-  # Step 3: Fetch commits (Bash - direct API calls)
+  # Step 3: Fetch commits with token-based chunking
   # ==========================================================================
-  # BASH STEP - Fetch commits via GitHub API
+  # BASH STEP - Fetch ALL commits and create token-budgeted chunks
   # Why bash: gh api + jq transforms are deterministic, no reasoning needed
+  # v1.7.0: Added --paginate to handle repos with >100 commits
+  # v2.0.0: Token-based chunking for large repos (replaces truncation)
+  #         - Estimates tokens per commit based on message length
+  #         - Creates chunks targeting ~6000 tokens each
+  #         - Enables parallel chunk analysis with summary synthesis
   - id: "fetch-commits"
     type: "bash"
     command: |
+      set -euo pipefail
       cd {{working_dir}}/analyses
       
-      # Fetch commits from GitHub API
-      gh api "repos/{{repo_info.owner}}/{{repo_info.repo_name}}/commits?since={{parsed_date.since_iso}}&per_page=100" \
+      # Fetch ALL commits using --paginate (handles >100 results automatically)
+      gh api --paginate "repos/{{repo_info.owner}}/{{repo_info.repo_name}}/commits?since={{parsed_date.since_iso}}&per_page=100" \
         --jq '[.[] | {sha: .sha, message: .commit.message, author: .commit.author.name, date: .commit.author.date, url: .html_url}]' \
-        2>/dev/null > {{repo_info.repo_name}}-commits.json || echo "[]" > {{repo_info.repo_name}}-commits.json
+        2>/dev/null > {{repo_info.repo_name}}-commits-raw.json || echo "[]" > {{repo_info.repo_name}}-commits-raw.json
       
-      # Use jq to safely construct output JSON (handles escaping of quotes/newlines in commit messages)
-      jq -c '{count: length, commits: ., error: null}' {{repo_info.repo_name}}-commits.json 2>/dev/null || \
-        echo '{"count": 0, "commits": [], "error": "Failed to parse commits"}'
+      # Merge paginated results
+      jq -s 'add // []' {{repo_info.repo_name}}-commits-raw.json > {{repo_info.repo_name}}-commits.json 2>/dev/null || \
+        mv {{repo_info.repo_name}}-commits-raw.json {{repo_info.repo_name}}-commits.json
+      
+      total_count=$(jq 'length' {{repo_info.repo_name}}-commits.json)
+      
+      # ===================================================================
+      # TOKEN-BASED CHUNKING
+      # ===================================================================
+      # Target: ~6000 tokens per chunk (leaves room for prompt + response)
+      # Estimation: chars / 4, with JSON overhead factor of 1.3
+      
+      target_tokens=6000
+      
+      if [ "$total_count" -eq 0 ]; then
+        # No commits - empty result with has_commits flag
+        echo '{"total_commits": 0, "num_chunks": 0, "commits_per_chunk": 0, "needs_chunking": false, "has_commits": "false", "chunks": [], "error": null}'
+        exit 0
+      fi
+      
+      # Calculate average characters per commit in this dataset
+      avg_chars=$(jq '[.[] | ((.sha // "") | length) + ((.message // "") | length) + ((.author // "") | length) + 50] | add / length' {{repo_info.repo_name}}-commits.json)
+      
+      # Convert to tokens: chars * 1.3 (JSON overhead) / 4 (chars per token)
+      # Use awk for floating point math
+      avg_tokens=$(echo "$avg_chars" | awk '{printf "%.0f", $1 * 1.3 / 4}')
+      
+      # Ensure avg_tokens is at least 100 (safety floor)
+      if [ "$avg_tokens" -lt 100 ]; then
+        avg_tokens=100
+      fi
+      
+      # Calculate commits per chunk
+      commits_per_chunk=$((target_tokens / avg_tokens))
+      
+      # Clamp to reasonable bounds: min 15, max 60
+      if [ "$commits_per_chunk" -lt 15 ]; then
+        commits_per_chunk=15
+      elif [ "$commits_per_chunk" -gt 60 ]; then
+        commits_per_chunk=60
+      fi
+      
+      # Determine if chunking needed (threshold: 40 commits)
+      if [ "$total_count" -le 40 ]; then
+        needs_chunking=false
+        # Single chunk with all commits
+        jq '[{chunk_index: 0, commits: ., count: length}]' {{repo_info.repo_name}}-commits.json > {{repo_info.repo_name}}-chunks.json
+      else
+        needs_chunking=true
+        # Create multiple chunks
+        jq --argjson size "$commits_per_chunk" '
+          [range(0; length; $size) as $i | 
+           {chunk_index: ($i / $size | floor), commits: .[$i:$i+$size], count: (.[$i:$i+$size] | length)}
+          ]
+        ' {{repo_info.repo_name}}-commits.json > {{repo_info.repo_name}}-chunks.json
+      fi
+      
+      num_chunks=$(jq 'length' {{repo_info.repo_name}}-chunks.json)
+      
+      # Determine has_commits boolean for condition checks
+      if [ "$total_count" -gt 0 ]; then
+        has_commits="true"
+      else
+        has_commits="false"
+      fi
+      
+      jq -n \
+        --argjson total "$total_count" \
+        --argjson num_chunks "$num_chunks" \
+        --argjson cpc "$commits_per_chunk" \
+        --argjson avg_tokens "$avg_tokens" \
+        --argjson needs_chunking "$needs_chunking" \
+        --arg has_commits "$has_commits" \
+        --slurpfile chunks {{repo_info.repo_name}}-chunks.json \
+        '{
+          total_commits: $total,
+          num_chunks: $num_chunks,
+          commits_per_chunk: $cpc,
+          avg_tokens_per_commit: $avg_tokens,
+          needs_chunking: $needs_chunking,
+          has_commits: $has_commits,
+          chunks: $chunks[0],
+          error: null
+        }'
     output: "commits_data"
     parse_json: true
-    timeout: 300
+    timeout: 600
 
   # ==========================================================================
-  # Step 4: Fetch PRs (Bash - direct API calls)
+  # Step 4: Fetch PRs (Bash - direct API calls with pagination)
   # ==========================================================================
-  # BASH STEP - Fetch PRs via GitHub CLI
-  # Why bash: gh pr list + jq filtering are deterministic, no reasoning needed
+  # BASH STEP - Fetch ALL PRs via GitHub API using --paginate
+  # Why bash: gh api + jq filtering are deterministic, no reasoning needed
+  # v1.7.0: Switched from gh pr list (--limit 100 cap) to gh api --paginate
   - id: "fetch-prs"
     type: "bash"
     command: |
       cd {{working_dir}}/analyses
       
-      # Fetch PRs from GitHub
-      gh pr list --repo {{repo_info.owner}}/{{repo_info.repo_name}} --state all --limit 100 \
-        --json number,title,state,author,createdAt,mergedAt,closedAt,additions,deletions,changedFiles,url \
+      # Fetch ALL PRs using gh api --paginate (gh pr list has arbitrary limits)
+      # Using API endpoint directly for full pagination support
+      gh api --paginate "repos/{{repo_info.owner}}/{{repo_info.repo_name}}/pulls?state=all&per_page=100" \
+        --jq '[.[] | {
+          number: .number,
+          title: .title,
+          state: (if .merged_at then "MERGED" elif .state == "closed" then "CLOSED" else "OPEN" end),
+          author: .user.login,
+          createdAt: .created_at,
+          mergedAt: .merged_at,
+          closedAt: .closed_at,
+          additions: .additions,
+          deletions: .deletions,
+          changedFiles: .changed_files,
+          url: .html_url
+        }]' \
         2>/dev/null > {{repo_info.repo_name}}-prs-raw.json || echo "[]" > {{repo_info.repo_name}}-prs-raw.json
       
-      # Filter to date range and count states
-      since_iso="{{parsed_date.since_iso}}"
+      # Merge paginated results
+      jq -s 'add // []' {{repo_info.repo_name}}-prs-raw.json > {{repo_info.repo_name}}-prs-merged.json 2>/dev/null || \
+        mv {{repo_info.repo_name}}-prs-raw.json {{repo_info.repo_name}}-prs-merged.json
+      mv {{repo_info.repo_name}}-prs-merged.json {{repo_info.repo_name}}-prs-raw.json
       
+      # Filter to date range
+      since_iso="{{parsed_date.since_iso}}"
       jq --arg since "$since_iso" '[.[] | select(.createdAt >= $since or .mergedAt >= $since or .closedAt >= $since)]' \
         {{repo_info.repo_name}}-prs-raw.json > {{repo_info.repo_name}}-prs.json 2>/dev/null || echo "[]" > {{repo_info.repo_name}}-prs.json
       
@@ -264,81 +384,113 @@ steps:
         echo '{"count": 0, "prs": [], "merged": 0, "open": 0, "closed": 0, "error": "Failed to parse PRs"}'
     output: "prs_data"
     parse_json: true
-    timeout: 300
+    timeout: 600
 
   # ==========================================================================
-  # Step 5: Analyze commits (LLM for semantic analysis)
+  # Step 5: Analyze commit chunks (foreach - one LLM call per chunk)
   # ==========================================================================
-  # AGENT STEP - Understand commit impact and categorize changes
-  # Why agent: Requires reading commit messages, inferring intent, categorizing impact
-  - id: "analyze-commits"
+  # AGENT STEP with foreach - Analyze each chunk independently
+  # v2.0.0: Token-based chunking - each chunk stays within context limits
+  #         Results collected for synthesis in next step
+  - id: "analyze-commit-chunks"
+    condition: "{{commits_data.has_commits}} == 'true'"
+    foreach: "{{commits_data.chunks}}"
+    as: "chunk"
+    collect: "chunk_analyses"
+    max_iterations: 20
     agent: "foundation:zen-architect"
     mode: "ANALYZE"
     prompt: |
-      Analyze the commits for {{repo_info.repo_name}}.
+      Analyze commit chunk {{chunk.chunk_index}} of {{commits_data.num_chunks}} for {{repo_info.repo_name}}.
       
-      Commits count: {{commits_data.count}}
-      Commits: {{commits_data.commits}}
+      **Chunk info**: {{chunk.count}} commits (of {{commits_data.total_commits}} total in repo)
+      **Chunking**: {{commits_data.num_chunks}} chunks, ~{{commits_data.commits_per_chunk}} commits each
       
-      **If commits count is 0 or commits list is empty, return immediately:**
+      Commits in this chunk:
+      {{chunk.commits}}
+      
+      ## Instructions
+      
+      **DO NOT fetch diffs for every commit.** Instead:
+      1. Categorize commits by message patterns (feat:, fix:, docs:, refactor:, chore:, etc.)
+      2. Group similar commits (e.g., "5 documentation updates")
+      3. Only fetch diffs for commits that seem significant or unclear:
+         ```bash
+         gh api "repos/{{repo_info.owner}}/{{repo_info.repo_name}}/commits/<SHA>" \
+           --jq '{files: [.files[:10][] | {filename, additions, deletions}], stats: .stats}'
+         ```
+      
+      ## Return PARTIAL analysis for this chunk:
       ```json
       {
-        "total_analyzed": 0,
-        "by_impact": {"trivial": 0, "minor": 0, "moderate": 0, "significant": 0, "breaking": 0},
-        "summaries": [],
-        "needs_deep_dive": [],
-        "themes": [],
-        "skipped": true,
-        "reason": "No commits in date range"
+        "chunk_index": {{chunk.chunk_index}},
+        "commits_analyzed": N,
+        "by_impact": {"trivial": N, "minor": N, "moderate": N, "significant": N, "breaking": N},
+        "notable_commits": [{"sha": "...", "summary": "...", "impact": "..."}],
+        "themes": ["patterns in this chunk"],
+        "needs_deep_dive": ["SHAs needing investigation"]
       }
       ```
       
-      **Otherwise, for each commit:**
-      
-      For each commit (or batch if many):
-      
-      1. Fetch the diff using gh CLI:
-      ```bash
-      gh api "repos/{{repo_info.owner}}/{{repo_info.repo_name}}/commits/<SHA>" \
-        --jq '{files: [.files[] | {filename, status, additions, deletions}], stats: .stats}'
-      ```
-      
-      2. Analyze:
-         - What changed (files, patterns)
-         - Why (infer from commit message)
-         - Impact level: trivial | minor | moderate | significant | breaking
-         - Flag if needs_deep_dive (impact unclear from message + diff alone)
-      
-      For large numbers of commits (>20):
-      - Group by author or by area (docs, src, tests)
-      - Summarize patterns rather than individual commits
-      - Still flag any that seem significant
-      
-      Return:
-      {
-        "total_analyzed": N,
-        "by_impact": {
-          "trivial": N,
-          "minor": N,
-          "moderate": N,
-          "significant": N,
-          "breaking": N
-        },
-        "summaries": [
-          {
-            "sha": "...",
-            "summary": "...",
-            "impact": "...",
-            "needs_deep_dive": true|false,
-            "files_changed": [...]
-          }
-        ],
-        "needs_deep_dive": [list of SHAs needing deeper analysis],
-        "themes": ["list of patterns/themes observed"]
-      }
+      Keep output concise - this will be synthesized with other chunks.
+    output: "chunk_result"
+    parse_json: true
+    timeout: 300
+    on_error: "continue"
+
+  # ==========================================================================
+  # Step 5b: Handle empty commits case
+  # ==========================================================================
+  - id: "handle-empty-commits"
+    condition: "{{commits_data.has_commits}} == 'false'"
+    type: "bash"
+    command: |
+      echo '{"total_analyzed": 0, "by_impact": {"trivial": 0, "minor": 0, "moderate": 0, "significant": 0, "breaking": 0}, "summaries": [], "needs_deep_dive": [], "themes": [], "skipped": true, "reason": "No commits in date range"}'
     output: "commit_analysis"
     parse_json: true
-    timeout: 600
+    timeout: 10
+
+  # ==========================================================================
+  # Step 5c: Synthesize chunk analyses into unified commit analysis
+  # ==========================================================================
+  # AGENT STEP - Combine all chunk analyses into coherent summary
+  # Only runs if we have chunks to synthesize
+  - id: "synthesize-commit-analysis"
+    condition: "{{commits_data.has_commits}} == 'true'"
+    agent: "foundation:zen-architect"
+    mode: "ANALYZE"
+    prompt: |
+      Synthesize commit analysis from {{commits_data.num_chunks}} chunks for {{repo_info.repo_name}}.
+      
+      **Total commits**: {{commits_data.total_commits}}
+      **Chunks processed**: {{commits_data.num_chunks}}
+      
+      Chunk analyses:
+      {{chunk_analyses}}
+      
+      ## Instructions
+      
+      Combine the per-chunk analyses into a unified summary:
+      1. **Aggregate impact counts** - Sum by_impact across all chunks
+      2. **Merge themes** - Identify cross-chunk patterns, deduplicate
+      3. **Prioritize notable commits** - Keep top 10-15 most significant
+      4. **Consolidate needs_deep_dive** - Unique SHAs only
+      
+      ## Return unified commit analysis:
+      ```json
+      {
+        "total_analyzed": {{commits_data.total_commits}},
+        "chunks_processed": {{commits_data.num_chunks}},
+        "by_impact": {"trivial": N, "minor": N, "moderate": N, "significant": N, "breaking": N},
+        "summaries": [{"sha": "...", "summary": "...", "impact": "...", "files_changed": [...]}],
+        "needs_deep_dive": ["unique SHAs requiring deeper analysis"],
+        "themes": ["consolidated patterns across all commits"],
+        "skipped": false
+      }
+      ```
+    output: "commit_analysis"
+    parse_json: true
+    timeout: 300
 
   # ==========================================================================
   # Step 6: Deep-dive unclear commits (optional LLM analysis)

@@ -1,6 +1,6 @@
 name: "ecosystem-activity-report"
 description: "Analyze activity across the Amplifier ecosystem by discovering repos from MODULES.md"
-version: "1.9.0"
+version: "1.13.0"
 author: "Amplifier"
 tags: ["amplifier", "ecosystem", "github", "activity", "modules", "discovery"]
 
@@ -14,6 +14,30 @@ tags: ["amplifier", "ecosystem", "github", "activity", "modules", "discovery"]
 # 3. Reads MODULES.md to discover all ecosystem repos
 # 4. Filters repos based on criteria (org, name pattern)
 # 5. Calls the generic multi-repo recipe from @recipes bundle
+#
+# v1.13.0: Maximum reliability configuration
+#         - parallel_analysis: 2 → 1 (sequential repo analysis)
+#         - max_concurrent_llm: 2 → 1 (strictly sequential LLM calls)
+#         - min_delay_ms: 1500 → 3000 (3s between calls)
+#         - initial_delay_ms: 5000 → 10000 (10s backoff start)
+#         - Trade-off: ~2x slower but eliminates rate limit failures
+#
+# v1.12.0: More conservative rate limiting to avoid failures
+#         - parallel_analysis: true → 2 (max 2 concurrent repo analyses)
+#         - max_concurrent_llm: 3 → 2
+#         - min_delay_ms: 500 → 1500 (1.5s between LLM calls)
+#         - initial_delay_ms: 2000 → 5000 (5s backoff start)
+#
+# v1.11.0: Pagination fixes for accurate commit/PR counts
+#         - quick-activity-check now uses --paginate for repos with >100 commits
+#         - Added count_with_pagination() helper function
+#         - Increased timeout to 1800s for large repos with many pages
+#         - Fixes bug where repos like amplifier-app-cli showed 100 instead of 462 commits
+#
+# v1.10.0: Rate limiting for API citizenship
+#         - Added rate_limiting config (max_concurrent_llm: 3, min_delay_ms: 500)
+#         - Adaptive backoff on 429 errors enabled by default
+#         - Prevents overwhelming LLM providers in multi-user environments
 #
 # v1.7.0: Context overflow fix
 #         - Sub-recipe now returns compact synthesis_input for aggregation
@@ -55,6 +79,20 @@ tags: ["amplifier", "ecosystem", "github", "activity", "modules", "discovery"]
 recursion:
   max_depth: 3
   max_total_steps: 200
+
+# v1.10.0: Rate limiting to be a good API citizen
+# v1.12.0: More conservative settings to avoid rate limit failures
+# v1.13.0: Even more conservative - sequential LLM calls for reliability
+# Controls global LLM concurrency across the entire recipe tree
+rate_limiting:
+  max_concurrent_llm: 1      # Strictly sequential LLM calls (reduced from 2)
+  min_delay_ms: 3000         # 3s minimum between call completions (increased from 1.5s)
+  backoff:
+    enabled: true            # Auto-slow on 429 errors
+    initial_delay_ms: 10000  # Start with 10s delay after rate limit hit (increased from 5s)
+    max_delay_ms: 120000     # Cap at 2 minutes (increased from 1 minute)
+    multiplier: 2.5          # More aggressive backoff (increased from 2.0)
+    reset_after_success: 5   # Need more successes before reducing delay (increased from 3)
 #
 # Usage (your activity today - default):
 #   amplifier run "execute recipe @amplifier:recipes/ecosystem-activity-report.yaml"
@@ -106,8 +144,10 @@ context:
   # Output report filename
   report_filename: "ecosystem-activity-report.md"
   
-  # Parallel analysis mode - set false if hitting rate limits or debugging
-  parallel_analysis: true
+  # Parallel analysis mode - number limits concurrent repo analyses
+  # Set to 1 for sequential (safest), 2-3 for moderate parallelism, true for max
+  # v1.13.0: Reduced to 1 for reliability over speed
+  parallel_analysis: 1
   
   # Rate limiting: delay between GitHub API calls (seconds)
   # Increase if hitting rate limits, decrease if you have higher limits
@@ -522,6 +562,7 @@ steps:
   # ==========================================================================
   # BASH STEP - Batch API calls to check for activity
   # Why bash: gh api calls are deterministic, rate limiting is simple loop logic
+  # v1.11.0: Added pagination support for accurate commit counts (fixes 100-cap issue)
   - id: "quick-activity-check"
     type: "bash"
     command: |
@@ -541,7 +582,7 @@ steps:
       api_delay={{api_delay_seconds}}
       max_retries={{api_retry_attempts}}
       
-      # Helper function: gh API call with retry logic
+      # Helper function: gh API call with retry logic (single page)
       gh_api_retry() {
         local endpoint="$1"
         local jq_filter="$2"
@@ -552,6 +593,24 @@ steps:
           result=$(gh api "$endpoint" --jq "$jq_filter" 2>/dev/null) && break
           attempt=$((attempt + 1))
           [ $attempt -le $max_retries ] && sleep $((attempt * 2))  # Exponential backoff
+        done
+        
+        echo "${result:-0}"
+      }
+      
+      # Helper function: Count items with pagination (for accurate totals >100)
+      # Uses --paginate to follow all pages and count total items
+      count_with_pagination() {
+        local endpoint="$1"
+        local jq_filter="${2:-length}"
+        local attempt=1
+        local result=""
+        
+        while [ $attempt -le $max_retries ]; do
+          # Use --paginate to get ALL results, then count
+          result=$(gh api --paginate "$endpoint" 2>/dev/null | jq -s "add // [] | $jq_filter" 2>/dev/null) && break
+          attempt=$((attempt + 1))
+          [ $attempt -le $max_retries ] && sleep $((attempt * 2))
         done
         
         echo "${result:-0}"
@@ -576,17 +635,18 @@ steps:
         fi
         
         if [ "$filter_mode" = "all" ]; then
-          # Check if repo has ANY commits in date range (don't skip!)
-          all_commits=$(gh_api_retry "repos/$owner/$name/commits?since=$since_iso&per_page=1" 'length')
+          # Check if repo has ANY commits in date range (quick check with per_page=1)
+          has_commits=$(gh_api_retry "repos/$owner/$name/commits?since=$since_iso&per_page=1" 'length')
           
-          if [ "${all_commits:-0}" -gt 0 ]; then
-            # Get actual commit count for repos with activity
-            actual_count=$(gh_api_retry "repos/$owner/$name/commits?since=$since_iso&per_page=100" 'length')
+          if [ "${has_commits:-0}" -gt 0 ]; then
+            # Get ACTUAL commit count using pagination (handles >100 commits)
+            actual_count=$(count_with_pagination "repos/$owner/$name/commits?since=$since_iso&per_page=100" 'length')
             jq -n --arg repo "$name" --arg owner "$owner" --arg url "$url" --argjson commits "$actual_count" \
               '{repo: $repo, owner: $owner, url: $url, commits: $commits, prs: -1, has_activity: true}'
           else
             # Also check PRs - repo might have PR-only activity
-            all_prs=$(gh_api_retry "repos/$owner/$name/pulls?state=all&per_page=100" \
+            # Use pagination for PRs too (filter after fetching all)
+            all_prs=$(count_with_pagination "repos/$owner/$name/pulls?state=all&per_page=100" \
               "[.[] | select(.created_at >= \"$since_iso\" or .merged_at >= \"$since_iso\")] | length")
             if [ "${all_prs:-0}" -gt 0 ]; then
               jq -n --arg repo "$name" --arg owner "$owner" --arg url "$url" --argjson prs "$all_prs" \
@@ -602,15 +662,15 @@ steps:
           total_prs=0
           
           for username in $(jq -r '.[]' usernames.json); do
-            # Check commits for this user (with retry)
-            user_commits=$(gh_api_retry "repos/$owner/$name/commits?author=$username&since=$since_iso&per_page=100" 'length')
+            # Check commits for this user with pagination
+            user_commits=$(count_with_pagination "repos/$owner/$name/commits?author=$username&since=$since_iso&per_page=100" 'length')
             total_commits=$((total_commits + user_commits))
             
             # Rate limiting between API calls
             sleep $api_delay
             
-            # Check PRs for this user (with retry)
-            user_prs=$(gh_api_retry "repos/$owner/$name/pulls?state=all&per_page=100" \
+            # Check PRs for this user with pagination
+            user_prs=$(count_with_pagination "repos/$owner/$name/pulls?state=all&per_page=100" \
               "[.[] | select(.user.login == \"$username\" and (.created_at >= \"$since_iso\" or .merged_at >= \"$since_iso\"))] | length")
             total_prs=$((total_prs + user_prs))
           done
@@ -630,7 +690,7 @@ steps:
       
       echo "]"
     output: "activity_checks"
-    timeout: 900
+    timeout: 1800
 
   # ==========================================================================
   # Step 7: Filter to repos with activity
@@ -957,9 +1017,9 @@ steps:
         # Input data
         ($data[0] // []) as $repos |
         
-        # Calculate totals
-        ($repos | map(.commits // 0) | add // 0) as $total_commits |
-        ($repos | map(.prs // 0) | add // 0) as $total_prs |
+        # Calculate totals (handle string values like "unknown (rate limited)" by converting to 0)
+        ($repos | map(.commits | if type == "number" then . else 0 end) | add // 0) as $total_commits |
+        ($repos | map(.prs | if type == "number" then . else 0 end) | add // 0) as $total_prs |
         ($repos | length) as $total_repos |
         
         # Count by impact level (from_entries needs {key, value} not {key, count})
