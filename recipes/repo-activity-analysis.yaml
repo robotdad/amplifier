@@ -1,6 +1,6 @@
 name: "repo-activity-analysis"
 description: "Analyze a GitHub repository for commits and PRs in a date range. Defaults to current repo since yesterday."
-version: "2.0.0"
+version: "2.1.0"
 author: "Amplifier Recipes"
 tags: ["github", "analysis", "commits", "prs", "git", "activity"]
 
@@ -8,6 +8,11 @@ tags: ["github", "analysis", "commits", "prs", "git", "activity"]
 #
 # Analyzes a single GitHub repository for commits and PRs in a date range.
 # Defaults to the current working directory's repo and "since yesterday".
+#
+# v2.1.0: Reliability improvements - retry logic and increased timeouts
+#         - All LLM steps now have retry config (max 3 attempts, exponential backoff)
+#         - Increased timeouts from 300s to 600s for synthesis steps
+#         - Reduces transient failures from rate limiting
 #
 # v2.0.0: Token-based chunking for large repos (BREAKING)
 #         - fetch-commits now creates token-budgeted chunks (~6000 tokens each)
@@ -400,6 +405,11 @@ steps:
     max_iterations: 20
     agent: "foundation:zen-architect"
     mode: "ANALYZE"
+    retry:
+      max_attempts: 3
+      backoff: "exponential"
+      initial_delay: 10
+      max_delay: 120
     prompt: |
       Analyze commit chunk {{chunk.chunk_index}} of {{commits_data.num_chunks}} for {{repo_info.repo_name}}.
       
@@ -435,7 +445,7 @@ steps:
       Keep output concise - this will be synthesized with other chunks.
     output: "chunk_result"
     parse_json: true
-    timeout: 300
+    timeout: 600
     on_error: "continue"
 
   # ==========================================================================
@@ -459,6 +469,11 @@ steps:
     condition: "{{commits_data.has_commits}} == 'true'"
     agent: "foundation:zen-architect"
     mode: "ANALYZE"
+    retry:
+      max_attempts: 3
+      backoff: "exponential"
+      initial_delay: 10
+      max_delay: 120
     prompt: |
       Synthesize commit analysis from {{commits_data.num_chunks}} chunks for {{repo_info.repo_name}}.
       
@@ -490,7 +505,7 @@ steps:
       ```
     output: "commit_analysis"
     parse_json: true
-    timeout: 300
+    timeout: 600
 
   # ==========================================================================
   # Step 6: Deep-dive unclear commits (optional LLM analysis)
@@ -499,6 +514,11 @@ steps:
   # Why agent: Requires git exploration, reading code, inferring impact
   - id: "deep-dive-unclear-commits"
     agent: "foundation:explorer"
+    retry:
+      max_attempts: 2
+      backoff: "exponential"
+      initial_delay: 15
+      max_delay: 120
     prompt: |
       Deep-dive analysis for commits with unclear impact in {{repo_info.repo_name}}.
       
@@ -566,6 +586,11 @@ steps:
   - id: "analyze-prs"
     agent: "foundation:zen-architect"
     mode: "ANALYZE"
+    retry:
+      max_attempts: 3
+      backoff: "exponential"
+      initial_delay: 10
+      max_delay: 120
     prompt: |
       Analyze the PRs for {{repo_info.repo_name}}.
       
@@ -630,6 +655,11 @@ steps:
   - id: "synthesize-repo-findings"
     agent: "foundation:zen-architect"
     mode: "ARCHITECT"
+    retry:
+      max_attempts: 3
+      backoff: "exponential"
+      initial_delay: 10
+      max_delay: 120
     prompt: |
       Synthesize all findings for {{repo_info.repo_name}}.
       
