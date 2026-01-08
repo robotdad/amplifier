@@ -119,6 +119,7 @@ Extend AI capabilities with actions.
 | **tool-task** | Agent delegation and sub-session spawning | [amplifier-module-tool-task](https://github.com/microsoft/amplifier-module-tool-task) |
 | **tool-todo** | AI self-accountability and todo list management | [amplifier-module-tool-todo](https://github.com/microsoft/amplifier-module-tool-todo) |
 | **tool-skills** | Load domain knowledge from skills following the Anthropic Skills format | [amplifier-module-tool-skills](https://github.com/microsoft/amplifier-module-tool-skills) |
+| **tool-mcp** | Model Context Protocol integration for MCP servers | [amplifier-module-tool-mcp](https://github.com/microsoft/amplifier-module-tool-mcp) |
 
 ### Context Managers
 
@@ -222,7 +223,6 @@ Modules built by the community.
 
 | Module | Description | Author | Repository |
 |--------|-------------|--------|------------|
-| **tool-mcp** | Model Context Protocol integration for MCP servers | [@robotdad](https://github.com/robotdad) | [amplifier-module-tool-mcp](https://github.com/robotdad/amplifier-module-tool-mcp) |
 | **tool-youtube-dl** | Download audio and video from YouTube with metadata extraction | [@robotdad](https://github.com/robotdad) | [amplifier-module-tool-youtube-dl](https://github.com/robotdad/amplifier-module-tool-youtube-dl) |
 | **tool-whisper** | Speech-to-text transcription using OpenAI's Whisper API | [@robotdad](https://github.com/robotdad) | [amplifier-module-tool-whisper](https://github.com/robotdad/amplifier-module-tool-whisper) |
 | **tool-memory** | Persistent memory tool for storing and retrieving facts across sessions | [@michaeljabbour](https://github.com/michaeljabbour) | [amplifier-module-tool-memory](https://github.com/michaeljabbour/amplifier-module-tool-memory) |
