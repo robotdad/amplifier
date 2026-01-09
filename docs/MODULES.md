@@ -207,6 +207,20 @@ Applications built by the community using Amplifier.
 
 ---
 
+## Community Bundles
+
+Bundles built by the community.
+
+> **SECURITY WARNING**: Community bundles execute arbitrary code in your environment with full access to your filesystem, network, and credentials. Only use bundles from sources you trust. Review code before installation.
+
+| Bundle | Description | Author | Repository |
+|--------|-------------|--------|------------|
+| **expert-cookbook** | Achieve the State of the Art with Microsoft Amplifier | [@DavidKoleczek](https://github.com/DavidKoleczek) | [amplifier-expert-cookbook](https://github.com/DavidKoleczek/amplifier-expert-cookbook) |
+
+**Want to share your bundle?** Submit a PR to add your Amplifier bundle to this list!
+
+---
+
 ## Community Modules
 
 Modules built by the community.
