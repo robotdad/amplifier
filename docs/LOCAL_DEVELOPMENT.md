@@ -326,9 +326,14 @@ mv .amplifier/settings.yaml.bak .amplifier/settings.yaml
 ### 4. Clear Cache When Switching Branches
 
 ```bash
-# After checking out different branch
-amplifier module refresh --all
+# After checking out different branch - use reset to safely clear cache
+amplifier reset --remove cache -y
+
+# Or use interactive mode to choose what to preserve
+amplifier reset
 ```
+
+**WARNING**: Never manually delete `~/.amplifier/cache/` - the Amplifier CLI has editable install dependencies in this directory. Use `amplifier reset` which handles cache clearing safely and reinstalls dependencies.
 
 ---
 
