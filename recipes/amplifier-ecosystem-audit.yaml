@@ -31,6 +31,11 @@ tags: ["audit", "compliance", "github", "amplifier", "ecosystem", "multi-repo"]
 #     "include_community": "true"
 #   }'
 #
+#   # Override max repos safety limit (default: 100)
+#   amplifier recipes execute amplifier-ecosystem-audit.yaml --context '{
+#     "max_repos": 200
+#   }'
+#
 # Requirements:
 #   - gh CLI installed and authenticated
 #   - repo-audit.yaml recipe (in same directory)
@@ -64,8 +69,9 @@ context:
   # Passes through to individual repo audits
   dry_run: "false"
   
-  # Maximum repos to audit (safety limit - stop if exceeded)
-  max_repos: 50
+  # Maximum repos to audit (safety limit - stops with error if exceeded)
+  # Override via --context '{"max_repos": 200}' if ecosystem grows
+  max_repos: 100
   
   # Working directory for intermediate files
   working_dir: "./ai_working/ecosystem-audit"
