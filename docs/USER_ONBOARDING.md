@@ -561,6 +561,11 @@ amplifier module current
 amplifier source add <id> <uri> [--scope]
 amplifier source remove <id> [--scope]
 amplifier source list
+
+# Notifications (requires notify bundle)
+amplifier notify status                   # Show current settings
+amplifier notify desktop --enable         # Enable desktop notifications
+amplifier notify ntfy --enable --topic X  # Enable push via ntfy.sh
 ```
 
 ### Session Commands
