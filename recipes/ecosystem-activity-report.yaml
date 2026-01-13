@@ -90,7 +90,7 @@ recursion:
 # Complements recipe-level rate_limiting (which controls task spawning)
 orchestrator:
   config:
-    min_delay_between_calls_ms: 500  # 500ms between API calls in agent loops
+    min_delay_between_calls_ms: 1000  # Force 1s delay to verify event emission
 
 # v1.10.0: Rate limiting to be a good API citizen
 # v1.12.0: More conservative settings to avoid rate limit failures
