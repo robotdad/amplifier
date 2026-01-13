@@ -108,7 +108,7 @@ See [Module Development](https://github.com/private-repo/docs/MODULE_DEVELOPMENT
 Modules are loaded by applications using this resolution mechanism.
 
 <!-- ❌ WRONG: References specific library not depended on -->
-Modules are loaded using amplifier-profiles' ProfileLoader API.
+Modules are loaded using amplifier-foundation's internal APIs directly.
 ```
 
 ---
@@ -153,56 +153,6 @@ Modules are loaded using amplifier-profiles' ProfileLoader API.
   - Examples for app/service developers
   - Recommended approaches for common features
 
-**amplifier-profiles** (microsoft/amplifier-profiles) ⚠️ **DEPRECATED**
-- **Status**: Being replaced by amplifier-foundation and bundles
-- **Purpose**: Profile and agent loading, inheritance, Mount Plan compilation
-- **Can Reference**: amplifier-core, amplifier, amplifier-collections
-- **Referenced By**: Applications (amplifier-app-cli, etc.)
-- **CANNOT Be Referenced By**: amplifier-core
-- **Contains**:
-  - ProfileLoader, AgentLoader, AgentResolver APIs
-  - Profile/Agent schemas and protocols
-  - Profile authoring guide (user-facing)
-  - Agent authoring guide (user-facing)
-  - System design and architecture
-  - All profile/agent concepts and examples
-
-**amplifier-collections** (microsoft/amplifier-collections) ⚠️ **DEPRECATED**
-- **Status**: Being replaced by amplifier-foundation and bundles
-- **Purpose**: Collections system for shareable expertise bundles
-- **Can Reference**: amplifier-core, amplifier, amplifier-module-resolution
-- **Referenced By**: Applications, amplifier-profiles
-- **CANNOT Be Referenced By**: amplifier-core
-- **Contains**:
-  - CollectionResolver API
-  - Collection installation and discovery
-  - Collection authoring guide
-  - Collection format specification
-
-**amplifier-config** (microsoft/amplifier-config) ⚠️ **DEPRECATED**
-- **Status**: Being replaced by amplifier-foundation and bundles
-- **Purpose**: Configuration management (settings, scopes, paths)
-- **Can Reference**: amplifier-core, amplifier
-- **Referenced By**: Applications
-- **CANNOT Be Referenced By**: amplifier-core
-- **Contains**:
-  - ConfigManager, ConfigPaths APIs
-  - Scope system (user, project, local)
-  - Settings management
-  - deep_merge utility
-
-**amplifier-module-resolution** (microsoft/amplifier-module-resolution) ⚠️ **DEPRECATED**
-- **Status**: Being replaced by amplifier-foundation and bundles
-- **Purpose**: Module source resolution (git, file, package)
-- **Can Reference**: amplifier-core, amplifier
-- **Referenced By**: Applications, amplifier-collections
-- **CANNOT Be Referenced By**: amplifier-core
-- **Contains**:
-  - StandardModuleSourceResolver API
-  - GitSource, FileSource, PackageSource
-  - Module installation and caching
-  - Source resolution specification
-
 ### Applications (Consume Libraries)
 
 **amplifier-app-cli** (microsoft/amplifier-app-cli)
@@ -217,19 +167,6 @@ Modules are loaded using amplifier-profiles' ProfileLoader API.
   - App-specific implementation docs (agent delegation, etc.)
   - Toolkit utilities for building sophisticated tools
   - How THIS app uses libraries
-
-### Collections (Shareable Expertise) ⚠️ **DEPRECATED**
-
-> **Note**: Collections are being replaced by Bundles. See [Bundles](#bundles-composable-configurations) below for the current approach.
-
-**amplifier-collection-***
-- **Status**: Being replaced by bundles
-- **Purpose**: Shareable expertise bundles with profiles, agents, context, tools
-- **Can Reference**: Modules, libraries (looser rules, evolving)
-- **Referenced By**: Applications (via collection:name syntax)
-- **Contains**:
-  - Profiles, agents, context, scenario tools, modules
-  - Collection-specific documentation
 
 ### Bundles (Composable Configurations)
 
@@ -311,10 +248,6 @@ Modules are loaded using amplifier-profiles' ProfileLoader API.
 
 **Libraries**:
 - **amplifier-foundation** - Bundle primitives, shared utilities, reference bundles (primary library)
-- **amplifier-profiles** ⚠️ Deprecated - Profile/agent system
-- **amplifier-collections** ⚠️ Deprecated - Collections system
-- **amplifier-config** ⚠️ Deprecated - Configuration
-- **amplifier-module-resolution** ⚠️ Deprecated - Module sources
 
 ### Is it app-specific implementation?
 → **amplifier-app-cli** (or other app) (`README.md`, `docs/`)
@@ -621,10 +554,9 @@ Before creating/moving documentation:
 **Repository Types**:
 - **Entry Point**: amplifier - Links to everything
 - **Kernel**: amplifier-core - Contracts and mechanisms only
-- **Libraries**: amplifier-foundation (primary), amplifier-{profiles,collections,config,module-resolution} ⚠️ Deprecated
+- **Libraries**: amplifier-foundation - Bundle primitives, shared utilities
 - **Applications**: amplifier-app-cli - Implementation and commands
-- **Collections**: amplifier-collection-* ⚠️ Deprecated - Being replaced by bundles
-- **Bundles**: amplifier-bundle-* - Composable configuration packages (primary)
+- **Bundles**: amplifier-bundle-* - Composable configuration packages
 - **Modules**: amplifier-module-* - Isolated kernel extensions
 
 **Content Flow**:

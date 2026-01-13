@@ -225,12 +225,15 @@ uv run pytest --cov
 # Quick test via dev command
 amplifier module dev test tool-bash
 
-# Or create test profile
-cat > test-profile.md << 'EOF'
+# Or create test bundle
+cat > test-bundle.md << 'EOF'
 ---
-profile:
+bundle:
   name: test
-  extends: foundation
+  version: 1.0.0
+
+includes:
+  - bundle: foundation
 
 tools:
   - module: tool-bash
@@ -241,7 +244,7 @@ providers:
 ---
 EOF
 
-amplifier run --profile test-profile.md "test your module"
+amplifier run --bundle test-bundle.md "test your module"
 ```
 
 ---
@@ -319,7 +322,7 @@ git commit -m "Initial implementation"
 git push -u origin main
 ```
 
-Users reference via git URL:
+Users reference via git URL in their bundle:
 
 ```yaml
 tools:
@@ -466,5 +469,4 @@ source: git+https://github.com/you/amplifier-module-tool-name@v1.0.0
 
 - **[Module Resolution User Guide](https://github.com/microsoft/amplifier-module-resolution/blob/main/docs/USER_GUIDE.md)** - Customizing module sources
 - **[Module Resolution Specification](https://github.com/microsoft/amplifier-module-resolution/blob/main/docs/SPECIFICATION.md)** - Technical specification
-- **[Collection Authoring](https://github.com/microsoft/amplifier-collections/blob/main/docs/AUTHORING.md)** - Distributing modules via collections
 - [AMPLIFIER_AS_LINUX_KERNEL.md](./AMPLIFIER_AS_LINUX_KERNEL.md) - Module architecture philosophy

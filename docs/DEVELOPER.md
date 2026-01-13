@@ -268,7 +268,7 @@ git push -u origin main
 Once published, anyone can use it:
 
 ```yaml
-# In a profile
+# In a bundle
 tools:
   - module: tool-yourname
     source: git+https://github.com/yourusername/amplifier-module-tool-yourname@main

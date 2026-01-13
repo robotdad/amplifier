@@ -542,7 +542,7 @@ uv run pytest --lf
 When debugging issues with LLM providers, enable DEBUG-level logging to see full request/response details:
 
 ```yaml
-# In your profile or config
+# In your bundle or config
 providers:
   - module: provider-anthropic
     config:

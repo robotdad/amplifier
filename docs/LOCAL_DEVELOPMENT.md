@@ -61,7 +61,7 @@ sources:
 ### 3. Run Amplifier
 
 ```bash
-amplifier run --profile dev "test message"
+amplifier run --bundle foundation "test message"
 ```
 
 The loader will:
@@ -82,7 +82,7 @@ uv pip install -e .
 
 # Run amplifier - uses YOUR core
 cd ..
-amplifier run --profile dev "test"
+amplifier run --bundle foundation "test"
 ```
 
 All modules will import your local core (editable installs have priority).
@@ -95,7 +95,7 @@ echo "sources:
   tool-bash: file://./amplifier-module-tool-bash" > .amplifier/settings.yaml
 
 # Run amplifier
-amplifier run --profile dev "test bash"
+amplifier run --bundle foundation "test bash"
 ```
 
 Your local `tool-bash` is used, others come from git.
@@ -111,7 +111,7 @@ sources:
   tool-bash: file://./amplifier-module-tool-bash
 EOF
 
-amplifier run --profile dev "test"
+amplifier run --bundle foundation "test"
 ```
 
 ### Scenario 4: Temporary Override (One Command)
@@ -119,7 +119,7 @@ amplifier run --profile dev "test"
 ```bash
 # Use environment variable (Layer 1 - highest priority)
 AMPLIFIER_MODULE_TOOL_BASH=./amplifier-module-tool-bash \
-  amplifier run --profile dev "test bash"
+  amplifier run --bundle foundation "test bash"
 ```
 
 ---
@@ -314,12 +314,12 @@ Before pushing:
 
 ```bash
 # Test with your changes
-amplifier run --profile dev "test"
+amplifier run --bundle foundation "test"
 
 # Test without overrides (simulates production)
 mv .amplifier/settings.yaml .amplifier/settings.yaml.bak
 amplifier module refresh --all
-amplifier run --profile dev "test"
+amplifier run --bundle foundation "test"
 mv .amplifier/settings.yaml.bak .amplifier/settings.yaml
 ```
 

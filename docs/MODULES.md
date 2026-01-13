@@ -294,37 +294,4 @@ For technical details, see:
 
 ---
 
-## Deprecated Components
-
-The following components are deprecated and being replaced by **amplifier-foundation** and the **bundles** system. They remain available for backward compatibility but new projects should use bundles instead.
-
-> **Note**: The profiles and collections systems have been replaced by the bundles system. See the [Bundles](#bundles) section above and the [Bundle Guide](https://github.com/microsoft/amplifier-foundation/blob/main/docs/BUNDLE_GUIDE.md) for the current approach.
-
-### Deprecated Libraries
-
-| Component | Description | Repository |
-|-----------|-------------|------------|
-| **amplifier-profiles** | Profile and agent loading with inheritance and Mount Plan compilation | [amplifier-profiles](https://github.com/microsoft/amplifier-profiles) |
-| **amplifier-collections** | Convention-based collection discovery and management | [amplifier-collections](https://github.com/microsoft/amplifier-collections) |
-| **amplifier-module-resolution** | Module source resolution with pluggable strategies | [amplifier-module-resolution](https://github.com/microsoft/amplifier-module-resolution) |
-| **amplifier-config** | Three-scope configuration management (user/project/env) | [amplifier-config](https://github.com/microsoft/amplifier-config) |
-
-### Deprecated Collections
-
-| Collection | Description | Repository |
-|------------|-------------|------------|
-| **toolkit** | Building sophisticated CLI tools using metacognitive recipes | [amplifier-collection-toolkit](https://github.com/microsoft/amplifier-collection-toolkit) |
-| **design-intelligence** | Comprehensive design intelligence capability with specialized agents | [amplifier-collection-design-intelligence](https://github.com/microsoft/amplifier-collection-design-intelligence) |
-| **recipes** | Multi-step AI agent orchestration (replaced by amplifier-bundle-recipes) | [amplifier-collection-recipes](https://github.com/microsoft/amplifier-collection-recipes) |
-| **issues** | Issue management | [amplifier-collection-issues](https://github.com/microsoft/amplifier-collection-issues) |
-
-### Deprecated Community Collections
-
-| Collection | Description | Author | Repository |
-|------------|-------------|--------|------------|
-| **collection-ddd** | Document-Driven Development with 5 specialized workflow agents | [@robotdad](https://github.com/robotdad) | [amplifier-collection-ddd](https://github.com/robotdad/amplifier-collection-ddd) |
-| **collection-spec-kit** | Specification-Driven Development with 8 specialized agents | [@robotdad](https://github.com/robotdad) | [amplifier-collection-spec-kit](https://github.com/robotdad/amplifier-collection-spec-kit) |
-
----
-
 **Ready to build?** Check out [DEVELOPER.md](./DEVELOPER.md) to get started!
