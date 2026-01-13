@@ -1,6 +1,6 @@
 name: "ecosystem-activity-report"
 description: "Analyze activity across the Amplifier ecosystem by discovering repos from MODULES.md"
-version: "1.14.0"
+version: "1.15.0"
 author: "Amplifier"
 tags: ["amplifier", "ecosystem", "github", "activity", "modules", "discovery"]
 
@@ -14,6 +14,12 @@ tags: ["amplifier", "ecosystem", "github", "activity", "modules", "discovery"]
 # 3. Reads MODULES.md to discover all ecosystem repos
 # 4. Filters repos based on criteria (org, name pattern)
 # 5. Calls the generic multi-repo recipe from @recipes bundle
+#
+# v1.15.0: Model selection optimization for cost/performance
+#         - haiku for simple tasks: scope parsing, date parsing, file ops
+#         - sonnet for complex tasks: executive summary, cross-cutting analysis
+#         - Retry config added to synthesis steps for reliability
+#         - ~10x cost reduction on simple parsing steps
 #
 # v1.14.0: Orchestrator-level rate limiting
 #         - Added orchestrator config with min_delay_between_calls_ms: 500
@@ -90,7 +96,7 @@ recursion:
 # Complements recipe-level rate_limiting (which controls task spawning)
 orchestrator:
   config:
-    min_delay_between_calls_ms: 1000  # Force 1s delay to verify event emission
+    min_delay_between_calls_ms: 500  # Pace within-agent tool calls
 
 # v1.10.0: Rate limiting to be a good API citizen
 # v1.12.0: More conservative settings to avoid rate limit failures
@@ -292,9 +298,12 @@ steps:
   # Step 1b: Interpret activity scope (LLM - only for complex cases)
   # ==========================================================================
   # AGENT STEP - LLM interprets complex natural language requests
+  # Model: haiku - simple NL→structured JSON pattern matching
   - id: "interpret-activity-scope-llm"
     condition: "{{scope_check.needs_llm}} == 'true'"
     agent: "foundation:explorer"
+    provider: "anthropic"
+    model: "claude-haiku-*"
     prompt: |
       Interpret the activity scope request to determine whose GitHub activity to show.
       
@@ -363,8 +372,11 @@ steps:
   # ==========================================================================
   # AGENT STEP - LLM handles natural language interpretation
   # CRITICAL: Uses LOCAL timezone, NOT UTC. No end date for "since X" queries.
+  # Model: haiku - simple NL→ISO date conversion (same as repo-activity-analysis)
   - id: "parse-date-range"
     agent: "foundation:explorer"
+    provider: "anthropic"
+    model: "claude-haiku-*"
     prompt: |
       Parse the natural language date range into ISO 8601 format for GitHub API.
       
@@ -804,8 +816,11 @@ steps:
   # ==========================================================================
   # AGENT STEP - Write repo_analyses to file (avoids bash JSON escaping issues)
   # v1.7.0: Agents handle JSON natively; bash template substitution breaks on large JSON
+  # Model: haiku - trivial task (write JSON to file), no reasoning needed
   - id: "save-analyses-to-file"
     agent: "foundation:file-ops"
+    provider: "anthropic"
+    model: "claude-haiku-*"
     prompt: |
       Write the following JSON array to file: {{working_dir}}/collected-analyses.json
       
@@ -1075,9 +1090,17 @@ steps:
   # AGENT STEP - Qualitative synthesis only; NO calculations
   # Why agent: Pattern recognition, prioritization, narrative synthesis
   # v1.8.0: Focused prompt - LLM only does what it's good at
+  # Model: sonnet - qualitative synthesis requires reasoning capability
   - id: "write-executive-summary"
     agent: "foundation:zen-architect"
+    provider: "anthropic"
+    model: "claude-sonnet-*"
     mode: "ANALYZE"
+    retry:
+      max_attempts: 3
+      backoff: "exponential"
+      initial_delay: 5
+      max_delay: 60
     prompt: |
       Write the Executive Summary section for the Amplifier Ecosystem Activity Report.
       
@@ -1137,9 +1160,17 @@ steps:
   # AGENT STEP - Format repo sections and identify patterns
   # Why agent: Narrative formatting, pattern recognition across repos
   # v1.8.0: Focused on narrative only; stats injected by assembly step
+  # Model: sonnet - cross-cutting analysis requires reasoning capability
   - id: "write-repo-sections"
     agent: "foundation:zen-architect"
+    provider: "anthropic"
+    model: "claude-sonnet-*"
     mode: "ARCHITECT"
+    retry:
+      max_attempts: 3
+      backoff: "exponential"
+      initial_delay: 5
+      max_delay: 60
     prompt: |
       Write the per-repository sections and cross-cutting observations for the activity report.
       
