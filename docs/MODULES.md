@@ -54,6 +54,7 @@ Composable configuration packages that combine providers, behaviors, agents, and
 | **lsp-typescript** | TypeScript/JavaScript code intelligence via typescript-language-server (extends lsp bundle) | [amplifier-bundle-lsp-typescript](https://github.com/microsoft/amplifier-bundle-lsp-typescript) |
 | **shadow** | OS-level sandboxed environments for testing local Amplifier ecosystem changes safely | [amplifier-bundle-shadow](https://github.com/microsoft/amplifier-bundle-shadow) |
 | **python-dev** | Comprehensive Python development tools - code quality (ruff, pyright), LSP integration, and expert agent | [amplifier-bundle-python-dev](https://github.com/microsoft/amplifier-bundle-python-dev) |
+| **ts-dev** | Comprehensive TypeScript/JavaScript development tools - code quality, LSP, and expert agent | [amplifier-bundle-ts-dev](https://github.com/microsoft/amplifier-bundle-ts-dev) |
 
 **Usage**: Bundles are loaded via the `amplifier bundle` commands:
 
@@ -121,6 +122,7 @@ Extend AI capabilities with actions.
 | **tool-todo** | AI self-accountability and todo list management | [amplifier-module-tool-todo](https://github.com/microsoft/amplifier-module-tool-todo) |
 | **tool-skills** | Load domain knowledge from skills following the Anthropic Skills format | [amplifier-module-tool-skills](https://github.com/microsoft/amplifier-module-tool-skills) |
 | **tool-mcp** | Model Context Protocol integration for MCP servers | [amplifier-module-tool-mcp](https://github.com/microsoft/amplifier-module-tool-mcp) |
+| **tool-slash-command** | Extensible slash command system with custom commands defined as Markdown files | [amplifier-module-tool-slash-command](https://github.com/microsoft/amplifier-module-tool-slash-command) |
 
 ### Context Managers
 
@@ -146,6 +148,7 @@ Extend lifecycle events and observability.
 | **hooks-todo-reminder** | Inject todo list reminders into AI context | [amplifier-module-hooks-todo-reminder](https://github.com/microsoft/amplifier-module-hooks-todo-reminder) |
 | **hooks-scheduler-cost-aware** | Cost-aware model routing for event-driven orchestration | [amplifier-module-hooks-scheduler-cost-aware](https://github.com/microsoft/amplifier-module-hooks-scheduler-cost-aware) |
 | **hooks-scheduler-heuristic** | Heuristic-based model selection scheduler | [amplifier-module-hooks-scheduler-heuristic](https://github.com/microsoft/amplifier-module-hooks-scheduler-heuristic) |
+| **hook-shell** | Shell-based hooks with Claude Code format compatibility | [amplifier-module-hook-shell](https://github.com/microsoft/amplifier-module-hook-shell) |
 
 ---
 
