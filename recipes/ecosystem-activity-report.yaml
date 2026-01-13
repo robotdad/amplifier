@@ -1,6 +1,6 @@
 name: "ecosystem-activity-report"
 description: "Analyze activity across the Amplifier ecosystem by discovering repos from MODULES.md"
-version: "1.15.0"
+version: "1.15.1"
 author: "Amplifier"
 tags: ["amplifier", "ecosystem", "github", "activity", "modules", "discovery"]
 
@@ -14,6 +14,10 @@ tags: ["amplifier", "ecosystem", "github", "activity", "modules", "discovery"]
 # 3. Reads MODULES.md to discover all ecosystem repos
 # 4. Filters repos based on criteria (org, name pattern)
 # 5. Calls the generic multi-repo recipe from @recipes bundle
+#
+# v1.15.1: Fix validation to work with repo-activity-analysis v3.0.0+
+#         - Filter out intermediate analysis files (chunk, commit, pr)
+#         - Only count main {repo}-analysis.json files for validation
 #
 # v1.15.0: Model selection optimization for cost/performance
 #         - haiku for simple tasks: scope parsing, date parsing, file ops
@@ -916,8 +920,10 @@ steps:
       # Get expected repos from active_repos
       printf '%s\n' '{{active_repos.repos}}' | jq -r '.[].name' | sort > expected-repos.txt
       
-      # Get actual analysis files
+      # Get actual analysis files (only main {repo}-analysis.json, not chunk/commit/pr intermediates)
+      # v1.15.1: Filter out intermediate files from repo-activity-analysis v3.0.0+
       ls -1 analyses/*-analysis.json 2>/dev/null | \
+        grep -v -E '(-chunk-|-commit-|-pr-|-all-chunks|-deep-dives)' | \
         xargs -I {} basename {} -analysis.json | sort > analyzed-repos.txt || \
         touch analyzed-repos.txt
       
@@ -991,9 +997,10 @@ steps:
       
       cd {{working_dir}}
       
-      # Recount
+      # Recount (only main {repo}-analysis.json, not chunk/commit/pr intermediates)
+      # v1.15.1: Filter out intermediate files from repo-activity-analysis v3.0.0+
       expected=$(wc -l < expected-repos.txt | tr -d ' ')
-      analyzed=$(ls -1 analyses/*-analysis.json 2>/dev/null | wc -l | tr -d ' ')
+      analyzed=$(ls -1 analyses/*-analysis.json 2>/dev/null | grep -v -E '(-chunk-|-commit-|-pr-|-all-chunks|-deep-dives)' | wc -l | tr -d ' ')
       still_missing=$((expected - analyzed))
       
       if [ "$still_missing" -eq 0 ]; then
@@ -1001,6 +1008,7 @@ steps:
       else
         # Find missing repos
         ls -1 analyses/*-analysis.json 2>/dev/null | \
+          grep -v -E '(-chunk-|-commit-|-pr-|-all-chunks|-deep-dives)' | \
           xargs -I {} basename {} -analysis.json | sort > analyzed-repos-final.txt
         missing=$(comm -23 expected-repos.txt analyzed-repos-final.txt || true)
         echo "Final validation: $still_missing repos missing" >&2
