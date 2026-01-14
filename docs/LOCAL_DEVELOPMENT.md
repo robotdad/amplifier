@@ -132,7 +132,7 @@ When loading a module, Amplifier checks these locations **in order**:
 2. **Workspace Convention** - `.amplifier/modules/<module-id>/`
 3. **Project Config** - `.amplifier/settings.yaml` ⬅ **Your overrides here**
 4. **User Config** - `~/.amplifier/settings.yaml`
-5. **Profile Source** - `source:` field in profile
+5. **Bundle Source** - `source:` field in bundle
 6. **Installed Package** - Python package (fallback)
 
 **First match wins.**
@@ -164,9 +164,9 @@ branch = "main"
 **Core packages use git URLs** (even locally):
 
 ```toml
-# In amplifier-profiles/pyproject.toml
+# In amplifier-foundation/pyproject.toml
 [tool.uv.sources]
-amplifier-collections = { git = "https://github.com/microsoft/amplifier-collections", branch = "main" }
+amplifier-core = { git = "https://github.com/microsoft/amplifier-core", branch = "main" }
 ```
 
 **Why git URLs for core packages:**
@@ -193,7 +193,7 @@ editable = true
 - Faster for local development
 - Changes immediately visible
 
-**Rule:** Core packages (collections, profiles, app-cli) → git URLs. Modules → either is fine.
+**Rule:** Core packages (foundation, app-cli) → git URLs. Modules → either is fine.
 
 ---
 

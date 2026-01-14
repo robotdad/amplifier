@@ -157,7 +157,7 @@ async def mount(coordinator: ModuleCoordinator, config: dict[str, Any] | None = 
 
     Args:
         coordinator: The module coordinator for registration
-        config: Module-specific configuration from profile
+        config: Module-specific configuration from bundle
 
     Returns:
         None
@@ -349,7 +349,7 @@ Add your module to [MODULES.md](./MODULES.md) in the Community Modules section!
 
 > Perfect. Now use modular-builder to generate the complete implementation
 > including: module code, pyproject.toml, README.md, comprehensive tests,
-> and example usage in a profile.
+> and example usage in a bundle.
 
 [Modular-builder generates all files]
 

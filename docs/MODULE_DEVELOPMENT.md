@@ -118,7 +118,7 @@ git submodule add ../../amplifier-module-tool-filesystem tool-filesystem
 
 # Temporarily use remote version (deinit)
 git submodule deinit tool-bash
-# Now tool-bash uses profile/remote version
+# Now tool-bash uses bundle/remote version
 
 # Bring it back
 git submodule update --init tool-bash
@@ -385,7 +385,7 @@ See **[Override Methods](https://github.com/microsoft/amplifier-module-resolutio
 | Workspace | Project | Permanent | Multi-module dev |
 | Project config | Project | Permanent | Team overrides |
 | User config | Global | Permanent | Personal forks |
-| Profile source | Profile-specific | Permanent | Distribution |
+| Bundle source | Bundle-specific | Permanent | Distribution |
 
 ---
 

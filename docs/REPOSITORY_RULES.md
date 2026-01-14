@@ -312,7 +312,6 @@ Modules are loaded using amplifier-foundation's internal APIs directly.
 - Validation rules
 
 **What links there**:
-- amplifier-profiles - Compiles profiles to this format
 - Module docs - Modules are mounted via this contract
 
 **Why this works**:

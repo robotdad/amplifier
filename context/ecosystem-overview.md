@@ -140,7 +140,7 @@ The kernel provides capabilities; modules decide behavior.
 
 ### For Users
 1. Start with `amplifier:docs/USER_ONBOARDING.md` (quick start and commands)
-2. Choose a profile/bundle from foundation
+2. Choose a bundle from foundation
 3. Run `amplifier run` with your chosen configuration
 
 ### For App Developers

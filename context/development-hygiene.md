@@ -126,7 +126,7 @@ sources:
 2. Workspace convention: `.amplifier/modules/<module-id>/`
 3. Project config: `.amplifier/settings.yaml` sources
 4. User config: `~/.amplifier/settings.yaml` sources
-5. Bundle/profile source field
+5. Bundle source field
 6. Installed package (cache)
 
 ### Shadow Environments (Recommended for Testing)
