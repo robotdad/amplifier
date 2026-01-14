@@ -1,6 +1,6 @@
 name: "ecosystem-activity-report"
 description: "Analyze activity across the Amplifier ecosystem by discovering repos from MODULES.md"
-version: "1.15.1"
+version: "1.15.2"
 author: "Amplifier"
 tags: ["amplifier", "ecosystem", "github", "activity", "modules", "discovery"]
 
@@ -14,6 +14,10 @@ tags: ["amplifier", "ecosystem", "github", "activity", "modules", "discovery"]
 # 3. Reads MODULES.md to discover all ecosystem repos
 # 4. Filters repos based on criteria (org, name pattern)
 # 5. Calls the generic multi-repo recipe from @recipes bundle
+#
+# v1.15.2: Fix reduce-analyses step to filter intermediate files
+#         - Same fix as v1.15.1 but for reduce-analyses step (was missed)
+#         - Prevents 186 "unknown" repos appearing in final report
 #
 # v1.15.1: Fix validation to work with repo-activity-analysis v3.0.0+
 #         - Filter out intermediate analysis files (chunk, commit, pr)
@@ -851,9 +855,11 @@ steps:
       
       # Build compact summaries from the analysis files
       # Each repo has a -analysis.json file with full details
+      # v1.15.1: Filter out intermediate files from repo-activity-analysis v3.0.0+
+      # (chunk analyses, commit synthesis, PR synthesis are not main repo analyses)
       echo "[" > reduced-analyses.json
       first=true
-      for f in analyses/*-analysis.json; do
+      for f in $(ls -1 analyses/*-analysis.json 2>/dev/null | grep -v -E '(-chunk-|-commit-|-pr-|-all-chunks|-deep-dives)'); do
         [ -f "$f" ] || continue
         
         # Sanitize JSON: replace literal newlines in strings with escaped \n
