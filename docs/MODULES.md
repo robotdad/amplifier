@@ -208,6 +208,7 @@ Applications built by the community using Amplifier.
 | **app-tool-generator** | AI-powered tool generator for creating custom Amplifier tools | [@samueljklee](https://github.com/samueljklee) | [amplifier-app-tool-generator](https://github.com/samueljklee/amplifier-app-tool-generator) |
 | **amplifier-playground** | Interactive environment for building, configuring, and testing Amplifier AI agent sessions | [@samueljklee](https://github.com/samueljklee) | [amplifier-playground](https://github.com/samueljklee/amplifier-playground) |
 | **amplifier-lakehouse** | Amplifier on top of your data (daemon and webapp) | [@payneio](https://github.com/payneio) | [amplifier-lakehouse](https://github.com/payneio/lakehouse) |
+| **app-session-analyzer** | Analyze Amplifier session logs and generate interesting metrics about your usage! | [@DavidKoleczek](https://github.com/DavidKoleczek) | [amplifier-app-session-analyzer](https://github.com/DavidKoleczek/amplifier-app-session-analyzer) |
 
 **Want to showcase your application?** Submit a PR to add your Amplifier-powered application to this list!
 
