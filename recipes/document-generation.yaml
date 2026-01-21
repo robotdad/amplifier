@@ -6,9 +6,9 @@
 # Implements BFS (breadth-first) traversal, ordered validation, and version saves.
 #
 # Design Principles:
-#   - BASH for: File ops, JSON read/write (Python inline), simple checks
+#   - BASH for: File ops, JSON read/write via jq, simple checks
 #   - AGENT for: Parsing, understanding, reasoning, content generation
-#   - No jq: All JSON manipulation uses Python inline
+#   - jq for JSON: Clean, readable JSON manipulation in bash steps
 #   - Granular steps: Each step does ONE thing
 #   - BFS traversal: Complete each level before going deeper
 #   - Per-section state: Update tracker immediately after each section
@@ -36,8 +36,16 @@
 #   - Sources are read from filesystem relative to repo root (parent of outlines/)
 #
 # Usage:
+#   # Basic: outputs to temp/<filename> for easy comparison with original
 #   amplifier run "execute document-generation.yaml with outline_path=./outline.json"
+#
+#   # Custom output path: write directly to specific location
 #   amplifier run "execute document-generation.yaml with outline_path=./outline.json output_path=./docs/output.md"
+#
+# Output Path Behavior:
+#   - Default: temp/<filename> (e.g., temp/development-hygiene.md)
+#   - This allows side-by-side comparison: original vs generated
+#   - Use output_path to write directly to the target location
 #
 # Typical runtime: 20-45 minutes depending on outline complexity and validation fixes
 #
@@ -51,6 +59,20 @@
 # =============================================================================
 # CHANGELOG
 # =============================================================================
+#
+# v6.1.0 (2026-01-21):
+#   - REFACTOR: Replaced all Python inline JSON manipulation with jq
+#     * 20+ Python blocks converted to clean jq expressions
+#     * More readable, follows recipe-author best practices
+#     * Consistent pattern: jq '...' file.json > file.json.tmp && mv ...
+#   - Design principle updated: "jq for JSON" replaces "No jq"
+#
+# v6.0.2 (2026-01-21):
+#   - IMPROVEMENT: Default output path changed to temp/<filename>
+#     * Enables easy side-by-side comparison between original and generated docs
+#     * Example: outline with target "context/foo.md" now outputs to "temp/foo.md"
+#   - User can still specify explicit output_path to write directly to target location
+#   - Updated documentation and usage examples to clarify output path behavior
 #
 # v6.0.0 (2026-01-20):
 #   - MERGED: Combined best practices from v4.1.0 and v5.0.0 branches
@@ -137,7 +159,7 @@
 
 name: "document-generation"
 description: "Generate documentation from an outline with BFS traversal and ordered validation"
-version: "6.0.1"
+version: "6.1.0"
 author: "Amplifier Recipes Collection"
 tags: ["documentation", "generation", "outline", "bfs", "validation", "staged", "resumable"]
 
@@ -145,7 +167,13 @@ context:
   # Required: Path to the outline JSON file
   outline_path: ""
   
-  # Optional: Output path (defaults to document.output from outline)
+  # Optional: Output path for the generated document
+  # - If specified: Document is written to this exact path
+  # - If empty (default): Document is written to temp/<filename> where filename
+  #   comes from the outline's document.output field (e.g., temp/development-hygiene.md)
+  # 
+  # This temp/ default enables easy side-by-side comparison between the original
+  # document and the newly generated version before replacing it.
   output_path: ""
   
   # Optional: Working directory for state and versions
@@ -358,24 +386,17 @@ stages:
         type: "bash"
         command: |
           set -euo pipefail
-          tracker_file="{{working_dir}}/state/tracker.json"
           
           if [ "{{tracker_exists}}" = "true" ]; then
-            python3 << 'PYEOF'
-          import json
-          with open("{{working_dir}}/state/tracker.json") as f:
-              data = json.load(f)
-          result = {
-              "resuming": True,
-              "status": data.get("status", "unknown"),
-              "current_stage": data.get("current_stage", "unknown"),
-              "sections_completed": len(data.get("sections_completed", [])),
-              "sections_pending": len(data.get("sections_pending", [])),
-              "last_completed_section": data.get("sections_completed", ["none"])[-1] if data.get("sections_completed") else "none",
-              "tracker_exists": True
-          }
-          print(json.dumps(result))
-          PYEOF
+            jq '{
+              resuming: true,
+              status: (.status // "unknown"),
+              current_stage: (.current_stage // "unknown"),
+              sections_completed: (.sections_completed // [] | length),
+              sections_pending: (.sections_pending // [] | length),
+              last_completed_section: (if (.sections_completed // [] | length) > 0 then .sections_completed[-1] else "none" end),
+              tracker_exists: true
+            }' "{{working_dir}}/state/tracker.json"
           else
             echo '{"resuming": false, "status": "new", "current_stage": "initialization", "sections_completed": 0, "sections_pending": 0, "last_completed_section": "none", "tracker_exists": false}'
           fi
@@ -494,72 +515,58 @@ stages:
           
           outline_dir="{{outline_dir}}"
           sources_dir="{{working_dir}}/sources"
+          manifest_file="{{working_dir}}/state/source_manifest.json"
+          result_file="{{working_dir}}/state/sources_result.json"
           
-          # Parse source manifest from file and fetch each file
-          python3 << 'PYTHON_SCRIPT'
-          import json
-          import os
-          import shutil
-          import sys
+          # Initialize result arrays
+          fetched_json="[]"
+          failed_json="[]"
           
-          # Read manifest from file (not template variable)
-          with open("{{working_dir}}/state/source_manifest.json") as f:
-              manifest = json.load(f)
+          # Process each source from manifest
+          while IFS= read -r file_path; do
+            [ -z "$file_path" ] && continue
+            
+            # Resolve to absolute path relative to outline directory
+            abs_path="$outline_dir/$file_path"
+            
+            # Sanitize filename for storage
+            safe_name=$(echo "$file_path" | tr '/' '_' | tr '\\' '_')
+            dest_path="$sources_dir/$safe_name"
+            
+            if [ -f "$abs_path" ]; then
+              # Copy file and get stats
+              cp -p "$abs_path" "$dest_path" 2>/dev/null && {
+                size_bytes=$(wc -c < "$dest_path")
+                line_count=$(wc -l < "$dest_path")
+                fetched_json=$(echo "$fetched_json" | jq --arg src "$file_path" \
+                  --arg lp "$dest_path" --argjson sz "$size_bytes" --argjson lc "$line_count" \
+                  '. + [{"source": $src, "local_path": $lp, "size_bytes": $sz, "line_count": $lc}]')
+              } || {
+                failed_json=$(echo "$failed_json" | jq --arg src "$file_path" \
+                  --arg err "Copy failed: $abs_path" \
+                  '. + [{"source": $src, "error": $err}]')
+              }
+            else
+              failed_json=$(echo "$failed_json" | jq --arg src "$file_path" \
+                --arg err "File not found: $abs_path" \
+                '. + [{"source": $src, "error": $err}]')
+            fi
+          done < <(jq -r '.sources[]?.file_path // empty' "$manifest_file")
           
-          outline_dir = "{{outline_dir}}"
-          sources_dir = "{{working_dir}}/sources"
+          # Build final result
+          total_fetched=$(echo "$fetched_json" | jq 'length')
+          total_failed=$(echo "$failed_json" | jq 'length')
           
-          fetched = []
-          failed = []
+          jq -n --argjson fetched "$fetched_json" --argjson failed "$failed_json" \
+            --argjson tf "$total_fetched" --argjson tfl "$total_failed" '{
+              fetched: $fetched,
+              failed: $failed,
+              success: ($tfl == 0),
+              total_fetched: $tf,
+              total_failed: $tfl
+            }' > "$result_file"
           
-          for source in manifest.get('sources', []):
-              file_path = source.get('file_path', '')
-              if not file_path:
-                  continue
-              
-              # Resolve to absolute path relative to outline directory
-              abs_path = os.path.join(outline_dir, file_path)
-              
-              # Sanitize filename for storage
-              safe_name = file_path.replace('/', '_').replace('\\', '_')
-              dest_path = os.path.join(sources_dir, safe_name)
-              
-              try:
-                  if os.path.exists(abs_path):
-                      shutil.copy2(abs_path, dest_path)
-                      with open(dest_path, 'r') as f:
-                          content = f.read()
-                      fetched.append({
-                          'source': file_path,
-                          'local_path': dest_path,
-                          'size_bytes': os.path.getsize(dest_path),
-                          'line_count': len(content.splitlines())
-                      })
-                  else:
-                      failed.append({
-                          'source': file_path,
-                          'error': f'File not found: {abs_path}'
-                      })
-              except Exception as e:
-                  failed.append({
-                      'source': file_path,
-                      'error': str(e)
-                  })
-          
-          result = {
-              'fetched': fetched,
-              'failed': failed,
-              'success': len(failed) == 0,
-              'total_fetched': len(fetched),
-              'total_failed': len(failed)
-          }
-          
-          # Save result to file
-          with open("{{working_dir}}/state/sources_result.json", "w") as f:
-              json.dump(result, f, indent=2)
-          
-          print(json.dumps(result, indent=2))
-          PYTHON_SCRIPT
+          cat "$result_file"
         output: "sources_result"
         parse_json: true
 
@@ -645,35 +652,23 @@ stages:
             echo "Resuming from existing tracker - skipping creation"
           else
             # Create fresh tracker - read structure from file
-            python3 << 'PYTHON_SCRIPT'
-          import json
-          
-          # Read structure from file (not template variable)
-          with open("{{working_dir}}/state/structure.json") as f:
-              structure = json.load(f)
-          
-          start_time = "{{start_time}}"
-          
-          tracker = {
-              "status": "initialized",
-              "started_at": start_time.strip(),
-              "current_stage": "initialization",
-              "sections_completed": [],
-              "sections_pending": structure.get("bfs_order", []),
-              "generated_content": {},
-              "content_summaries": {},
-              "examples_introduced": [],
-              "definitions_established": [],
-              "source_extractions": {},
-              "validation_results": {},
-              "version_history": []
-          }
-          
-          with open("{{working_dir}}/state/tracker.json", "w") as f:
-              json.dump(tracker, f, indent=2)
-          
-          print(f"Tracker initialized with {len(tracker['sections_pending'])} sections")
-          PYTHON_SCRIPT
+            jq --arg start_time "{{start_time}}" '{
+              status: "initialized",
+              started_at: ($start_time | gsub("^\\s+|\\s+$"; "")),
+              current_stage: "initialization",
+              sections_completed: [],
+              sections_pending: (.bfs_order // []),
+              generated_content: {},
+              content_summaries: {},
+              examples_introduced: [],
+              definitions_established: [],
+              source_extractions: {},
+              validation_results: {},
+              version_history: []
+            }' "{{working_dir}}/state/structure.json" > "{{working_dir}}/state/tracker.json"
+            
+            sections=$(jq '.sections_pending | length' "{{working_dir}}/state/tracker.json")
+            echo "Tracker initialized with $sections sections"
           fi
         output: "tracker_created"
 
@@ -683,29 +678,17 @@ stages:
           set -euo pipefail
           
           # Update BFS order in tracker (handles both fresh and resume cases)
-          python3 << 'PYTHON_SCRIPT'
-          import json
+          # Read bfs_order from structure and filter out completed sections
+          jq --slurpfile structure "{{working_dir}}/state/structure.json" '
+            ($structure[0].bfs_order // []) as $bfs_order |
+            (.sections_completed // []) as $completed |
+            .sections_pending = [$bfs_order[] | select(. as $s | $completed | index($s) | not)]
+          ' "{{working_dir}}/state/tracker.json" > "{{working_dir}}/state/tracker.json.tmp" \
+            && mv "{{working_dir}}/state/tracker.json.tmp" "{{working_dir}}/state/tracker.json"
           
-          with open("{{working_dir}}/state/tracker.json", "r") as f:
-              tracker = json.load(f)
-          
-          # Read structure from file (not template variable)
-          with open("{{working_dir}}/state/structure.json") as f:
-              structure = json.load(f)
-          
-          bfs_order = structure.get("bfs_order", [])
-          
-          # For resume: pending = bfs_order - completed
-          completed = set(tracker.get("sections_completed", []))
-          pending = [s for s in bfs_order if s not in completed]
-          
-          tracker["sections_pending"] = pending
-          
-          with open("{{working_dir}}/state/tracker.json", "w") as f:
-              json.dump(tracker, f, indent=2)
-          
-          print(f"BFS order set: {len(completed)} completed, {len(pending)} pending")
-          PYTHON_SCRIPT
+          completed=$(jq '.sections_completed | length' "{{working_dir}}/state/tracker.json")
+          pending=$(jq '.sections_pending | length' "{{working_dir}}/state/tracker.json")
+          echo "BFS order set: $completed completed, $pending pending"
         output: "tracker_bfs_set"
 
       - id: "set-tracker-status-ready"
@@ -713,16 +696,10 @@ stages:
         command: |
           set -euo pipefail
           
-          python3 -c "
-          import json
-          with open('{{working_dir}}/state/tracker.json', 'r') as f:
-              tracker = json.load(f)
-          tracker['status'] = 'ready_for_generation'
-          tracker['current_stage'] = 'initialization_complete'
-          with open('{{working_dir}}/state/tracker.json', 'w') as f:
-              json.dump(tracker, f, indent=2)
-          print('Tracker status set to ready_for_generation')
-          "
+          jq '.status = "ready_for_generation" | .current_stage = "initialization_complete"' \
+            "{{working_dir}}/state/tracker.json" > "{{working_dir}}/state/tracker.json.tmp" \
+            && mv "{{working_dir}}/state/tracker.json.tmp" "{{working_dir}}/state/tracker.json"
+          echo "Tracker status set to ready_for_generation"
         output: "tracker_ready"
 
       # ---- READ BFS ORDER FOR FOREACH ----
@@ -732,13 +709,7 @@ stages:
         type: "bash"
         command: |
           set -euo pipefail
-          python3 -c "
-          import json
-          with open('{{working_dir}}/state/structure.json') as f:
-              structure = json.load(f)
-          # Output as JSON array
-          print(json.dumps(structure.get('bfs_order', [])))
-          "
+          jq '.bfs_order // []' "{{working_dir}}/state/structure.json"
         output: "bfs_order"
         parse_json: true
 
@@ -954,22 +925,16 @@ stages:
         command: |
           set -euo pipefail
           
-          python3 -c "
-          import json
-          import datetime
+          timestamp=$(date -Iseconds)
+          jq --arg ts "$timestamp" '
+            .status = "generation_complete" |
+            .current_stage = "generation" |
+            .generation_completed_at = $ts
+          ' "{{working_dir}}/state/tracker.json" > "{{working_dir}}/state/tracker.json.tmp" \
+            && mv "{{working_dir}}/state/tracker.json.tmp" "{{working_dir}}/state/tracker.json"
           
-          with open('{{working_dir}}/state/tracker.json', 'r') as f:
-              tracker = json.load(f)
-          
-          tracker['status'] = 'generation_complete'
-          tracker['current_stage'] = 'generation'
-          tracker['generation_completed_at'] = datetime.datetime.now().isoformat()
-          
-          with open('{{working_dir}}/state/tracker.json', 'w') as f:
-              json.dump(tracker, f, indent=2)
-          
-          print(f\"Generation complete: {len(tracker['sections_completed'])} sections\")
-          "
+          sections=$(jq '.sections_completed | length' "{{working_dir}}/state/tracker.json")
+          echo "Generation complete: $sections sections"
         output: "generation_status_set"
 
       - id: "assemble-document-from-tracker"
@@ -1023,23 +988,16 @@ stages:
           fi
           
           # Update tracker with version info
-          python3 << 'PYTHON_SCRIPT'
-          import json
-          import datetime
-          
-          with open("{{working_dir}}/state/tracker.json", "r") as f:
-              tracker = json.load(f)
-          
-          tracker["version_history"].append({
+          timestamp=$(date -Iseconds)
+          jq --arg ts "$timestamp" --arg file "{{working_dir}}/versions/v0_generated.md" '
+            .version_history += [{
               "version": "v0_generated",
               "stage": "generation",
-              "timestamp": datetime.datetime.now().isoformat(),
-              "file": "{{working_dir}}/versions/v0_generated.md"
-          })
-          
-          with open("{{working_dir}}/state/tracker.json", "w") as f:
-              json.dump(tracker, f, indent=2)
-          PYTHON_SCRIPT
+              "timestamp": $ts,
+              "file": $file
+            }]
+          ' "{{working_dir}}/state/tracker.json" > "{{working_dir}}/state/tracker.json.tmp" \
+            && mv "{{working_dir}}/state/tracker.json.tmp" "{{working_dir}}/state/tracker.json"
           
           bytes=$(wc -c < "$version_file")
           lines=$(wc -l < "$version_file")
@@ -1158,28 +1116,26 @@ stages:
           fi
           
           # Update tracker
-          python3 << 'PYTHON_SCRIPT'
-          import json
-          import datetime
-          
-          with open("{{working_dir}}/state/tracker.json", "r") as f:
-              tracker = json.load(f)
-          
-          passed = "{{structural_issues.passed}}" == "true"
-          tracker["version_history"].append({
+          timestamp=$(date -Iseconds)
+          # Convert template value to JSON boolean (handles True/true/False/false)
+          if [ "{{structural_issues.passed}}" = "true" ] || [ "{{structural_issues.passed}}" = "True" ]; then
+            passed_json="true"
+          else
+            passed_json="false"
+          fi
+          jq --arg ts "$timestamp" --arg file "{{working_dir}}/versions/v1_structural.md" --argjson passed "$passed_json" '
+            .version_history += [{
               "version": "v1_structural",
               "stage": "validation-structural",
-              "timestamp": datetime.datetime.now().isoformat(),
-              "validation_passed": passed,
-              "file": "{{working_dir}}/versions/v1_structural.md"
-          })
-          tracker["validation_results"]["structural"] = passed
+              "timestamp": $ts,
+              "validation_passed": $passed,
+              "file": $file
+            }] |
+            .validation_results.structural = $passed
+          ' "{{working_dir}}/state/tracker.json" > "{{working_dir}}/state/tracker.json.tmp" \
+            && mv "{{working_dir}}/state/tracker.json.tmp" "{{working_dir}}/state/tracker.json"
           
-          with open("{{working_dir}}/state/tracker.json", "w") as f:
-              json.dump(tracker, f, indent=2)
-          
-          print(f"Saved v1_structural (passed: {passed})")
-          PYTHON_SCRIPT
+          echo "Saved v1_structural (passed: $passed_json)"
         output: "v1_saved"
 
   # ==========================================================================
@@ -1291,28 +1247,26 @@ stages:
           fi
           
           # Update tracker
-          python3 << 'PYTHON_SCRIPT'
-          import json
-          import datetime
-          
-          with open("{{working_dir}}/state/tracker.json", "r") as f:
-              tracker = json.load(f)
-          
-          passed = "{{accuracy_issues.passed}}" == "true"
-          tracker["version_history"].append({
+          timestamp=$(date -Iseconds)
+          # Convert template value to JSON boolean (handles True/true/False/false)
+          if [ "{{accuracy_issues.passed}}" = "true" ] || [ "{{accuracy_issues.passed}}" = "True" ]; then
+            passed_json="true"
+          else
+            passed_json="false"
+          fi
+          jq --arg ts "$timestamp" --arg file "{{working_dir}}/versions/v2_accuracy.md" --argjson passed "$passed_json" '
+            .version_history += [{
               "version": "v2_accuracy",
               "stage": "validation-accuracy",
-              "timestamp": datetime.datetime.now().isoformat(),
-              "validation_passed": passed,
-              "file": "{{working_dir}}/versions/v2_accuracy.md"
-          })
-          tracker["validation_results"]["accuracy"] = passed
+              "timestamp": $ts,
+              "validation_passed": $passed,
+              "file": $file
+            }] |
+            .validation_results.accuracy = $passed
+          ' "{{working_dir}}/state/tracker.json" > "{{working_dir}}/state/tracker.json.tmp" \
+            && mv "{{working_dir}}/state/tracker.json.tmp" "{{working_dir}}/state/tracker.json"
           
-          with open("{{working_dir}}/state/tracker.json", "w") as f:
-              json.dump(tracker, f, indent=2)
-          
-          print(f"Saved v2_accuracy (passed: {passed})")
-          PYTHON_SCRIPT
+          echo "Saved v2_accuracy (passed: $passed_json)"
         output: "v2_saved"
 
   # ==========================================================================
@@ -1424,28 +1378,26 @@ stages:
           fi
           
           # Update tracker
-          python3 << 'PYTHON_SCRIPT'
-          import json
-          import datetime
-          
-          with open("{{working_dir}}/state/tracker.json", "r") as f:
-              tracker = json.load(f)
-          
-          passed = "{{completeness_issues.passed}}" == "true"
-          tracker["version_history"].append({
+          timestamp=$(date -Iseconds)
+          # Convert template value to JSON boolean (handles True/true/False/false)
+          if [ "{{completeness_issues.passed}}" = "true" ] || [ "{{completeness_issues.passed}}" = "True" ]; then
+            passed_json="true"
+          else
+            passed_json="false"
+          fi
+          jq --arg ts "$timestamp" --arg file "{{working_dir}}/versions/v3_completeness.md" --argjson passed "$passed_json" '
+            .version_history += [{
               "version": "v3_completeness",
               "stage": "validation-completeness",
-              "timestamp": datetime.datetime.now().isoformat(),
-              "validation_passed": passed,
-              "file": "{{working_dir}}/versions/v3_completeness.md"
-          })
-          tracker["validation_results"]["completeness"] = passed
+              "timestamp": $ts,
+              "validation_passed": $passed,
+              "file": $file
+            }] |
+            .validation_results.completeness = $passed
+          ' "{{working_dir}}/state/tracker.json" > "{{working_dir}}/state/tracker.json.tmp" \
+            && mv "{{working_dir}}/state/tracker.json.tmp" "{{working_dir}}/state/tracker.json"
           
-          with open("{{working_dir}}/state/tracker.json", "w") as f:
-              json.dump(tracker, f, indent=2)
-          
-          print(f"Saved v3_completeness (passed: {passed})")
-          PYTHON_SCRIPT
+          echo "Saved v3_completeness (passed: $passed_json)"
         output: "v3_saved"
 
   # ==========================================================================
@@ -1556,28 +1508,26 @@ stages:
           fi
           
           # Update tracker
-          python3 << 'PYTHON_SCRIPT'
-          import json
-          import datetime
-          
-          with open("{{working_dir}}/state/tracker.json", "r") as f:
-              tracker = json.load(f)
-          
-          passed = "{{instruction_issues.passed}}" == "true"
-          tracker["version_history"].append({
+          timestamp=$(date -Iseconds)
+          # Convert template value to JSON boolean (handles True/true/False/false)
+          if [ "{{instruction_issues.passed}}" = "true" ] || [ "{{instruction_issues.passed}}" = "True" ]; then
+            passed_json="true"
+          else
+            passed_json="false"
+          fi
+          jq --arg ts "$timestamp" --arg file "{{working_dir}}/versions/v4_instructions.md" --argjson passed "$passed_json" '
+            .version_history += [{
               "version": "v4_instructions",
               "stage": "validation-instructions",
-              "timestamp": datetime.datetime.now().isoformat(),
-              "validation_passed": passed,
-              "file": "{{working_dir}}/versions/v4_instructions.md"
-          })
-          tracker["validation_results"]["instructions"] = passed
+              "timestamp": $ts,
+              "validation_passed": $passed,
+              "file": $file
+            }] |
+            .validation_results.instructions = $passed
+          ' "{{working_dir}}/state/tracker.json" > "{{working_dir}}/state/tracker.json.tmp" \
+            && mv "{{working_dir}}/state/tracker.json.tmp" "{{working_dir}}/state/tracker.json"
           
-          with open("{{working_dir}}/state/tracker.json", "w") as f:
-              json.dump(tracker, f, indent=2)
-          
-          print(f"Saved v4_instructions (passed: {passed})")
-          PYTHON_SCRIPT
+          echo "Saved v4_instructions (passed: $passed_json)"
         output: "v4_saved"
 
   # ==========================================================================
@@ -1690,28 +1640,26 @@ stages:
           fi
           
           # Update tracker
-          python3 << 'PYTHON_SCRIPT'
-          import json
-          import datetime
-          
-          with open("{{working_dir}}/state/tracker.json", "r") as f:
-              tracker = json.load(f)
-          
-          passed = "{{depth_issues.passed}}" == "true"
-          tracker["version_history"].append({
+          timestamp=$(date -Iseconds)
+          # Convert template value to JSON boolean (handles True/true/False/false)
+          if [ "{{depth_issues.passed}}" = "true" ] || [ "{{depth_issues.passed}}" = "True" ]; then
+            passed_json="true"
+          else
+            passed_json="false"
+          fi
+          jq --arg ts "$timestamp" --arg file "{{working_dir}}/versions/v5_depth.md" --argjson passed "$passed_json" '
+            .version_history += [{
               "version": "v5_depth",
               "stage": "validation-depth",
-              "timestamp": datetime.datetime.now().isoformat(),
-              "validation_passed": passed,
-              "file": "{{working_dir}}/versions/v5_depth.md"
-          })
-          tracker["validation_results"]["depth"] = passed
+              "timestamp": $ts,
+              "validation_passed": $passed,
+              "file": $file
+            }] |
+            .validation_results.depth = $passed
+          ' "{{working_dir}}/state/tracker.json" > "{{working_dir}}/state/tracker.json.tmp" \
+            && mv "{{working_dir}}/state/tracker.json.tmp" "{{working_dir}}/state/tracker.json"
           
-          with open("{{working_dir}}/state/tracker.json", "w") as f:
-              json.dump(tracker, f, indent=2)
-          
-          print(f"Saved v5_depth (passed: {passed})")
-          PYTHON_SCRIPT
+          echo "Saved v5_depth (passed: $passed_json)"
         output: "v5_saved"
 
   # ==========================================================================
@@ -1820,28 +1768,26 @@ stages:
           fi
           
           # Update tracker
-          python3 << 'PYTHON_SCRIPT'
-          import json
-          import datetime
-          
-          with open("{{working_dir}}/state/tracker.json", "r") as f:
-              tracker = json.load(f)
-          
-          passed = "{{coherence_issues.passed}}" == "true"
-          tracker["version_history"].append({
+          timestamp=$(date -Iseconds)
+          # Convert template value to JSON boolean (handles True/true/False/false)
+          if [ "{{coherence_issues.passed}}" = "true" ] || [ "{{coherence_issues.passed}}" = "True" ]; then
+            passed_json="true"
+          else
+            passed_json="false"
+          fi
+          jq --arg ts "$timestamp" --arg file "{{working_dir}}/versions/v6_coherence.md" --argjson passed "$passed_json" '
+            .version_history += [{
               "version": "v6_coherence",
               "stage": "validation-coherence",
-              "timestamp": datetime.datetime.now().isoformat(),
-              "validation_passed": passed,
-              "file": "{{working_dir}}/versions/v6_coherence.md"
-          })
-          tracker["validation_results"]["coherence"] = passed
+              "timestamp": $ts,
+              "validation_passed": $passed,
+              "file": $file
+            }] |
+            .validation_results.coherence = $passed
+          ' "{{working_dir}}/state/tracker.json" > "{{working_dir}}/state/tracker.json.tmp" \
+            && mv "{{working_dir}}/state/tracker.json.tmp" "{{working_dir}}/state/tracker.json"
           
-          with open("{{working_dir}}/state/tracker.json", "w") as f:
-              json.dump(tracker, f, indent=2)
-          
-          print(f"Saved v6_coherence (passed: {passed})")
-          PYTHON_SCRIPT
+          echo "Saved v6_coherence (passed: $passed_json)"
         output: "v6_saved"
 
   # ==========================================================================
@@ -1955,28 +1901,26 @@ stages:
           fi
           
           # Update tracker
-          python3 << 'PYTHON_SCRIPT'
-          import json
-          import datetime
-          
-          with open("{{working_dir}}/state/tracker.json", "r") as f:
-              tracker = json.load(f)
-          
-          passed = "{{crossref_issues.passed}}" == "true"
-          tracker["version_history"].append({
+          timestamp=$(date -Iseconds)
+          # Convert template value to JSON boolean (handles True/true/False/false)
+          if [ "{{crossref_issues.passed}}" = "true" ] || [ "{{crossref_issues.passed}}" = "True" ]; then
+            passed_json="true"
+          else
+            passed_json="false"
+          fi
+          jq --arg ts "$timestamp" --arg file "{{working_dir}}/versions/v7_crossrefs.md" --argjson passed "$passed_json" '
+            .version_history += [{
               "version": "v7_crossrefs",
               "stage": "validation-crossrefs",
-              "timestamp": datetime.datetime.now().isoformat(),
-              "validation_passed": passed,
-              "file": "{{working_dir}}/versions/v7_crossrefs.md"
-          })
-          tracker["validation_results"]["crossrefs"] = passed
+              "timestamp": $ts,
+              "validation_passed": $passed,
+              "file": $file
+            }] |
+            .validation_results.crossrefs = $passed
+          ' "{{working_dir}}/state/tracker.json" > "{{working_dir}}/state/tracker.json.tmp" \
+            && mv "{{working_dir}}/state/tracker.json.tmp" "{{working_dir}}/state/tracker.json"
           
-          with open("{{working_dir}}/state/tracker.json", "w") as f:
-              json.dump(tracker, f, indent=2)
-          
-          print(f"Saved v7_crossrefs (passed: {passed})")
-          PYTHON_SCRIPT
+          echo "Saved v7_crossrefs (passed: $passed_json)"
         output: "v7_saved"
 
   # ==========================================================================
@@ -2086,28 +2030,26 @@ stages:
           fi
           
           # Update tracker
-          python3 << 'PYTHON_SCRIPT'
-          import json
-          import datetime
-          
-          with open("{{working_dir}}/state/tracker.json", "r") as f:
-              tracker = json.load(f)
-          
-          passed = "{{consistency_issues.passed}}" == "true"
-          tracker["version_history"].append({
+          timestamp=$(date -Iseconds)
+          # Convert template value to JSON boolean (handles True/true/False/false)
+          if [ "{{consistency_issues.passed}}" = "true" ] || [ "{{consistency_issues.passed}}" = "True" ]; then
+            passed_json="true"
+          else
+            passed_json="false"
+          fi
+          jq --arg ts "$timestamp" --arg file "{{working_dir}}/versions/v8_consistency.md" --argjson passed "$passed_json" '
+            .version_history += [{
               "version": "v8_consistency",
               "stage": "validation-consistency",
-              "timestamp": datetime.datetime.now().isoformat(),
-              "validation_passed": passed,
-              "file": "{{working_dir}}/versions/v8_consistency.md"
-          })
-          tracker["validation_results"]["consistency"] = passed
+              "timestamp": $ts,
+              "validation_passed": $passed,
+              "file": $file
+            }] |
+            .validation_results.consistency = $passed
+          ' "{{working_dir}}/state/tracker.json" > "{{working_dir}}/state/tracker.json.tmp" \
+            && mv "{{working_dir}}/state/tracker.json.tmp" "{{working_dir}}/state/tracker.json"
           
-          with open("{{working_dir}}/state/tracker.json", "w") as f:
-              json.dump(tracker, f, indent=2)
-          
-          print(f"Saved v8_consistency (passed: {passed})")
-          PYTHON_SCRIPT
+          echo "Saved v8_consistency (passed: $passed_json)"
         output: "v8_saved"
 
   # ==========================================================================
@@ -2223,28 +2165,26 @@ stages:
           fi
           
           # Update tracker
-          python3 << 'PYTHON_SCRIPT'
-          import json
-          import datetime
-          
-          with open("{{working_dir}}/state/tracker.json", "r") as f:
-              tracker = json.load(f)
-          
-          passed = "{{tone_issues.passed}}" == "true"
-          tracker["version_history"].append({
+          timestamp=$(date -Iseconds)
+          # Convert template value to JSON boolean (handles True/true/False/false)
+          if [ "{{tone_issues.passed}}" = "true" ] || [ "{{tone_issues.passed}}" = "True" ]; then
+            passed_json="true"
+          else
+            passed_json="false"
+          fi
+          jq --arg ts "$timestamp" --arg file "{{working_dir}}/versions/v9_tone.md" --argjson passed "$passed_json" '
+            .version_history += [{
               "version": "v9_tone",
               "stage": "validation-tone",
-              "timestamp": datetime.datetime.now().isoformat(),
-              "validation_passed": passed,
-              "file": "{{working_dir}}/versions/v9_tone.md"
-          })
-          tracker["validation_results"]["tone"] = passed
+              "timestamp": $ts,
+              "validation_passed": $passed,
+              "file": $file
+            }] |
+            .validation_results.tone = $passed
+          ' "{{working_dir}}/state/tracker.json" > "{{working_dir}}/state/tracker.json.tmp" \
+            && mv "{{working_dir}}/state/tracker.json.tmp" "{{working_dir}}/state/tracker.json"
           
-          with open("{{working_dir}}/state/tracker.json", "w") as f:
-              json.dump(tracker, f, indent=2)
-          
-          print(f"Saved v9_tone (passed: {passed})")
-          PYTHON_SCRIPT
+          echo "Saved v9_tone (passed: $passed_json)"
         output: "v9_saved"
 
   # ==========================================================================
@@ -2307,15 +2247,14 @@ stages:
           
           # Output without trailing newline for clean template substitution
           if [ -n "{{output_path}}" ]; then
+            # User specified explicit output path
             printf '%s' "{{output_path}}"
           else
-            result=$(python3 -c "
-          import json
-          with open('{{working_dir}}/state/parsed_outline.json') as f:
-              outline = json.load(f)
-          print(outline.get('document', {}).get('output', 'output.md'))
-          ")
-            printf '%s' "$result"
+            # Default: temp/<filename> for easy side-by-side comparison
+            # Extract just the filename from the outline's target path
+            target_path=$(jq -r '.document.output // "output.md"' "{{working_dir}}/state/parsed_outline.json")
+            filename=$(basename "$target_path")
+            printf '%s' "temp/$filename"
           fi
         output: "final_output_path"
 
@@ -2354,31 +2293,25 @@ stages:
         command: |
           set -euo pipefail
           
-          python3 << 'PYTHON_SCRIPT'
-          import json
-          import datetime
-          
-          with open("{{working_dir}}/state/tracker.json", "r") as f:
-              tracker = json.load(f)
-          
-          tracker["status"] = "complete"
-          tracker["completed_at"] = datetime.datetime.now().isoformat()
-          tracker["current_stage"] = "finalization"
-          tracker["output_path"] = "{{final_output_path}}"
-          
-          tracker["version_history"].append({
+          timestamp=$(date -Iseconds)
+          jq --arg ts "$timestamp" \
+             --arg output_path "{{final_output_path}}" \
+             --arg file "{{working_dir}}/versions/v_final.md" '
+            .status = "complete" |
+            .completed_at = $ts |
+            .current_stage = "finalization" |
+            .output_path = $output_path |
+            .version_history += [{
               "version": "v_final",
               "stage": "finalization",
-              "timestamp": datetime.datetime.now().isoformat(),
-              "file": "{{working_dir}}/versions/v_final.md",
-              "output_path": "{{final_output_path}}"
-          })
+              "timestamp": $ts,
+              "file": $file,
+              "output_path": $output_path
+            }]
+          ' "{{working_dir}}/state/tracker.json" > "{{working_dir}}/state/tracker.json.tmp" \
+            && mv "{{working_dir}}/state/tracker.json.tmp" "{{working_dir}}/state/tracker.json"
           
-          with open("{{working_dir}}/state/tracker.json", "w") as f:
-              json.dump(tracker, f, indent=2)
-          
-          print("Tracker updated: status=complete")
-          PYTHON_SCRIPT
+          echo "Tracker updated: status=complete"
         output: "tracker_complete"
 
       # ---- GENERATE REPORT ----
@@ -2466,15 +2399,8 @@ stages:
           echo "Report: {{working_dir}}/generation_report.md"
           echo ""
           
-          python3 -c "
-          import json
-          with open('{{working_dir}}/state/tracker.json') as f:
-              t = json.load(f)
-          print(f\"Sections: {len(t['sections_completed'])}\")
-          print(f\"Versions: {len(t['version_history'])}\")
-          print(f\"Started: {t.get('started_at', 'unknown')}\")
-          print(f\"Completed: {t.get('completed_at', 'unknown')}\")
-          "
+          jq -r '"Sections: \(.sections_completed | length)\nVersions: \(.version_history | length)\nStarted: \(.started_at // "unknown")\nCompleted: \(.completed_at // "unknown")"' \
+            "{{working_dir}}/state/tracker.json"
           
           echo ""
           cat "{{working_dir}}/generation_report.md"
