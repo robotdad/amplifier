@@ -60,6 +60,20 @@
 # CHANGELOG
 # =============================================================================
 #
+# v6.1.1 (2026-01-21):
+#   - BUGFIX: Tracker state persistence in save-vN steps
+#     * ROOT CAUSE: Template variables like {{structural_issues.passed}} resolve
+#       to Python booleans (True/False with capital letters), but jq's --argjson
+#       flag expects JSON booleans (true/false lowercase)
+#     * SYMPTOM: Tracker only recorded v0 and v_final; validation_results empty
+#     * FIX: Added explicit boolean conversion in all 9 save steps:
+#       if [ "{{xxx_issues.passed}}" = "true" ] || [ "..." = "True" ]; then
+#         passed_json="true"
+#       else
+#         passed_json="false"
+#       fi
+#     * All version_history entries and validation_results now persist correctly
+#
 # v6.1.0 (2026-01-21):
 #   - REFACTOR: Replaced all Python inline JSON manipulation with jq
 #     * 20+ Python blocks converted to clean jq expressions
@@ -159,7 +173,7 @@
 
 name: "document-generation"
 description: "Generate documentation from an outline with BFS traversal and ordered validation"
-version: "6.1.0"
+version: "6.1.1"
 author: "Amplifier Recipes Collection"
 tags: ["documentation", "generation", "outline", "bfs", "validation", "staged", "resumable"]
 
