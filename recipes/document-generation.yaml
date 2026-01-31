@@ -52,6 +52,37 @@
 # CHANGELOG
 # =============================================================================
 #
+# v8.1.0 (2026-01-30):
+#   - NEW FEATURE: Design Intelligence Feedback (EXPERIMENTAL)
+#     * Adds observational feedback from DI agents at TWO stages:
+#       - After v0 generation (before validation) 
+#       - After v3 quality (final document)
+#     * voice-strategist reviews document for voice/tone/clarity
+#     * layout-architect reviews document structure and information architecture
+#     * layout-architect also reviews the original outline quality (final only)
+#     * All feedback is purely observational - NO changes made to document
+#     * Feedback included in final generation report for evaluation
+#     * v0 vs v3 comparison shows validation effectiveness
+#     * Purpose: Understand if DI perspective adds value to document review
+#   - New steps after generation (v0 feedback):
+#     * di-v0-voice-feedback: Voice & tone analysis of initial generation
+#     * di-v0-structure-feedback: IA analysis of initial generation
+#     * save-di-v0-feedback: Saves to di_v0_feedback.json
+#   - New steps in finalization stage (v3/final feedback):
+#     * di-voice-feedback: Voice & tone analysis of final document
+#     * di-structure-feedback: Information architecture analysis
+#     * di-outline-feedback: Outline quality analysis
+#     * save-di-feedback: Combines all feedback into di_feedback.json
+#   - Updated generate-summary-report to include:
+#     * v0 DI feedback section
+#     * v3 DI feedback section
+#     * v0 → v3 comparison section
+#   - New output files:
+#     * state/di_v0_feedback.json (initial generation feedback)
+#     * state/di_feedback.json (final document feedback)
+#   - Technical: JSON save steps use temp files + jq --slurpfile to avoid
+#     bash quoting issues with complex JSON containing parentheses/quotes
+#
 # v8.0.0 (2026-01-28):
 #   - MERGED RELEASE: Combined features from multiple development branches
 #   - From v7.5.x (existing doc support):
@@ -223,8 +254,8 @@
 # =============================================================================
 
 name: "document-generation"
-description: "Generate documentation from an outline with BFS traversal, parallel validation, and provider preferences"
-version: "8.0.0"
+description: "Generate documentation from an outline with BFS traversal, parallel validation, provider preferences, and Design Intelligence feedback"
+version: "8.1.0"
 author: "Amplifier Recipes Collection"
 tags: ["documentation", "generation", "outline", "bfs", "validation", "staged", "resumable", "parallel"]
 
@@ -1330,6 +1361,183 @@ stages:
           echo "Saved v0_generated: $bytes bytes, $lines lines"
         output: "v0_saved"
 
+      # ========================================================================
+      # DESIGN INTELLIGENCE FEEDBACK ON v0 (Initial Generation)
+      # ========================================================================
+      # These steps capture DI perspective on the RAW generated document
+      # BEFORE any validation fixes are applied. This lets us compare:
+      # - What DI sees in the initial generation
+      # - How that changes after validation stages complete
+      # ========================================================================
+
+      - id: "di-v0-voice-feedback"
+        agent: "design-intelligence:voice-strategist"
+        provider_preferences:
+          - provider: anthropic
+            model: claude-sonnet-*
+          - provider: openai
+            model: gpt-4o
+        prompt: |
+          DESIGN INTELLIGENCE FEEDBACK: Voice & Tone Review (INITIAL GENERATION)
+          
+          You are providing OBSERVATIONAL FEEDBACK ONLY on the INITIAL generated document
+          (v0) BEFORE any validation fixes have been applied. This feedback will be
+          compared against feedback on the final document to understand how validation
+          affects the document.
+          
+          Read the document from: {{working_dir}}/versions/v0_generated.md
+          
+          Provide feedback on these dimensions (from a voice strategist perspective):
+          
+          1. **Voice Consistency**
+             - Is the voice/tone consistent throughout?
+             - Does it match the apparent audience?
+             - Are there shifts in formality or style?
+          
+          2. **Clarity of Messaging**
+             - Are concepts explained clearly?
+             - Is technical jargon appropriate for the audience?
+             - Are there confusing or ambiguous passages?
+          
+          3. **Readability**
+             - Is sentence structure varied and engaging?
+             - Are paragraphs well-organized?
+             - Does the document flow naturally?
+          
+          4. **Incidental Findings**
+             - Note any contradictions or inconsistencies you observe
+             - Flag any content that seems out of place
+             - Highlight particularly effective passages
+          
+          IMPORTANT: This is feedback only. Do NOT rewrite or fix anything.
+          
+          Return ONLY this JSON:
+          {
+            "voice_consistency": {
+              "score": "<1-10>",
+              "observations": ["..."],
+              "notable_sections": ["section names with issues or strengths"]
+            },
+            "clarity": {
+              "score": "<1-10>",
+              "observations": ["..."],
+              "unclear_passages": ["brief descriptions"]
+            },
+            "readability": {
+              "score": "<1-10>",
+              "observations": ["..."]
+            },
+            "incidental_findings": ["any contradictions, dead content, or notable observations"],
+            "overall_voice_assessment": "<brief summary of voice/tone quality>"
+          }
+        output: "di_v0_voice_feedback"
+        parse_json: true
+        timeout: 300
+
+      - id: "di-v0-structure-feedback"
+        agent: "design-intelligence:layout-architect"
+        provider_preferences:
+          - provider: anthropic
+            model: claude-sonnet-*
+          - provider: openai
+            model: gpt-4o
+        prompt: |
+          DESIGN INTELLIGENCE FEEDBACK: Structure Review (INITIAL GENERATION)
+          
+          You are providing OBSERVATIONAL FEEDBACK ONLY on the INITIAL generated document
+          (v0) BEFORE any validation fixes have been applied. This feedback will be
+          compared against feedback on the final document to understand how validation
+          affects the document.
+          
+          Read the document from: {{working_dir}}/versions/v0_generated.md
+          
+          Provide feedback on these dimensions (from a layout architect perspective):
+          
+          1. **Information Architecture**
+             - Is the hierarchy clear and logical?
+             - Are sections organized in a sensible order?
+             - Is the depth of nesting appropriate?
+          
+          2. **Content Flow**
+             - Does the document follow a clear narrative arc?
+             - Are transitions between sections smooth?
+             - Is there a logical progression of ideas?
+          
+          3. **Navigation & Wayfinding**
+             - Would readers know where they are in the document?
+             - Are section headings descriptive and helpful?
+             - Is the structure predictable and scannable?
+          
+          4. **Incidental Findings**
+             - Note any structural issues (orphaned sections, missing context)
+             - Flag any content that seems misplaced
+             - Highlight particularly effective organizational choices
+          
+          IMPORTANT: This is feedback only. Do NOT restructure or fix anything.
+          
+          Return ONLY this JSON:
+          {
+            "information_architecture": {
+              "score": "<1-10>",
+              "observations": ["..."],
+              "hierarchy_issues": ["any issues with section hierarchy"]
+            },
+            "content_flow": {
+              "score": "<1-10>",
+              "observations": ["..."],
+              "flow_breaks": ["sections where flow is disrupted"]
+            },
+            "navigation": {
+              "score": "<1-10>",
+              "observations": ["..."]
+            },
+            "incidental_findings": ["structural issues, misplaced content, notable observations"],
+            "overall_structure_assessment": "<brief summary of structural quality>"
+          }
+        output: "di_v0_structure_feedback"
+        parse_json: true
+        timeout: 300
+
+      - id: "save-di-v0-feedback"
+        type: "bash"
+        command: |
+          set -euo pipefail
+          
+          timestamp=$(date -Iseconds)
+          
+          # Write JSON values to temp files to avoid bash quoting issues
+          cat > "{{working_dir}}/state/tmp_v0_voice.json" << 'VOICE_EOF'
+          {{di_v0_voice_feedback}}
+          VOICE_EOF
+          
+          cat > "{{working_dir}}/state/tmp_v0_structure.json" << 'STRUCTURE_EOF'
+          {{di_v0_structure_feedback}}
+          STRUCTURE_EOF
+          
+          # Combine using jq with slurpfile (reads JSON from files safely)
+          jq -n --arg ts "$timestamp" \
+             --slurpfile voice "{{working_dir}}/state/tmp_v0_voice.json" \
+             --slurpfile structure "{{working_dir}}/state/tmp_v0_structure.json" '
+            {
+              "timestamp": $ts,
+              "version": "v0_generated",
+              "purpose": "Design Intelligence feedback on INITIAL generation (before validation)",
+              "note": "Compare this against final (v3) feedback to see validation impact",
+              "voice_feedback": $voice[0],
+              "structure_feedback": $structure[0]
+            }
+          ' > "{{working_dir}}/state/di_v0_feedback.json"
+          
+          # Clean up temp files
+          rm -f "{{working_dir}}/state/tmp_v0_voice.json" "{{working_dir}}/state/tmp_v0_structure.json"
+          
+          echo "Design Intelligence v0 feedback saved to {{working_dir}}/state/di_v0_feedback.json"
+        output: "di_v0_feedback_saved"
+
+      # ========================================================================
+      # END DESIGN INTELLIGENCE FEEDBACK ON v0
+      # ========================================================================
+
   # ==========================================================================
   # STAGE 3: VALIDATION - STRUCTURAL (Sequential, must be first)
   # ==========================================================================
@@ -2330,6 +2538,243 @@ stages:
         parse_json: true
         timeout: 300
 
+      # ========================================================================
+      # DESIGN INTELLIGENCE FEEDBACK (Observational Only)
+      # ========================================================================
+      # These steps provide design perspective feedback for inclusion in the
+      # final report. This is purely observational - no changes are made to
+      # the document. The goal is to understand if DI feedback adds value.
+      # ========================================================================
+
+      - id: "di-voice-feedback"
+        agent: "design-intelligence:voice-strategist"
+        provider_preferences:
+          - provider: anthropic
+            model: claude-sonnet-*
+          - provider: openai
+            model: gpt-4o
+        prompt: |
+          DESIGN INTELLIGENCE FEEDBACK: Voice & Tone Review
+          
+          You are providing OBSERVATIONAL FEEDBACK ONLY. Do NOT suggest fixes.
+          Your feedback will be included in the final generation report to help
+          understand if design intelligence perspective adds value to document review.
+          
+          Read the document from: {{working_dir}}/versions/v3_quality.md
+          
+          Provide feedback on these dimensions (from a voice strategist perspective):
+          
+          1. **Voice Consistency**
+             - Is the voice/tone consistent throughout?
+             - Does it match the apparent audience?
+             - Are there shifts in formality or style?
+          
+          2. **Clarity of Messaging**
+             - Are concepts explained clearly?
+             - Is technical jargon appropriate for the audience?
+             - Are there confusing or ambiguous passages?
+          
+          3. **Readability**
+             - Is sentence structure varied and engaging?
+             - Are paragraphs well-organized?
+             - Does the document flow naturally?
+          
+          4. **Incidental Findings**
+             - Note any contradictions or inconsistencies you observe
+             - Flag any content that seems out of place
+             - Highlight particularly effective passages
+          
+          IMPORTANT: This is feedback only. Do NOT rewrite or fix anything.
+          
+          Return ONLY this JSON:
+          {
+            "voice_consistency": {
+              "score": "<1-10>",
+              "observations": ["..."],
+              "notable_sections": ["section names with issues or strengths"]
+            },
+            "clarity": {
+              "score": "<1-10>",
+              "observations": ["..."],
+              "unclear_passages": ["brief descriptions"]
+            },
+            "readability": {
+              "score": "<1-10>",
+              "observations": ["..."]
+            },
+            "incidental_findings": ["any contradictions, dead content, or notable observations"],
+            "overall_voice_assessment": "<brief summary of voice/tone quality>"
+          }
+        output: "di_voice_feedback"
+        parse_json: true
+        timeout: 300
+
+      - id: "di-structure-feedback"
+        agent: "design-intelligence:layout-architect"
+        provider_preferences:
+          - provider: anthropic
+            model: claude-sonnet-*
+          - provider: openai
+            model: gpt-4o
+        prompt: |
+          DESIGN INTELLIGENCE FEEDBACK: Information Architecture Review
+          
+          You are providing OBSERVATIONAL FEEDBACK ONLY. Do NOT suggest fixes.
+          Your feedback will be included in the final generation report to help
+          understand if design intelligence perspective adds value to document review.
+          
+          Read the document from: {{working_dir}}/versions/v3_quality.md
+          
+          Provide feedback on these dimensions (from a layout architect perspective):
+          
+          1. **Information Architecture**
+             - Is the hierarchy clear and logical?
+             - Are sections organized in a sensible order?
+             - Is the depth of nesting appropriate?
+          
+          2. **Content Flow**
+             - Does the document follow a clear narrative arc?
+             - Are transitions between sections smooth?
+             - Is there a logical progression of ideas?
+          
+          3. **Navigation & Wayfinding**
+             - Would readers know where they are in the document?
+             - Are section headings descriptive and helpful?
+             - Is the structure predictable and scannable?
+          
+          4. **Incidental Findings**
+             - Note any structural issues (orphaned sections, missing context)
+             - Flag any content that seems misplaced
+             - Highlight particularly effective organizational choices
+          
+          IMPORTANT: This is feedback only. Do NOT restructure or fix anything.
+          
+          Return ONLY this JSON:
+          {
+            "information_architecture": {
+              "score": "<1-10>",
+              "observations": ["..."],
+              "hierarchy_issues": ["any issues with section hierarchy"]
+            },
+            "content_flow": {
+              "score": "<1-10>",
+              "observations": ["..."],
+              "flow_breaks": ["sections where flow is disrupted"]
+            },
+            "navigation": {
+              "score": "<1-10>",
+              "observations": ["..."]
+            },
+            "incidental_findings": ["structural issues, misplaced content, notable observations"],
+            "overall_structure_assessment": "<brief summary of structural quality>"
+          }
+        output: "di_structure_feedback"
+        parse_json: true
+        timeout: 300
+
+      - id: "di-outline-feedback"
+        agent: "design-intelligence:layout-architect"
+        provider_preferences:
+          - provider: anthropic
+            model: claude-sonnet-*
+          - provider: openai
+            model: gpt-4o
+        prompt: |
+          DESIGN INTELLIGENCE FEEDBACK: Outline Review
+          
+          You are providing OBSERVATIONAL FEEDBACK on the ORIGINAL OUTLINE that
+          was used to generate this document. This helps understand if the outline
+          itself had structural issues that propagated to the final document.
+          
+          Read the parsed outline from: {{working_dir}}/state/parsed_outline.json
+          
+          Provide feedback on the outline's information architecture:
+          
+          1. **Outline Structure**
+             - Is the outline well-organized?
+             - Are sections at appropriate hierarchy levels?
+             - Is the scope appropriate for the document type?
+          
+          2. **Completeness Signals**
+             - Are there obvious gaps in coverage?
+             - Are any sections likely to be too thin or too dense?
+             - Is the balance between sections reasonable?
+          
+          3. **Generation Readiness**
+             - Was this outline sufficiently detailed for generation?
+             - Were section prompts clear about expectations?
+             - Were dependencies between sections clear?
+          
+          IMPORTANT: This is feedback only. The outline was already used.
+          
+          Return ONLY this JSON:
+          {
+            "outline_structure": {
+              "score": "<1-10>",
+              "observations": ["..."]
+            },
+            "completeness": {
+              "score": "<1-10>",
+              "observations": ["..."],
+              "potential_gaps": ["areas that might be underspecified"]
+            },
+            "generation_readiness": {
+              "score": "<1-10>",
+              "observations": ["..."]
+            },
+            "overall_outline_assessment": "<brief summary of outline quality>"
+          }
+        output: "di_outline_feedback"
+        parse_json: true
+        timeout: 300
+
+      - id: "save-di-feedback"
+        type: "bash"
+        command: |
+          set -euo pipefail
+          
+          timestamp=$(date -Iseconds)
+          
+          # Write JSON values to temp files to avoid bash quoting issues
+          cat > "{{working_dir}}/state/tmp_voice.json" << 'VOICE_EOF'
+          {{di_voice_feedback}}
+          VOICE_EOF
+          
+          cat > "{{working_dir}}/state/tmp_structure.json" << 'STRUCTURE_EOF'
+          {{di_structure_feedback}}
+          STRUCTURE_EOF
+          
+          cat > "{{working_dir}}/state/tmp_outline.json" << 'OUTLINE_EOF'
+          {{di_outline_feedback}}
+          OUTLINE_EOF
+          
+          # Combine using jq with slurpfile (reads JSON from files safely)
+          jq -n --arg ts "$timestamp" \
+             --slurpfile voice "{{working_dir}}/state/tmp_voice.json" \
+             --slurpfile structure "{{working_dir}}/state/tmp_structure.json" \
+             --slurpfile outline "{{working_dir}}/state/tmp_outline.json" '
+            {
+              "timestamp": $ts,
+              "purpose": "Design Intelligence observational feedback for document generation",
+              "note": "This feedback is purely observational - no changes were made based on it",
+              "voice_feedback": $voice[0],
+              "structure_feedback": $structure[0],
+              "outline_feedback": $outline[0]
+            }
+          ' > "{{working_dir}}/state/di_feedback.json"
+          
+          # Clean up temp files
+          rm -f "{{working_dir}}/state/tmp_voice.json" \
+                "{{working_dir}}/state/tmp_structure.json" \
+                "{{working_dir}}/state/tmp_outline.json"
+          
+          echo "Design Intelligence feedback saved to {{working_dir}}/state/di_feedback.json"
+        output: "di_feedback_saved"
+
+      # ========================================================================
+      # END DESIGN INTELLIGENCE FEEDBACK
+      # ========================================================================
+
       - id: "determine-output-path"
         type: "bash"
         command: |
@@ -2409,15 +2854,17 @@ stages:
         mode: "ANALYZE"
         provider_preferences:
           - provider: anthropic
-            model: claude-haiku-*
+            model: claude-sonnet-*
           - provider: openai
-            model: gpt-4o-mini
+            model: gpt-4o
         prompt: |
           Generate a summary report of the document generation process.
           
           Read:
           - Tracker: {{working_dir}}/state/tracker.json
           - Parsed outline: {{working_dir}}/state/parsed_outline.json
+          - DI Feedback (v0): {{working_dir}}/state/di_v0_feedback.json
+          - DI Feedback (final): {{working_dir}}/state/di_feedback.json
           
           Final quality check results:
           - Ready: {{final_check.ready}}
@@ -2449,13 +2896,62 @@ stages:
              - Overall score
              - Strengths and improvements
           
+          6. **Design Intelligence Feedback** (EXPERIMENTAL)
+             This section contains observational feedback from Design Intelligence
+             agents. This feedback was NOT used to modify the document - it is
+             included here to evaluate whether DI perspective adds value.
+             
+             **6.1 Initial Generation Feedback (v0)**
+             Include from di_v0_feedback.json - this is feedback on the RAW generated
+             document BEFORE any validation fixes were applied:
+             
+             - Voice & Tone (v0): scores and key observations
+             - Structure & IA (v0): scores and key observations
+             - Notable issues identified in the initial generation
+             
+             **6.2 Final Document Feedback (v3)**
+             Include from di_feedback.json - this is feedback on the FINAL document
+             AFTER all validation passes:
+             
+             **Voice & Tone Feedback** (from voice-strategist):
+             - Voice consistency score and observations
+             - Clarity score and observations
+             - Readability score and observations
+             - Overall voice assessment
+             - Any incidental findings (contradictions, dead content, etc.)
+             
+             **Structure & IA Feedback** (from layout-architect):
+             - Information architecture score and observations
+             - Content flow score and observations
+             - Navigation/wayfinding score and observations
+             - Overall structure assessment
+             - Any incidental findings
+             
+             **Outline Quality Feedback** (from layout-architect):
+             - Outline structure score and observations
+             - Completeness signals
+             - Generation readiness assessment
+             
+             **6.3 v0 → v3 Comparison** (CRITICAL FOR EVALUATION)
+             Compare the v0 and v3 feedback to understand:
+             - Which issues identified in v0 were addressed by validation?
+             - Which issues persisted through validation?
+             - Did validation introduce any new concerns?
+             - Score changes: Show before/after scores for each dimension
+             
+             **6.4 DI Feedback Summary**:
+             Provide a brief assessment of:
+             - Whether DI feedback revealed anything the validation pipeline missed
+             - Whether the v0→v3 comparison shows validation effectiveness
+             - Overall value of including DI perspective in document generation
+          
           IMPORTANT: Write the report to:
           {{working_dir}}/generation_report.md
           
           Return: {"report_saved": true, "output_file": "generation_report.md"}
         output: "report_result"
         parse_json: true
-        timeout: 180
+        timeout: 300
 
       - id: "print-completion-summary"
         type: "bash"
@@ -2496,6 +2992,8 @@ stages:
 #     tracker.json              - Full state (supports resumability)
 #     content_check_results.json - Parallel content check results
 #     quality_check_results.json - Parallel quality check results
+#     di_v0_feedback.json        - DI feedback on v0 (before validation)
+#     di_feedback.json          - DI feedback on v3 (after validation)
 #     has_existing_document     - Flag: "true" if existing doc was provided
 #     existing_document.md      - Copy of existing doc (if provided)
 #     existing_content_map.json - Section mappings from existing doc (if provided)
