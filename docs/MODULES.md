@@ -228,6 +228,8 @@ Bundles built by the community.
 | **expert-cookbook** | Achieve the State of the Art with Microsoft Amplifier | [@DavidKoleczek](https://github.com/DavidKoleczek) | [amplifier-expert-cookbook](https://github.com/DavidKoleczek/amplifier-expert-cookbook) |
 | **memory** | Persistent memory system with automatic capture, progressive disclosure context injection, and event broadcasting | [@michaeljabbour](https://github.com/michaeljabbour) | [amplifier-bundle-memory](https://github.com/michaeljabbour/amplifier-bundle-memory) |
 | **perplexity** | Deep web research capabilities using Perplexity's Agentic Research API with citations and cost-aware guidance | [@colombod](https://github.com/colombod) | [amplifier-bundle-perplexity](https://github.com/colombod/amplifier-bundle-perplexity) |
+| **browser** | Browser automation for AI agents using agent-browser - JS rendering, auth flows, form filling, and web research | [@samueljklee](https://github.com/samueljklee) | [amplifier-bundle-browser](https://github.com/samueljklee/amplifier-bundle-browser) |
+| **web-ux-dev** | Web UX development tools - visual regression testing, console debugging, and pre-commit verification (extends browser bundle) | [@colombod](https://github.com/colombod) | [amplifier-bundle-web-ux-dev](https://github.com/colombod/amplifier-bundle-web-ux-dev) |
 
 **Want to share your bundle?** Submit a PR to add your Amplifier bundle to this list!
 
