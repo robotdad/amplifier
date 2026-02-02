@@ -224,8 +224,10 @@ Bundles built by the community.
 
 | Bundle | Description | Author | Repository |
 |--------|-------------|--------|------------|
+| **deepwiki** | AI-powered open-source project understanding via DeepWiki MCP - ask questions about any public GitHub repository | [@colombod](https://github.com/colombod) | [amplifier-bundle-deepwiki](https://github.com/colombod/amplifier-bundle-deepwiki) |
 | **expert-cookbook** | Achieve the State of the Art with Microsoft Amplifier | [@DavidKoleczek](https://github.com/DavidKoleczek) | [amplifier-expert-cookbook](https://github.com/DavidKoleczek/amplifier-expert-cookbook) |
 | **memory** | Persistent memory system with automatic capture, progressive disclosure context injection, and event broadcasting | [@michaeljabbour](https://github.com/michaeljabbour) | [amplifier-bundle-memory](https://github.com/michaeljabbour/amplifier-bundle-memory) |
+| **perplexity** | Deep web research capabilities using Perplexity's Agentic Research API with citations and cost-aware guidance | [@colombod](https://github.com/colombod) | [amplifier-bundle-perplexity](https://github.com/colombod/amplifier-bundle-perplexity) |
 
 **Want to share your bundle?** Submit a PR to add your Amplifier bundle to this list!
 
@@ -242,6 +244,7 @@ Modules built by the community.
 | Module | Description | Author | Repository |
 |--------|-------------|--------|------------|
 | **provider-bedrock** | AWS Bedrock integration with cross-region inference support for Claude models | [@brycecutt-msft](https://github.com/brycecutt-msft) | [amplifier-module-provider-bedrock](https://github.com/brycecutt-msft/amplifier-module-provider-bedrock) |
+| **provider-perplexity** | Perplexity AI integration for chat completions with sonar models | [@colombod](https://github.com/colombod) | [amplifier-module-provider-perplexity](https://github.com/colombod/amplifier-module-provider-perplexity) |
 | **provider-openai-realtime** | OpenAI Realtime API for native speech-to-speech interactions | [@robotdad](https://github.com/robotdad) | [amplifier-module-provider-openai-realtime](https://github.com/robotdad/amplifier-module-provider-openai-realtime) |
 
 ### Tools
