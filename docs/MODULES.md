@@ -113,6 +113,7 @@ Connect to AI model providers.
 | **provider-gemini** | Google Gemini integration with 1M context and thinking | [amplifier-module-provider-gemini](https://github.com/microsoft/amplifier-module-provider-gemini) |
 | **provider-vllm** | vLLM server integration for self-hosted models | [amplifier-module-provider-vllm](https://github.com/microsoft/amplifier-module-provider-vllm) |
 | **provider-ollama** | Local Ollama models for offline development | [amplifier-module-provider-ollama](https://github.com/microsoft/amplifier-module-provider-ollama) |
+| **provider-github-copilot** | GitHub Copilot models via the Copilot SDK | [amplifier-module-provider-github-copilot](https://github.com/microsoft/amplifier-module-provider-github-copilot) |
 | **provider-mock** | Mock provider for testing without API calls | [amplifier-module-provider-mock](https://github.com/microsoft/amplifier-module-provider-mock) |
 
 ### Tools
