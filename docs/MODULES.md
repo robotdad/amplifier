@@ -48,18 +48,22 @@ Composable configuration packages that combine providers, behaviors, agents, and
 | Bundle | Description | Repository |
 |--------|-------------|------------|
 | **recipes** | Multi-step AI agent orchestration with behavior overlays and standalone options | [amplifier-bundle-recipes](https://github.com/microsoft/amplifier-bundle-recipes) |
+| **browser-tester** | Browser automation and testing with 3 specialized agents (operator, researcher, visual documenter) using agent-browser CLI | [amplifier-bundle-browser-tester](https://github.com/microsoft/amplifier-bundle-browser-tester) |
 | **design-intelligence** | Comprehensive design intelligence with 7 specialized agents, design philosophy framework, and knowledge base | [amplifier-bundle-design-intelligence](https://github.com/microsoft/amplifier-bundle-design-intelligence) |
 | **issues** | Persistent issue tracking with dependency management, priority scheduling, and session linking for autonomous work | [amplifier-bundle-issues](https://github.com/microsoft/amplifier-bundle-issues) |
 | **lsp** | Core Language Server Protocol support for code intelligence operations | [amplifier-bundle-lsp](https://github.com/microsoft/amplifier-bundle-lsp) |
-| **lsp-python** | Python code intelligence via Pyright language server (extends lsp bundle) | [amplifier-bundle-lsp-python](https://github.com/microsoft/amplifier-bundle-lsp-python) |
-| **lsp-rust** | Rust code intelligence via rust-analyzer language server (extends lsp bundle) | [amplifier-bundle-lsp-rust](https://github.com/microsoft/amplifier-bundle-lsp-rust) |
-| **lsp-typescript** | TypeScript/JavaScript code intelligence via typescript-language-server (extends lsp bundle) | [amplifier-bundle-lsp-typescript](https://github.com/microsoft/amplifier-bundle-lsp-typescript) |
+| **lsp-python** | DEPRECATED — forwarding stub, use python-dev instead | [amplifier-bundle-lsp-python](https://github.com/microsoft/amplifier-bundle-lsp-python) |
+| **lsp-rust** | DEPRECATED — forwarding stub, use rust-dev instead | [amplifier-bundle-lsp-rust](https://github.com/microsoft/amplifier-bundle-lsp-rust) |
+| **lsp-typescript** | DEPRECATED — forwarding stub, use typescript-dev instead | [amplifier-bundle-lsp-typescript](https://github.com/microsoft/amplifier-bundle-lsp-typescript) |
 | **notify** | Desktop and push notifications when assistant turns complete - works over SSH, supports ntfy.sh for mobile | [amplifier-bundle-notify](https://github.com/microsoft/amplifier-bundle-notify) |
 | **observers** | Orchestration pattern where background observer sessions are configured and run in the background, in parallel to provide the main session with actionable observations | [amplifier-bundle-observers](https://github.com/microsoft/amplifier-bundle-observers) |
 | **python-dev** | Comprehensive Python development tools - code quality (ruff, pyright), LSP integration, and expert agent | [amplifier-bundle-python-dev](https://github.com/microsoft/amplifier-bundle-python-dev) |
+| **rust-dev** | Comprehensive Rust development tools — code quality (cargo fmt, clippy, cargo check), LSP integration, and expert agent | [amplifier-bundle-rust-dev](https://github.com/microsoft/amplifier-bundle-rust-dev) |
 | **shadow** | OS-level sandboxed environments for testing local Amplifier ecosystem changes safely | [amplifier-bundle-shadow](https://github.com/microsoft/amplifier-bundle-shadow) |
+| **skills** | Skills tool and Microsoft-curated skills collection with two composable behaviors (full with curated skills, or tool-only) | [amplifier-bundle-skills](https://github.com/microsoft/amplifier-bundle-skills) |
 | **stories** | Autonomous storytelling engine with 11 specialist agents, 4 output formats (HTML, Excel, Word, PDF), and automated recipes for case studies, release notes, and weekly digests | [amplifier-bundle-stories](https://github.com/microsoft/amplifier-bundle-stories) |
 | **execution-environments** | Instance-based execution environments — create, target, and destroy local, Docker, and SSH environments on demand with 11 tools, composable wrappers, and NLSpec-aligned protocol | [amplifier-bundle-execution-environments](https://github.com/microsoft/amplifier-bundle-execution-environments) |
+| **superpowers** | TDD-driven development workflows with brainstorm, plan, execute, verify, and finish modes — includes specialized agents and a full development cycle recipe | [amplifier-bundle-superpowers](https://github.com/microsoft/amplifier-bundle-superpowers) |
 | **ts-dev** | Comprehensive TypeScript/JavaScript development tools - code quality, LSP, and expert agent | [amplifier-bundle-ts-dev](https://github.com/microsoft/amplifier-bundle-ts-dev) |
 
 **Usage**: Bundles are loaded via the `amplifier bundle` commands:
@@ -112,6 +116,7 @@ Connect to AI model providers.
 | **provider-gemini** | Google Gemini integration with 1M context and thinking | [amplifier-module-provider-gemini](https://github.com/microsoft/amplifier-module-provider-gemini) |
 | **provider-vllm** | vLLM server integration for self-hosted models | [amplifier-module-provider-vllm](https://github.com/microsoft/amplifier-module-provider-vllm) |
 | **provider-ollama** | Local Ollama models for offline development | [amplifier-module-provider-ollama](https://github.com/microsoft/amplifier-module-provider-ollama) |
+| **provider-github-copilot** | GitHub Copilot models via the Copilot SDK | [amplifier-module-provider-github-copilot](https://github.com/microsoft/amplifier-module-provider-github-copilot) |
 | **provider-mock** | Mock provider for testing without API calls | [amplifier-module-provider-mock](https://github.com/microsoft/amplifier-module-provider-mock) |
 
 ### Tools
@@ -269,6 +274,7 @@ Modules built by the community.
 | Module | Description | Author | Repository |
 |--------|-------------|--------|------------|
 | **hooks-event-broadcast** | Transport-agnostic event broadcasting for streaming UI applications | [@michaeljabbour](https://github.com/michaeljabbour) | [amplifier-module-hooks-event-broadcast](https://github.com/michaeljabbour/amplifier-module-hooks-event-broadcast) |
+| **hooks-concise-display** | Cleaner, more condensed terminal output for Amplifier sessions | [@obra](https://github.com/obra) | [amplifier-module-hooks-concise-display](https://github.com/obra/amplifier-module-hooks-concise-display) |
 
 ### Contributing Your Modules
 
