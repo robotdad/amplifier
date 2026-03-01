@@ -26,7 +26,6 @@ build-backend = "hatchling.build"
 package = true
 
 [tool.uv.sources]
-amplifier-core = { git = "https://github.com/microsoft/amplifier-core", branch = "main" }
 amplifier-app-cli = { git = "https://github.com/microsoft/amplifier-app-cli", branch = "main" }
 
 [tool.hatch.build.targets.wheel]
