@@ -10,7 +10,7 @@ authors = [
 ]
 dependencies = [
     "amplifier-core",
-    "amplifier-app-cli",
+    "amplifier-app-cli @ git+https://github.com/microsoft/amplifier-app-cli@main",
 ]
 
 [project.scripts]
