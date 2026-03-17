@@ -14,7 +14,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "amplifier-app-cli", git = "https://github.com/microsoft/amplifier-app-cli?branch=main" },
-    { name = "amplifier-core", git = "https://github.com/microsoft/amplifier-core?branch=main" },
+    { name = "amplifier-core" },
 ]
 
 [[package]]
@@ -34,8 +34,8 @@ dependencies = [
 
 [[package]]
 name = "amplifier-core"
-version = "1.0.0"
-source = { git = "https://github.com/microsoft/amplifier-core?branch=main#ca60cc46fec39a3025f036c8fae9c6bab6502d76" }
+version = "1.2.5"
+source = { git = "https://github.com/microsoft/amplifier-core?branch=main#308b2455728378be896266cf620c00da2a408b65" }
 dependencies = [
     { name = "click" },
     { name = "pydantic" },
