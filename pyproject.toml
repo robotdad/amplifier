@@ -9,7 +9,7 @@ authors = [
     { name = "Microsoft MADE:Explorations Team" },
 ]
 dependencies = [
-    "amplifier-core",
+    "amplifier-core>=1.0.10",
     "amplifier-app-cli @ git+https://github.com/microsoft/amplifier-app-cli@main",
 ]
 
