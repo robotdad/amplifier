@@ -246,6 +246,7 @@ Bundles built by the community.
 | **browser** | Browser automation for AI agents using agent-browser - JS rendering, auth flows, form filling, and web research | [@samueljklee](https://github.com/samueljklee) | [amplifier-bundle-browser](https://github.com/samueljklee/amplifier-bundle-browser) |
 | **tui-tester** | AI-assisted testing for TUI applications - spawn, drive, and capture Textual/terminal apps with visual analysis | [@colombod](https://github.com/colombod) | [amplifier-bundle-tui-tester](https://github.com/colombod/amplifier-bundle-tui-tester) |
 | **web-ux-dev** | Web UX development tools - visual regression testing, console debugging, and pre-commit verification (extends browser bundle) | [@colombod](https://github.com/colombod) | [amplifier-bundle-web-ux-dev](https://github.com/colombod/amplifier-bundle-web-ux-dev) |
+| **frontdoor** | Authentication gateway and service dashboard for Tailscale-based hosts. Provides PAM-based SSO, Caddy forward_auth integration, and a service discovery dashboard. Includes skills for host infrastructure discovery and web app setup. | [@robotdad](https://github.com/robotdad) | [amplifier-bundle-frontdoor](https://github.com/robotdad/frontdoor) |
 
 **Want to share your bundle?** Submit a PR to add your Amplifier bundle to this list!
 
